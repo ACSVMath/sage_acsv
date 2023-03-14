@@ -130,7 +130,7 @@ def diagonal_asy(F, r=None, linear_form=None, return_points=False, as_symbolic=F
 
     timer = Timer()
     # Find det(zH_z Hess) where Hess is the Hessian of z_1...z_n * log(g(z_1, ..., z_n))
-    Det = DetHessianWithLog(H, vsT[:-2], r)
+    Det = DetHessianWithLog(H, vsT[0:-2], r)
 
     # Find exponential growth
     T = prod([vs[i]**r[i] for i in range(d)])
