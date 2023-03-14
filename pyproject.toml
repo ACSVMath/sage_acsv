@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "sage-acsv"
+version = "0.0.7"
+description = "A SageMath package with algorithms for analytic combinatorics in several variables."
+authors = [
+  "Benjamin Hackl <devel@benjamin-hackl.at>",
+  "Andrew Luo <j92luo@uwaterloo.ca>",
+  "Stephen Melczer <steve.melczer@uwaterloo.ca>",
+  "Jesse Selover <jselover@umass.edu>",
+  "Elaine Wong <elaine.wong@ricam.oeaw.ac.at>",
+]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.2"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
