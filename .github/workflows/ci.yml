@@ -1,0 +1,41 @@
+name: CI
+on:
+  push: { branches: [ "main" ] }
+  pull_request: { branches: [ "main" ] }
+
+jobs:
+  test:
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        include:
+          - sagelib: "9.4"
+          - sagelib: "9.5"
+          - sagelib: "9.6"
+          - sagelib: "9.7"
+    steps:
+      - uses: actions/checkout@v2
+        with: { submodules: recursive }
+      - uses: conda-incubator/setup-miniconda@v2
+        with: { mamba-version: "*", channels: "flatsurf,conda-forge", channel-priority: true }
+      - name: Install dependencies
+        shell: bash -l {0}
+        run: |
+          mamba install -n test sagelib=${{ matrix.sagelib }}
+          mamba install --quiet -n test numpy sympy gap-defaults matplotlib-base maxima ipywidgets
+          conda list
+      - name: Install sage-acsv
+        shell: bash -l {0}
+        run: |
+          pip install --verbose .
+      - name: Run SageMath doctests
+        shell: bash -l {0}
+        run: |
+          sage -tp --force-lib --long sage_acsv/
+      - name: Show logs
+        run: grep "" /dev/null `find -name '*.log'` || true
+        if: ${{ always() }}
+
+env:
+  MAKEFLAGS: -j2
+  SAGE_NUM_THREADS: 2
