@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sage-acsv"
-version = "0.0.7"
+version = "0.1.0"
 description = "A SageMath package with algorithms for analytic combinatorics in several variables."
 authors = [
   "Benjamin Hackl <devel@benjamin-hackl.at>",
@@ -9,6 +9,9 @@ authors = [
   "Jesse Selover <jselover@umass.edu>",
   "Elaine Wong <elaine.wong@ricam.oeaw.ac.at>",
 ]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/ACSVMath/sage_acsv"
 
 [tool.poetry.dependencies]
 python = "^3.8"
