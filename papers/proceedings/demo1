@@ -1,0 +1,5 @@
+@\color{sageblue}sage:@ from sage_acsv import diagonal_asy
+@\color{sageblue}sage:@ var('x, y')
+(x, y)
+@\color{sageblue}sage:@ diagonal_asy(1/(1 - x - y), as_symbolic=True)
+4^n/(sqrt(pi)*sqrt(n))

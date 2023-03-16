@@ -1,0 +1,4 @@
+@\color{sageblue}sage:@ asm_vals = diagonal_asy(G/H)
+@\color{sageblue}sage:@ add([a.radical_expression()^n*b*c*d.radical_expression()
+          for (a, b, c, d) in asm_vals])
+(12*sqrt(2) + 17)^n*sqrt(17/2*sqrt(2) + 12)/(4*pi^1.5*n^1.5)

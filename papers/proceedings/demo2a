@@ -1,0 +1,7 @@
+@\color{sageblue}sage:@ from sage_acsv import diagonal_asy
+@\color{sageblue}sage:@ var('w, x, y, z, t')
+(w, x, y, z, t)
+@\color{sageblue}sage:@ G = 1
+@\color{sageblue}sage:@ H = 1 - w*(1 + x)*(1 + y)*(1 + z)*(1 + y + z + y*z + x*y*z)
+@\color{sageblue}sage:@ diagonal_asy(G/H, as_symbolic=True)
+1.225275868941647?*33.97056274847714?^n/(pi^1.5*n^1.5)

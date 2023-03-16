@@ -1,0 +1,8 @@
+@\color{sageblue}sage:@ from sage_acsv import diagonal_asy
+@\color{sageblue}sage:@ var('x, y')
+(x, y)
+@\color{sageblue}sage:@ G = x^2*y^2 - x*y + 1
+@\color{sageblue}sage:@ H = 1 - (x + y + x*y - x*y^2 - x^2*y + x^2*y^3 + x^3*y^2)
+@\color{sageblue}sage:@ F = G/H
+@\color{sageblue}sage:@ asm_vals = diagonal_asy(F, as_symbolic=True)
+0.9430514023983397?*4.518911369262258?^n/(sqrt(pi)*sqrt(n))
