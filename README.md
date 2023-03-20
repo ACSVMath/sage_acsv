@@ -15,6 +15,10 @@ is via PyPI simply by running
 sage -pip install sage-acsv
 ```
 
+The package can be run in the browser using [mybinder](https://mybinder.org/v2/gh/ACSVMath/sage_acsv/HEAD?labpath=examples%2FSage-ACSV-Tests.ipynb).
+
+A writeup of the package, and how it works, can be found on the [arxiv](https://arxiv.org/abs/2303.09603).
+
 ## Installation from source
 
 To install the package from the source code, either clone the git repository
