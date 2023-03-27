@@ -24,12 +24,17 @@ def diagonal_asy(F, r=None, linear_form=None, return_points=False, output_format
       variables that separates the critical point solutions.
     * ``return_points`` -- If ``True``, also returns the coordinates of
       minimal critical points. By default ``False``.
-    * ``as_symbolic`` -- If ``False`` (the default value), a list of tuples
-      of the form ``(a, n^b, pi^c, d)`` is returned, such that the `r`-diagonal
-      of `F` is the sum of `a^n n^b \pi^c d + O(a^n n^{b-1})` over these tuples.
-      Otherwise, if ``True``, the symbolic expression corresponding to the sum
-      from the other case without the error terms (i.e., a symbolic representation
-      of the asympttoic main term) is returned.
+    * ``output_format`` -- (Optional) A string or :class:`.OutputFormat` specifying
+      the way the asymptotic growth is returned. Allowed values currently are:
+      - ``"tuple"`` or ``None``, the default: the growth is returned as a list of
+        tuples of the form ``(a, n^b, pi^c, d)`` such that the `r`-diagonal of `F`
+        is the sum of ``a^n n^b pi^c d + O(a^n n^{b-1})`` over these tuples.
+      - ``"symbolic"``: the growth is returned as an expression from the symbolic
+        ring ``SR`` in the variable ``n``.
+      - ``"asymptotic"``: the growth is returned as an expression from an appropriate
+        ``AsymptoticRing`` in the variable ``n``.
+    * ``as_symbolic`` -- deprecated in favor of the equivalent
+      ``output_format="symbolic"``. Will be removed in a future release.
 
     OUTPUT:
 
@@ -52,10 +57,10 @@ def diagonal_asy(F, r=None, linear_form=None, return_points=False, output_format
         [(4, 1/sqrt(n), 1/sqrt(pi), 1)]
         sage: diagonal_asy(1/(1-(1+x)*y), r = [1,2], return_points=True)
         ([(4, 1/sqrt(n), 1/sqrt(pi), 1)], [[1, 1/2]])
-        sage: diagonal_asy(1/(1-(x+y+z)+(3/4)*x*y*z), as_symbolic=True)
-        0.840484893481498?*24.68093482214177?^n/(pi^1.0*n^1.0)
+        sage: diagonal_asy(1/(1-(x+y+z)+(3/4)*x*y*z), output_format="symbolic")
+        0.840484893481498?*24.68093482214177?^n/(pi*n)
         sage: diagonal_asy(1/(1-(x+y+z)+(3/4)*x*y*z))
-        [(24.68093482214177?, n^(-1.0), pi^(-1.0), 0.840484893481498?)]
+        [(24.68093482214177?, 1/n, 1/pi, 0.840484893481498?)]
         sage: var('n')
         n
         sage: asy = diagonal_asy(
@@ -65,7 +70,36 @@ def diagonal_asy(F, r=None, linear_form=None, return_points=False, output_format
         ....:      a.radical_expression()^n * b * c * d.radical_expression()
         ....:      for (a, b, c, d) in asy
         ....: ])
-        1/4*(12*sqrt(2) + 17)^n*sqrt(17/2*sqrt(2) + 12)/(pi^1.5*n^1.5)
+        1/4*(12*sqrt(2) + 17)^n*sqrt(17/2*sqrt(2) + 12)/(pi^(3/2)*n^(3/2))
+
+    Not specifying any ``output_format`` falls back to the default tuple
+    representation::
+
+        sage: from sage_acsv import diagonal_asy, OutputFormat
+        sage: var('x')
+        x
+        sage: diagonal_asy(1/(1 - 2*x))
+        [(2, 1, 1, 1)]
+        sage: diagonal_asy(1/(1 - 2*x), output_format="tuple")
+        [(2, 1, 1, 1)]
+
+    Passing ``"symbolic"`` lets the function return an element of the
+    symbolic ring in the variable ``n`` that describes the asymptotic growth::
+
+        sage: growth = diagonal_asy(1/(1 - 2*x), output_format="symbolic"); growth
+        2^n
+        sage: growth.parent()
+        Symbolic Ring
+
+    The argument ``"asymptotic"`` constructs an asymptotic expansion over
+    an appropriate ``AsymptoticRing`` in the variable ``n``, including the
+    appropriate error term::
+
+        sage: assume(SR.an_element() > 0)  # required to make coercions involving SR work properly
+        sage: growth = diagonal_asy(1/(1 - x - y), output_format="asymptotic"); growth
+        1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2))
+        sage: growth.parent()
+        Asymptotic Ring <SR^n * n^QQ * Arg_SR^n> over Symbolic Ring
 
     The function times individual steps of the algorithm, timings can
     be displayed by increasing the printed verbosity level of our debug logger::
