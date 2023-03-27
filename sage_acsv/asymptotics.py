@@ -114,6 +114,20 @@ def diagonal_asy(F, r=None, linear_form=None, return_points=False, output_format
         [(4, 1/sqrt(n), 1/sqrt(pi), 1)]
         sage: acsv_logger.setLevel(logging.WARNING)
 
+
+    Tests:
+
+    Check that passing a non-supported ``output_format`` errors out::
+
+        sage: diagonal_asy(1/(1 - x - y), output_format='hello world')
+        Traceback (most recent call last):
+        ...
+        ValueError: 'hello world' is not a valid OutputFormat
+        sage: diagonal_asy(1/(1 - x - y), output_format=42)
+        Traceback (most recent call last):
+        ...
+        ValueError: 42 is not a valid OutputFormat
+
     """
     G, H = F.numerator(), F.denominator()
     if r is None:
