@@ -5,14 +5,14 @@ of multivariate rational functions.
 from sage.all import AA, PolynomialRing, QQ, QQbar, SR, gcd, prod, pi
 
 from sage_acsv.kronecker import _kronecker_representation
-from sage_acsv.helpers import ACSVException, RationalFunctionReduce, DetHessianWithLog
+from sage_acsv.helpers import ACSVException, RationalFunctionReduce, DetHessianWithLog, OutputFormat
 from sage_acsv.debug import Timer, acsv_logger
 
 
 MAX_MIN_CRIT_RETRIES = 3
 
 
-def diagonal_asy(F, r=None, linear_form=None, return_points=False, as_symbolic=False):
+def diagonal_asy(F, r=None, linear_form=None, return_points=False, output_format=None, as_symbolic=False):
     r"""Asymptotics in a given direction r of the multivariate rational function F.
 
     INPUT:
@@ -147,17 +147,53 @@ def diagonal_asy(F, r=None, linear_form=None, return_points=False, as_symbolic=F
     ]
     n = SR.var('n')
     asm_vals = [
-        (c, n**((1-d)/2), pi**((1-d)/2), a * b.sqrt())
+        (c, QQ(1 - d)/2, a * b.sqrt())
         for (a, b, c) in asm_quantities
     ]
     timer.checkpoint("Final Asymptotics")
 
-    result = asm_vals
     if as_symbolic:
-        result = sum([a**n * b * c * d for (a, b, c, d) in result])
+        from warnings import warn
 
+        warn(
+            "The as_symbolic argument has been deprecated in favor of output_format='symbolic' "
+            "and will be removed in a future release.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        if output_format is None:
+            output_format = OutputFormat.SYMBOLIC
+
+    if output_format is None:
+        output_format = OutputFormat.TUPLE
+    else:
+        output_format = OutputFormat(output_format)
+
+    if output_format in (OutputFormat.TUPLE, OutputFormat.SYMBOLIC):
+        n = SR.var('n')
+        result = [
+            (base, n**exponent, pi**exponent, constant)
+            for (base, exponent, constant) in asm_vals
+        ]
+        if output_format == OutputFormat.SYMBOLIC:
+            result = sum([a**n * b * c * d for (a, b, c, d) in result])
+
+    elif output_format == OutputFormat.ASYMPTOTIC:
+        from sage.all import AsymptoticRing
+        AR = AsymptoticRing('SR^n * n^QQ', SR)
+        n = AR.gen()
+        result = sum([
+            base**n * n**exponent * pi**exponent * constant 
+            + (base**n * n**(exponent - 1)).O()
+            for (base, exponent, constant) in asm_vals
+        ])
+
+    else:
+        raise NotImplementedError(f"Missing implementation for {output_format}")
+    
     if return_points:
         return result, min_crit_pts
+
     return result
 
 
