@@ -5,14 +5,14 @@ of multivariate rational functions.
 from sage.all import AA, PolynomialRing, QQ, QQbar, SR, gcd, prod, pi
 
 from sage_acsv.kronecker import _kronecker_representation
-from sage_acsv.helpers import ACSVException, RationalFunctionReduce, DetHessianWithLog
+from sage_acsv.helpers import ACSVException, RationalFunctionReduce, DetHessianWithLog, OutputFormat
 from sage_acsv.debug import Timer, acsv_logger
 
 
 MAX_MIN_CRIT_RETRIES = 3
 
 
-def diagonal_asy(F, r=None, linear_form=None, return_points=False, as_symbolic=False):
+def diagonal_asy(F, r=None, linear_form=None, return_points=False, output_format=None, as_symbolic=False):
     r"""Asymptotics in a given direction r of the multivariate rational function F.
 
     INPUT:
@@ -24,12 +24,17 @@ def diagonal_asy(F, r=None, linear_form=None, return_points=False, as_symbolic=F
       variables that separates the critical point solutions.
     * ``return_points`` -- If ``True``, also returns the coordinates of
       minimal critical points. By default ``False``.
-    * ``as_symbolic`` -- If ``False`` (the default value), a list of tuples
-      of the form ``(a, n^b, pi^c, d)`` is returned, such that the `r`-diagonal
-      of `F` is the sum of `a^n n^b \pi^c d + O(a^n n^{b-1})` over these tuples.
-      Otherwise, if ``True``, the symbolic expression corresponding to the sum
-      from the other case without the error terms (i.e., a symbolic representation
-      of the asympttoic main term) is returned.
+    * ``output_format`` -- (Optional) A string or :class:`.OutputFormat` specifying
+      the way the asymptotic growth is returned. Allowed values currently are:
+      - ``"tuple"`` or ``None``, the default: the growth is returned as a list of
+        tuples of the form ``(a, n^b, pi^c, d)`` such that the `r`-diagonal of `F`
+        is the sum of ``a^n n^b pi^c d + O(a^n n^{b-1})`` over these tuples.
+      - ``"symbolic"``: the growth is returned as an expression from the symbolic
+        ring ``SR`` in the variable ``n``.
+      - ``"asymptotic"``: the growth is returned as an expression from an appropriate
+        ``AsymptoticRing`` in the variable ``n``.
+    * ``as_symbolic`` -- deprecated in favor of the equivalent
+      ``output_format="symbolic"``. Will be removed in a future release.
 
     OUTPUT:
 
@@ -52,10 +57,10 @@ def diagonal_asy(F, r=None, linear_form=None, return_points=False, as_symbolic=F
         [(4, 1/sqrt(n), 1/sqrt(pi), 1)]
         sage: diagonal_asy(1/(1-(1+x)*y), r = [1,2], return_points=True)
         ([(4, 1/sqrt(n), 1/sqrt(pi), 1)], [[1, 1/2]])
-        sage: diagonal_asy(1/(1-(x+y+z)+(3/4)*x*y*z), as_symbolic=True)
-        0.840484893481498?*24.68093482214177?^n/(pi^1.0*n^1.0)
+        sage: diagonal_asy(1/(1-(x+y+z)+(3/4)*x*y*z), output_format="symbolic")
+        0.840484893481498?*24.68093482214177?^n/(pi*n)
         sage: diagonal_asy(1/(1-(x+y+z)+(3/4)*x*y*z))
-        [(24.68093482214177?, n^(-1.0), pi^(-1.0), 0.840484893481498?)]
+        [(24.68093482214177?, 1/n, 1/pi, 0.840484893481498?)]
         sage: var('n')
         n
         sage: asy = diagonal_asy(
@@ -65,7 +70,36 @@ def diagonal_asy(F, r=None, linear_form=None, return_points=False, as_symbolic=F
         ....:      a.radical_expression()^n * b * c * d.radical_expression()
         ....:      for (a, b, c, d) in asy
         ....: ])
-        1/4*(12*sqrt(2) + 17)^n*sqrt(17/2*sqrt(2) + 12)/(pi^1.5*n^1.5)
+        1/4*(12*sqrt(2) + 17)^n*sqrt(17/2*sqrt(2) + 12)/(pi^(3/2)*n^(3/2))
+
+    Not specifying any ``output_format`` falls back to the default tuple
+    representation::
+
+        sage: from sage_acsv import diagonal_asy, OutputFormat
+        sage: var('x')
+        x
+        sage: diagonal_asy(1/(1 - 2*x))
+        [(2, 1, 1, 1)]
+        sage: diagonal_asy(1/(1 - 2*x), output_format="tuple")
+        [(2, 1, 1, 1)]
+
+    Passing ``"symbolic"`` lets the function return an element of the
+    symbolic ring in the variable ``n`` that describes the asymptotic growth::
+
+        sage: growth = diagonal_asy(1/(1 - 2*x), output_format="symbolic"); growth
+        2^n
+        sage: growth.parent()
+        Symbolic Ring
+
+    The argument ``"asymptotic"`` constructs an asymptotic expansion over
+    an appropriate ``AsymptoticRing`` in the variable ``n``, including the
+    appropriate error term::
+
+        sage: assume(SR.an_element() > 0)  # required to make coercions involving SR work properly
+        sage: growth = diagonal_asy(1/(1 - x - y), output_format="asymptotic"); growth
+        1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2))
+        sage: growth.parent()
+        Asymptotic Ring <SR^n * n^QQ * Arg_SR^n> over Symbolic Ring
 
     The function times individual steps of the algorithm, timings can
     be displayed by increasing the printed verbosity level of our debug logger::
@@ -79,6 +113,20 @@ def diagonal_asy(F, r=None, linear_form=None, return_points=False, as_symbolic=F
         INFO:sage_acsv:... Executed Final Asymptotics in ... seconds.
         [(4, 1/sqrt(n), 1/sqrt(pi), 1)]
         sage: acsv_logger.setLevel(logging.WARNING)
+
+
+    Tests:
+
+    Check that passing a non-supported ``output_format`` errors out::
+
+        sage: diagonal_asy(1/(1 - x - y), output_format='hello world')
+        Traceback (most recent call last):
+        ...
+        ValueError: 'hello world' is not a valid OutputFormat
+        sage: diagonal_asy(1/(1 - x - y), output_format=42)
+        Traceback (most recent call last):
+        ...
+        ValueError: 42 is not a valid OutputFormat
 
     """
     G, H = F.numerator(), F.denominator()
@@ -147,17 +195,53 @@ def diagonal_asy(F, r=None, linear_form=None, return_points=False, as_symbolic=F
     ]
     n = SR.var('n')
     asm_vals = [
-        (c, n**((1-d)/2), pi**((1-d)/2), a * b.sqrt())
+        (c, QQ(1 - d)/2, a * b.sqrt())
         for (a, b, c) in asm_quantities
     ]
     timer.checkpoint("Final Asymptotics")
 
-    result = asm_vals
     if as_symbolic:
-        result = sum([a**n * b * c * d for (a, b, c, d) in result])
+        from warnings import warn
 
+        warn(
+            "The as_symbolic argument has been deprecated in favor of output_format='symbolic' "
+            "and will be removed in a future release.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        if output_format is None:
+            output_format = OutputFormat.SYMBOLIC
+
+    if output_format is None:
+        output_format = OutputFormat.TUPLE
+    else:
+        output_format = OutputFormat(output_format)
+
+    if output_format in (OutputFormat.TUPLE, OutputFormat.SYMBOLIC):
+        n = SR.var('n')
+        result = [
+            (base, n**exponent, pi**exponent, constant)
+            for (base, exponent, constant) in asm_vals
+        ]
+        if output_format == OutputFormat.SYMBOLIC:
+            result = sum([a**n * b * c * d for (a, b, c, d) in result])
+
+    elif output_format == OutputFormat.ASYMPTOTIC:
+        from sage.all import AsymptoticRing
+        AR = AsymptoticRing('SR^n * n^QQ', SR)
+        n = AR.gen()
+        result = sum([
+            base**n * n**exponent * pi**exponent * constant 
+            + (base**n * n**(exponent - 1)).O()
+            for (base, exponent, constant) in asm_vals
+        ])
+
+    else:
+        raise NotImplementedError(f"Missing implementation for {output_format}")
+    
     if return_points:
         return result, min_crit_pts
+
     return result
 
 
