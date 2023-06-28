@@ -6,6 +6,7 @@ containing algorithms for analytic combinatorics in several variables.
 The package works with any reasonably recent version of SageMath, we
 recommend to have SageMath 9.4 (released in August 2021) or newer.
 
+
 ## Quickstart
 
 The easiest way to install the latest released version of the package
@@ -15,9 +16,12 @@ is via PyPI simply by running
 sage -pip install sage-acsv
 ```
 
-The package can be run in the browser using [mybinder](https://mybinder.org/v2/gh/ACSVMath/sage_acsv/HEAD).
+The package can be run in an interactive environment in the browser
+using [Binder](https://mybinder.org/v2/gh/ACSVMath/sage_acsv/HEAD).
 
-A writeup of the package, and how it works, can be found on the [arxiv](https://arxiv.org/abs/2303.09603).
+An article serving as an introduction to version 0.1.0 of the package
+and its internals can be found on the [arXiv](https://arxiv.org/abs/2303.09603).
+
 
 ## Installation from source
 
@@ -37,6 +41,7 @@ the GitHub repository, run
 sage -pip install git+https://github.com/ACSVMath/sage_acsv.git
 ```
 
+
 ## Running package tests 
 
 The doctests that are added in the package can be run by executing
@@ -45,6 +50,6 @@ sage -t sage_acsv
 ```
 from the root of the cloned repository. The tests are run automatically
 on every push and for any PR to the `main` branch, and compatibility with
-several different SageMath releases (the oldest currently being SageMath 9.4)
+several different SageMath releases (see [recent workflows to see all tested versions](https://github.com/ACSVMath/sage_acsv/actions/workflows/ci.yml))
 is checked.
 
