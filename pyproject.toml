@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sage-acsv"
-version = "0.1.0"
+version = "0.1.1"
 description = "A SageMath package with algorithms for analytic combinatorics in several variables."
 authors = [
   "Benjamin Hackl <devel@benjamin-hackl.at>",
