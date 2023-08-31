@@ -6,6 +6,7 @@
 \usepackage{float}
 \usepackage{listings}
 \usepackage{xcolor}
+\usepackage{tabularray}
 
 \newtheorem{theorem}{Theorem}
 \theoremstyle{definition}
@@ -54,6 +55,7 @@
 \bmdefine{\zz}{z}
 
 \newcommand{\Z}{{\mathbb Z}}
+\newcommand{\Q}{{\mathbb Q}}
 \newcommand{\C}{{\mathbb C}}
 \newcommand{\R}{{\mathbb R}}
 \newcommand{\N}{{\mathbb N}}
@@ -104,7 +106,7 @@ We introduce the new \textbf{sage\_acsv} package for the SageMath computer algeb
 The field of \emph{Analytic Combinatorics in Several Variables (ACSV)}~\cite{Melczer2021,PemantleWilson2013} adapts methods from complex analysis in several variables, algebraic and differential geometry, topology, and computer algebra to create effective methods to study the asymptotic properties of a multivariate sequence $(f_{\ii})_{\ii \in \N^d}$ using analytic properties of its \emph{generating function}, 
 \[ F(\zz) = \sum_{\ii \in \N^d}f_{\ii}\zz^{\ii} = \sum_{(i_1,\ldots,i_d)\in\N^d}f_{i_1,\ldots, i_d} \; z_1^{i_1}\cdots z_d^{i_d} , \]
 when this series represents a complex analytic function near the origin. 
-The \textbf{sage\_acsv} package takes a multivariate rational function $F(\zz)$ specified as an explicit symbolic fraction
+The \textbf{sage\_acsv} package\footnote{A demonstration of this work was given at the 35th International Conference on Formal Power Series and Algebraic Combinatorics in Davis, CA, USA and is published in the corresponding proceedings. The published version of this paper can be found here \url{https://www.mat.univie.ac.at/~slc/wpapers/FPSAC2023/90.pdf}.} takes a multivariate rational function $F(\zz)$ specified as an explicit symbolic fraction
 and a \emph{direction vector} $\rr \in \Z_{>0}^d$ and returns an asymptotic expansion for the \emph{$\rr$-diagonal} sequence\footnote{The theory of ACSV shows how asymptotics typically vary uniformly with small perturbations of $\rr$, so it is also possible to derive asymptotics varying near fixed directions, and even limit theorems, using similar techniques.} of the power series coefficients $(f_{n\rr})_{n \geq 0}$ of $F$, whose indices are natural number multiples of $\rr$. Our package works under conditions that are verifiable and hold generically, except that $F$ must be \emph{combinatorial}, meaning that all but a finite number of its power series coefficients are non-negative. 
 
 \begin{remark}
@@ -113,11 +115,7 @@ It is unknown whether combinatorality is a computationally decidable property, e
 
 The \code{sage_acsv} package can be installed in any recent SageMath installation
 (preferably version \texttt{9.4} or later) by running the command \code{sage -pip install sage-acsv}
-from any Sage instance with access to the internet, or by downloading its source code at 
-\begin{center}
-\url{https://github.com/ACSVMath/sage_acsv} 
-\end{center}
-and placing the module in the appropriate Python search path.
+from any Sage instance with access to the internet, or by downloading its source code at \url{https://github.com/ACSVMath/sage_acsv} and placing the module in the appropriate Python search path.
 
 \begin{example}
 \label{ex:1}
@@ -140,9 +138,9 @@ The asymptotic behavior of a multivariate rational diagonal sequence under our a
 \begin{example}
 \label{ex:2}
 The asymptotic behavior of the sequence
-\[ f_n = \sum_{k=1}^n\binom{n}{k}^2\binom{n+k}{k}^2, \] 
+\[ f_n = \sum_{k=0}^n\binom{n}{k}^2\binom{n+k}{k}^2, \] 
 which is the main diagonal of 
-\[F(w,x,y,z) = \frac{1}{1 - w(1+x)(1+y)(1+z)(xyz+yz+y+z+1)},\] 
+\[F(w,x,y,z) = \frac{1}{1 - w(1+x)(1+y)(1+z)(xyz+yz+y+z+1)}\ ,\] 
 was used by Apéry~\cite{Apery4} in his celebrated proof of the irrationality of $\zeta(3)$. Running
 
 \lstinputlisting[language=python, showstringspaces=false]{demo2a}
@@ -151,9 +149,10 @@ gives the dominant asymptotic behavior of $f_n$ in terms of algebraic numbers re
 
 \lstinputlisting[language=python, showstringspaces=false]{demo2b}
 \noindent
-expresses these algebraic quantities in terms of radicals, proving
+represents these algebraic quantities in radicals using Sage's capability
+for computing symbolic radical expressions, proving
 \[ f_n = \frac{\left(12\sqrt{2}+17\right)^n}{\sqrt{(\pi n)^3}}\left(\frac{\sqrt{12+17/\sqrt{2}}}{4} + O\left(\frac{1}{n}\right)\right). \]
-Of course, it is not always possible (or, even if possible, useful) to write the algebraic numbers appearing in asymptotics for general multivariate diagonals in radicals. 
+We note that such radical expressions are not certified and, of course, it is not always possible (or, even if possible, useful) to write the algebraic numbers appearing in asymptotics for general multivariate diagonals in radicals. 
 \end{example}
 
 The, by now well-established, theory of univariate analytic combinatorics~\cite{FlajoletSedgewick2009} shows that to determine asymptotics of the power series coefficients of a generating function $f(z)$, one should find the \emph{dominant singularities} of $f$ (those closest to the origin), determine the type of singularity (pole of finite order, logarithmic or algebraic branch point, essential singularity, etc.), and then use known \emph{transfer theorems} to determine the contribution of each singularity to the asymptotics for the corresponding sequence. Dominant singularities are generalized from one to several variables by the following definition.
@@ -162,18 +161,19 @@ The, by now well-established, theory of univariate analytic combinatorics~\cite{
 Let $F(\zz) = \sum_{\ii\in\N^d}f_\ii\zz^\ii$ be a convergent power series with domain of convergence $\dom$. A singularity $\ww\in\R^d$ of $F(\zz)$ is said to be \emph{minimal} if $\ww$ lies in the boundary $\partial \dom$. Equivalently, $\ww$ is minimal if there does not exist another singularity $\ww' \in \R^d$ of $F(\bm{z})$ with $|w_i'| < |w_i|$ for all $1 \le i \le d$.
 \end{definition}
 
-Although the theory of ACSV applies to meromorphic functions, we focus here on the case when $F(\zz)=G(\zz)/H(\zz)$ is a rational function so that we can use tools from polynomial system solving (rational functions can also capture the behavior of algebraic functions by increasing dimension through a resolution of singularities~\cite{GreenwoodMelczerRuzaWilson2022}). We always assume that $G$ and $H$ are coprime polynomials, which implies that the set of singularities of $F$ is defined by the \emph{singular variety} $\sing = \{\zz\in\C^d : H(\zz)=0\}$.
+Although the theory of ACSV applies to meromorphic functions, we focus here on the case when $F(\zz)=G(\zz)/H(\zz)$ is a rational function so that we can use tools from polynomial system solving (rational functions can also capture the behavior of algebraic functions through embeddings in higher dimensions~\cite{GreenwoodMelczerRuzaWilson2022}). We always assume that $G$ and $H$ are coprime polynomials, which implies that the set of singularities of $F$ is defined by the \emph{singular variety} $\sing = \{\zz\in\C^d : H(\zz)=0\}$.
 
 Unlike the univariate case, in at least two variables there are always an infinite number of minimal points when $F$ admits singularities. This reflects, in part, the fact that minimal points are important to the asymptotics of $(f_\ii)$ and there are an infinite number of ways for the index $\ii$ to approach infinity by varying the direction vector $\rr$. Thankfully, it is possible in generic circumstances to determine a finite set of singularities, depending on $\rr$, that dictate asymptotics of the $\rr$-diagonal of $F$.
 
 \begin{definition}[critical point]
-A point $\ww \in \C_*^d := (\C\setminus \{0\})^d$ with nonzero coordinates is a \emph{(simple smooth) critical point} of $F$ for the direction $\rr$ if the gradient $(\nabla H)(\ww)$ is nonzero and
+A point $\ww \in \C_*^d := (\C\setminus \{0\})^d$ with nonzero coordinates is a \emph{(simple smooth) critical point} of $F$ for the direction $\rr=(r_1,\dots,r_d)$ if the gradient $(\nabla H)(\ww)$ is nonzero and
 \begin{align}
  \begin{split}
     H(\ww)&=0,\\
-    r_kz_1H_{z_1}(\ww) - r_1z_kH_{z_k}(\ww) &= 0 \; \text{ for } 2\leq k\leq d.
+    r_kz_1H_{z_1}(\ww) - r_1z_kH_{z_k}(\ww) &= 0 \; \text{ for } 2\leq k\leq d,
     \end{split}  \label{eq:CP}
 \end{align}
+where $H_{z_k}$ denotes the partial derivative of $H$ with respect to the variable $z_k$.
 \end{definition}
 
 The theory of ACSV shows how minimal critical points, when they exist, typically determine asymptotics (see Theorem~\ref{thm:ACSV} below). The command 
@@ -186,16 +186,16 @@ The theory of ACSV shows how minimal critical points, when they exist, typically
 computes asymptotics of the $\rr$-diagonal $f_{n\rr}$ of $F(\zz)=G(\zz)/H(\zz)$ as $n\rightarrow\infty$, under the following assumptions:
 
 \begin{enumerate}
-    \item[1.] $H(\zero)\neq0$, so that $G(\zz)/H(\zz)$ has a convergent power series expansion near the origin,
-    \item[2.] $H$ and all of its partial derivatives do not simultaneously vanish, so that all poles of $F$ are simple and $\sing$ forms a manifold,
-    \item[3.] the smooth critical point system~\eqref{eq:CP} has a finite number of solutions, at least one of which is minimal, and
-    \item[4.] the explicit matrix $\hes=\hes(\ww)$ defined by~\eqref{eq:hes} below is nonsingular at all minimal critical points $\ww$.
+    \item $H(\zero)\neq0$, so that $G(\zz)/H(\zz)$ has a convergent power series expansion near the origin,
+    \item $H$ and all of its partial derivatives do not simultaneously vanish, so that all poles of $F$ are simple and $\sing$ forms a manifold,
+    \item the smooth critical point system~\eqref{eq:CP} has a finite number of solutions, at least one of which is minimal, and
+    \item the explicit matrix $\hes=\hes(\ww)$ defined by~\eqref{eq:hes} below is nonsingular at all minimal critical points $\ww$.
 \end{enumerate}
 The algorithm verifies these assumptions computationally, so the user need not worry about them. As mentioned above, we further require that
 \begin{enumerate}
 \item[5.] the power series expansion of $F$ is \emph{combinatorial}, meaning that it admits at most a finite number of negative coefficients,
 \end{enumerate}
-however it is unknown whether combinatorality is decidable, even for univariate rational functions, \textbf{so the user must verify this before running the algorithm} in order to guarantee that the output is correct. Table \ref{tab:parameters} summarizes the possible input parameters of the function \code{diagonal_asy}.
+however it is unknown whether combinatorality is decidable, even for univariate rational functions, so \textbf{the user must know this} through other means in order for the output to be proven correct (for instance, if the input is a multivariate generating function for a counting sequence then this is satisfied). Table \ref{tab:parameters} summarizes the possible input parameters of the function \code{diagonal_asy}.
 
 Multivariate generating functions enumerating combinatorial classes are, by their definition, combinatorial. The form of $F$ can also be used to prove combinatorality, for instance if $F(\zz)=G(\zz)/(1-I(\zz))$ where $G$ and $I$ are polynomials with non-negative coefficients and $I$ vanishes at the origin.
 
@@ -207,7 +207,7 @@ Multivariate generating functions enumerating combinatorial classes are, by thei
 \centering
 \caption{Parameters for the \code{diagonal_asy} command.}
 \label{tab:parameters}
-\begin{tabular}{ |p{0.18\linewidth}< {\centering} |p{0.28\linewidth}< {\centering} |p{0.34\linewidth} < {\centering}|}
+\begin{tblr}{ |p{0.18\linewidth}< {\centering} |p{0.28\linewidth}< {\centering} |p{0.38\linewidth} < {\centering}|}
  \hline 
 Parameter & Type & Description \\ \hline \hline
 $F(\zz)$ & Combinatorial rational function in $\Z(z_1, ..., z_d)$ & Ratio of coprime polynomials $G(\zz)$ and $H(\zz)$.\\ \hline
@@ -216,32 +216,28 @@ $\rr$  (optional) & List of $d$ positive integers & Direction to compute asympto
 \code{return_points} (optional) & True or False & Flag to also return coordinates of minimal critical points determining asymptotics. Default is False. \\  \hline
 \code{as_symbolic} (optional) & True or False & Flag to return asymptotics as a symbolic sum involving $n$. Default is False. \\ 
  \hline
-\end{tabular}
+\end{tblr}
 \end{table}
-
-\pagebreak
 
 \begin{example}
 The sequence alignment problem in molecular biology compares evolutionary relationships between species by measuring differences in their DNA sequences. Pemantle and Wilson~\cite{PemantleWilson2008} study one such problem whose behavior is encoded by the main diagonal of the combinatorial multivariate rational generating function
 \[ \frac{x^2y^2-xy+1}{1-(x+y+xy-xy^2-x^2y+x^2y^3+x^3y^2)}.\]
-
-\noindent
 We immediately prove dominant asymptotic behavior for the main diagonal by running
 
 \lstinputlisting[language=python, showstringspaces=false]{demo3}
 
 \noindent
-where now the leading constant is an algebraic number of degree 10 and the base of the exponentially growing term is an algebraic number of degree 5.
+where now the leading constant is an algebraic number of degree 10 and the exponential growth constant is an algebraic number of degree 5.
 \end{example}
 
 A test notebook working through these examples, and further ones, is available with the source code
 of the package at \url{https://github.com/ACSVMath/sage_acsv}.
 
-\subsection{Past Work}
+\subsubsection*{Past Work}
 
 The theoretical underpinnings of our software began with the work of Pemantle and Wilson~\cite{PemantleWilson2002} on smooth ACSV. This early paper used easy to understand explicit contour deformations of complex integrals to derive asymptotics, however it relies on stronger assumptions than we need. The specific asymptotic result we use was originally proven in Baryshnikov and Pemantle~\cite{BaryshnikovPemantle2011} using the notion of \emph{hyperbolic cones} to enable more advanced deformations, which was then studied from an algorithmic viewpoint by Melczer and Salvy~\cite{MelczerSalvy2021}. The latter two authors created a preliminary Maple implementation of the algorithm which was not rigorous, as it did not use certified numerics. 
 A previous implementation by Raichev~\cite{Raichev2011}, currently included as a core module in SageMath,
-can also compute\footnote{Unfortunately, as of the publication of this article, changes to the underlying SageMath codebase have broken some functionality of Raichev's package.} the asymptotic contributions of minimal critical points (including in some nonsmooth situations). However, this package requires the user to independently find and certify the minimal critical points (the hardest step of the analysis), so it also does not rigorously determine asymptotics. 
+can also compute\footnote{Unfortunately, as of the publication of this article, changes to the underlying SageMath codebase have broken some functionality of Raichev's package.} the asymptotic contributions of minimal critical points (including in some nonsmooth situations). However, this package requires the user to independently find and certify the minimal critical points (the hardest step of the analysis), so it also does not rigorously determine asymptotics. In contrast, our package uses Sage's exact computations for algebraic numbers to rigorously decide the (in)equalities necessary to prove computed asymptotics under our assumptions.
 
 \section{Algorithmic Details}
 
@@ -249,9 +245,10 @@ In this section we quickly recap the theoretical background of ACSV, and then de
 
 \subsection{Recap of ACSV}
 
+%The methods of ACSV
 We start by representing the $\rr$-diagonal sequence by a Cauchy integral,
 \[ f_{n\rr} = \frac{1}{(2\pi i)^d} \int_{\mathcal{C}} F(\zz) \frac{d\zz}{\zz^{n\rr+\one}}, \]
-where $\mathcal{C}$ is any product of circles sufficiently close to the origin. Under our assumptions, it is possible to deform $\mathcal{C}$ away from the origin and replace the Cauchy integral by a residue integral localized to smooth minimal critical points (except at points that yield an exponentially negligible error). The definition of critical points is crafted so that the resulting residue integral can be analyzed using the classical saddle-point method. Our asymptotic formulas depend on a certain matrix, which we now define.
+where $\mathcal{C}$ is any product of circles sufficiently close to the origin, with $d\zz=dz_1\cdots dz_d$ and $\zz^{n\rr+\one}=(z_1^{nr_1+1},\ldots, z_d^{nr_d+1})$. Under our assumptions, it is possible to deform $\mathcal{C}$ away from the origin and replace the Cauchy integral by a residue integral localized to smooth minimal critical points (except at points that yield an exponentially negligible error). The definition of critical points is crafted so that the resulting residue integral can be analyzed using the classical saddle-point method. Our asymptotic formulas depend on a certain matrix, which we now define.
 
 \begin{definition}[phase Hessian matrix] 
     If $\ww$ is a smooth critical point, then the \emph{phase Hessian matrix} $\hes=\hes(\ww)$ at $\ww$ is the $(d-1)\times(d-1)$ matrix defined by
@@ -271,7 +268,7 @@ The key ACSV theorem in our context is the following.
 
 \begin{theorem}[{Melczer~\cite[Theorem 5.1]{Melczer2021}}]
     \label{thm:ACSV}
-    Suppose that the system of polynomial equations~\eqref{eq:CP} admits a finite number of solutions, exactly one of which, $\ww\in\C_*^d$, is minimal. Suppose further that $H_{z_d}(\ww)\neq0$, and that the phase Hessian matrix $\hes$ at $\ww$ has nonzero determinant. Then, as $n\rightarrow\infty$,
+    Suppose that the system of polynomial equations~\eqref{eq:CP} admits a finite number of solutions, exactly one of which, $\ww\in\overline{\Q}_*^d$, is minimal. Suppose further that $H_{z_d}(\ww)\neq0$, and that the phase Hessian matrix $\hes$ at $\ww$ has nonzero determinant. Then, as $n\rightarrow\infty$,
     
     {\small
         \[
@@ -301,12 +298,12 @@ In order to determine which critical points are minimal we use the following res
     has a solution $(\zz,\lambda,t) \in \R^{d+2}$ with $\zz=\ww$ and $t=1$ \emph{and} no solution with $\zz=\ww$ and $0 < t < 1$.
 \end{lemma}
 
-Theorem~\ref{thm:ACSV} and Lemma~\ref{lem:combmin} display our overall strategy: encode the (generically finite) set of solutions to the polynomial system~\eqref{eq:extendedSys} in a convenient manner, determine which solutions with $t=1$ have $z_1,\dots,z_d$ positive and real, and then use the solutions with $t \in (0,1)$ to eliminate those that are not minimal. Under our assumptions there will be at most one positive real minimal critical point: it remains to find the other critical points with the same coordinate-wise modulus and then add the asymptotic contributions of each given by Theorem~\ref{thm:ACSV}.
+Theorem~\ref{thm:ACSV} and Lemma~\ref{lem:combmin} display our overall strategy: encode the (generically finite~\cite[Section~5.3.4]{Melczer2021}) set of solutions to the polynomial system~\eqref{eq:extendedSys} in a convenient manner, determine which solutions with $t=1$ have $z_1,\dots,z_d$ positive and real, and then use the solutions with $t \in (0,1)$ to eliminate those that are not minimal. Under our assumptions there will be at most one positive real minimal critical point: it remains to find the other critical points with the same coordinate-wise modulus and then add the asymptotic contributions of each given by Theorem~\ref{thm:ACSV}.
 
 \subsection{Kronecker Representations}
 
 The key to an efficient algorithm is the representation used to encode the solutions of the extended critical point system~\eqref{eq:extendedSys}. Following Melczer and Salvy~\cite{MelczerSalvy2021}, we use a \emph{Kronecker representation}, which is also known as a \emph{rational univariate representation} (see Melczer and Salvy~\cite{MelczerSalvy2021} for background on the Kronecker representation and its history in computer algebra). A \emph{Kronecker representation} of a zero-dimensional algebraic set 
-\[ S = \{\zz \in \mathbb{C} : f_1(\zz) = ... = f_d(\zz) = 0\}\] 
+\[ S = \{\zz \in \mathbb{C}^d : f_1(\zz) = ... = f_d(\zz) = 0\}\] 
 consists of
 \begin{itemize}
     \item a new variable $u$ given by a separating integer linear form 
@@ -314,7 +311,7 @@ consists of
     \item a square-free integer polynomial $P \in \Z[u]$, and
     \item integer polynomials $Q_1, ..., Q_d \in \Z[u]$,
 \end{itemize}
-such that the points $\zz$ defined by $z_i=Q_i(u)/P'(u)$ as $u$ iterates through the roots of $P$ give the elements of $S$. The Kronecker representation of a zero-dimensional variety encodes its points using the univariate polynomial $P$, and is constructed so that the degrees and maximum coefficient sizes of $P$ and the $Q_i$ can be efficiently bounded~\cite{Safey-El-DinSchost2018,Schost2001}.
+such that the points $\zz$ defined by $z_i=Q_i(u)/P'(u)$ as $u$ runs through the roots of $P$ give the elements of $S$. The Kronecker representation of a zero-dimensional variety encodes its points using the univariate polynomial $P$, and is constructed so that the degrees and maximum coefficient sizes of $P$ and the $Q_i$ can be efficiently bounded~\cite{Safey-El-DinSchost2018,Schost2001}.
 
 Although specialized, Gröbner-free, algorithms to compute a Kronecker representation~\cite{GiustiLecerfSalvy2001} exist, to the best of our knowledge they have not been implemented in Sage. We thus use a lexicographical Gröbner basis computation to determine our Kronecker representations. The ability to compute Kronecker representations in Sage may be of independent interest to some users.
 
@@ -345,9 +342,9 @@ After computing a Kronecker representation of the critical point system, we use 
 
 \subsection{Future Work}
 
-There are many ways to generalize this work, including: computing the higher-order terms in the expansion given by Theorem~\ref{thm:ACSV}, working with nonsmooth critical points, Gröbner-free methods of computing Kronecker representations, and generalizing to larger classes of meromorphic functions where computations are still effective. From a complexity points of view, the most expensive operation to find asymptotics is typically identifying critical points with the same coordinate-wise modulus. Our package currently uses a naive method relying on Sage's built-in support for algebraic numbers, however, work is ongoing to adapt a more efficient method described in Melczer and Salvy~\cite{MelczerSalvy2021} in the specialized ACSV setting.
+There are many ways to generalize this work, including: computing the higher-order terms in the expansion given by Theorem~\ref{thm:ACSV}, working with nonsmooth critical points, Gröbner-free methods of computing Kronecker representations, and generalizing to larger classes of meromorphic functions where computations are still effective. From a complexity point of view, the most expensive operation to find asymptotics is typically identifying critical points with the same coordinate-wise modulus. Our package currently uses a naive method relying on Sage's built-in support for algebraic numbers, however work is ongoing to adapt a more efficient method described in Melczer and Salvy~\cite{MelczerSalvy2021} in the specialized ACSV setting. Furthermore, we use Sage’s interface to Singular for necessary Gröbner basis computations. Work adapting newer packages, such as \code{msolve}~\cite{Berthomieu2021}, is also ongoing.
 
-\section{acknowledgements}
+\section*{Acknowledgements}
 The authors acknowledge the support of the AMS Math Research Community \emph{Combinatorial Applications of Computational Geometry and Algebraic Topology}, which was funded by the National Science Foundation under Grant Number DMS 1641020. SM and AL's work partially supported by NSERC Discovery Grant RGPIN-2021-02382 and the NSERC Undergraduate Summer Research Program.
 
 \printbibliography
