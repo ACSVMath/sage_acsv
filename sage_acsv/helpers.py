@@ -64,10 +64,8 @@ def GenerateLinearForm(system, vsT, u_, linear_form=None):
         for z in vsT
     ])
 
-
-def DetHessianWithLog(H, vs, r):
-    r"""Computes the determinant of `z_d H_{z_d} Hess`, where `Hess` is
-    the Hessian of a given map.
+def GetHessian(H, vs, r, CP = None):
+    r"""Computes Hessian of a given map
 
     The map underlying `Hess` is defined as
     `(z_1, \ldots, z_{d-1}) \mapsto z_1 \cdots z_{d-1} \log(g(z_1, \ldots, z_{d-1}))`,
@@ -76,13 +74,14 @@ def DetHessianWithLog(H, vs, r):
 
     INPUT:
 
-    * ``H`` -- a polynomail (the denominator of the rational GF `F` in ACSV)
+    * ``H`` -- a polynomial (the denominator of the rational GF `F` in ACSV)
     * ``vs`` -- list of variables ``z_1, ..., z_d``
     * ``r`` -- direction vector of length `d` with positive integers
+    * ``CP`` -- (Optional) a critical point to evaluate the Hessian at
 
     OUTPUT:
 
-    The determinant as a rational function in the variables ``vs``.
+    The Hessian of the given map as a matrix
     """
     z_d = vs[-1]
     d = len(vs)
@@ -109,9 +108,30 @@ def DetHessianWithLog(H, vs, r):
     for i in range(d-1):
         Hess[i][i] = Hess[i][i] + V[i]
 
-    # Return determinant
-    return matrix(Hess).determinant()
+    return Hess.subs(CP) if CP is not None else Hess
 
+def DetHessianWithLog(H, vs, r):
+    r"""Computes the determinant of `z_d H_{z_d} Hess`, where `Hess` is
+    the Hessian of a given map.
+
+    The map underlying `Hess` is defined as
+    `(z_1, \ldots, z_{d-1}) \mapsto z_1 \cdots z_{d-1} \log(g(z_1, \ldots, z_{d-1}))`,
+    with `g` defined from IFT via `H(z_a1,...,z_{d-1},g(z_1,...,z_{d-1}))` at
+    a critical point in direction `r`.
+
+    INPUT:
+
+    * ``H`` -- a polynomial (the denominator of the rational GF `F` in ACSV)
+    * ``vs`` -- list of variables ``z_1, ..., z_d``
+    * ``r`` -- direction vector of length `d` with positive integers
+
+    OUTPUT:
+
+    The determinant as a rational function in the variables ``vs``.
+    """
+    # Return determinant
+    Hess = GetHessian(H, vs, r)
+    return matrix(Hess).determinant()
 
 class ACSVException(Exception):
     def __init__(self, message, retry=False):
