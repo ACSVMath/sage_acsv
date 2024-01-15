@@ -4,7 +4,7 @@ of multivariate rational functions.
 
 from sage.all import AA, PolynomialRing, QQ, QQbar, SR, gcd, prod, pi
 
-from sage_acsv.kronecker import _kronecker_representation
+from sage_acsv.kronecker import _kronecker_representation, _msolve_kronecker_representation
 from sage_acsv.helpers import ACSVException, RationalFunctionReduce, DetHessianWithLog, OutputFormat
 from sage_acsv.debug import Timer, acsv_logger
 
@@ -12,7 +12,7 @@ from sage_acsv.debug import Timer, acsv_logger
 MAX_MIN_CRIT_RETRIES = 3
 
 
-def diagonal_asy(F, r=None, linear_form=None, return_points=False, output_format=None, as_symbolic=False):
+def diagonal_asy(F, r=None, linear_form=None, return_points=False, output_format=None, as_symbolic=False, use_msolve=False):
     r"""Asymptotics in a given direction r of the multivariate rational function F.
 
     INPUT:
@@ -161,7 +161,8 @@ def diagonal_asy(F, r=None, linear_form=None, return_points=False, output_format
             min_crit_pts = MinimalCriticalCombinatorial(
                 G, H, all_variables,
                 r=r,
-                linear_form=linear_form
+                linear_form=linear_form,
+                use_msolve=use_msolve
             )
             break
         except Exception as e:
@@ -245,7 +246,7 @@ def diagonal_asy(F, r=None, linear_form=None, return_points=False, output_format
     return result
 
 
-def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None):
+def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, use_msolve=False):
     r"""Compute minimal critical points of a combinatorial multivariate
     rational function F=G/H admitting a finite number of critical points.
 
@@ -304,7 +305,8 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None):
 
     # Compute the Kronecker representation of our system
     timer.checkpoint()
-    P, Qs = _kronecker_representation(system, u_, vsT, lambda_, linear_form)
+    P, Qs = _msolve_kronecker_representation(system, u_, vsT) if use_msolve else \
+        _kronecker_representation(system, u_, vsT, lambda_, linear_form)
     timer.checkpoint("Kronecker")
 
     Qt = Qs[-2]  # Qs ordering is H.variables() + [t, lambda_]

@@ -3,6 +3,7 @@ from sage.rings.polynomial.multi_polynomial_ideal import MPolynomialIdeal
 
 from sage_acsv.helpers import ACSVException, GenerateLinearForm
 from sage_acsv.debug import acsv_logger
+from sage_acsv.msolve import get_parametrization
 
 
 def _kronecker_representation(system, u_, vs, lambda_=None, linear_form=None):
@@ -130,8 +131,32 @@ def _kronecker_representation(system, u_, vs, lambda_=None, linear_form=None):
 
     return P, Qs
 
+def _msolve_kronecker_representation(system, u_, vs):
+    result = get_parametrization(vs, system)
 
-def kronecker(system, vs, linear_form=None):
+    _, nvars, _, _, _, param = result[1]
+
+    R = PolynomialRing(QQ, u_)
+    u_ = R(u_)
+
+    P_coeffs = param[1][0][1]
+    P = sum([c * u_**i for (i, c) in enumerate(P_coeffs)])
+
+    Qs = []
+    for Q_param in param[1][2]:
+        Q_coeffs = Q_param[0][1]
+        Q = -sum([c * u_**i for (i, c) in enumerate(Q_coeffs)])
+        Qs.append(Q)
+
+    # Check if no new variable was created by msolve
+    # If so, the linear_form used is just zd
+    # i.e. u_ = zd and Qd = zd * P'(zd)
+    if nvars == len(vs):
+        Qs.append(-u_ * P.derivative())
+
+    return P, Qs
+
+def kronecker(system, vs, linear_form=None, use_msolve=False):
     r"""Computes the Kronecker Representation of a system of polynomials
 
     INPUT:
@@ -159,4 +184,6 @@ def kronecker(system, vs, linear_form=None):
     system = [R(f) for f in system]
     vs = [R(v) for v in vs]
     u_ = R(u_)
+    if use_msolve:
+        return _msolve_kronecker_representation(system, u_, vs)
     return _kronecker_representation(system, u_, vs, linear_form=linear_form)
