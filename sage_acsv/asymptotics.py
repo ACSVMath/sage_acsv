@@ -305,6 +305,7 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, use_
 
     # Compute the Kronecker representation of our system
     timer.checkpoint()
+
     P, Qs = _msolve_kronecker_representation(system, u_, vsT) if use_msolve else \
         _kronecker_representation(system, u_, vsT, lambda_, linear_form)
     timer.checkpoint("Kronecker")

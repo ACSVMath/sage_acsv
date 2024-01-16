@@ -145,7 +145,8 @@ def _msolve_kronecker_representation(system, u_, vs):
     Qs = []
     for Q_param in param[1][2]:
         Q_coeffs = Q_param[0][1]
-        Q = -sum([c * u_**i for (i, c) in enumerate(Q_coeffs)])
+        c_div = Q_param[1]
+        Q = -sum([c * u_**i for (i, c) in enumerate(Q_coeffs)])/c_div
         Qs.append(Q)
 
     # Check if no new variable was created by msolve
