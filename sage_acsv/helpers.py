@@ -1,6 +1,6 @@
 from enum import Enum
 
-from sage.all import QQ, ceil, gcd, matrix, randint
+from sage.all import QQ, Ideal, ceil, gcd, matrix, randint
 
 
 class OutputFormat(Enum):
@@ -108,6 +108,8 @@ def GetHessian(H, vs, r, CP = None):
     for i in range(d-1):
         Hess[i][i] = Hess[i][i] + V[i]
 
+    Hess = matrix(Hess)
+
     return Hess.subs(CP) if CP is not None else Hess
 
 def DetHessianWithLog(H, vs, r):
@@ -132,6 +134,33 @@ def DetHessianWithLog(H, vs, r):
     # Return determinant
     Hess = GetHessian(H, vs, r)
     return matrix(Hess).determinant()
+
+def NewtonSeries(Phi, vs, N):
+    """
+    Computes series expansion approximation of g defined implicitly by Phi(x,g(x)) = 0
+    """
+
+    x = vs[:-1]
+    y = vs[-1]
+
+    def ModX(F, x, N):
+        return F.mod(Ideal(x)**N)
+
+    def ModY(F, y, N):
+        return F.mod(y**N)
+
+    def Mod(F, vs, N):
+        return ModX(ModY(F, vs[-1], N), vs[:-1], N)
+
+    def NewtonRecur(H, N):
+        if N == 1:
+            return 0, 1/H.derivative(y).subs({v:0 for v in vs})
+        F, G = NewtonRecur(H, ceil(N/2))
+        G = G + (1-G*H.derivative(y).subs(y = F))*G
+        F = F - G*H.subs(y=F)
+        return ModX(F, x, N), ModX(G, x, ceil(N/2))
+    
+    return NewtonRecur(Mod(Phi, vs, N), N)[0]
 
 class ACSVException(Exception):
     def __init__(self, message, retry=False):

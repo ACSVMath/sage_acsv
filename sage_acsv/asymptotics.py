@@ -6,7 +6,7 @@ from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra
 from sage.all import gcd, prod, pi, matrix, solve, exp, log, taylor, add, I, factorial
 
 from sage_acsv.kronecker import _kronecker_representation
-from sage_acsv.helpers import ACSVException, RationalFunctionReduce, DetHessianWithLog, OutputFormat, GetHessian
+from sage_acsv.helpers import ACSVException, NewtonSeries, RationalFunctionReduce, DetHessianWithLog, OutputFormat, GetHessian
 from sage_acsv.debug import Timer, acsv_logger
 
 
@@ -277,7 +277,7 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, M):
     """
     
     # Convert everything to symbolic ring
-    cp = [SR(v) == V for (v, V) in zip(vs, cp)]
+    cp = {SR(v): V for (v, V) in zip(vs, cp)}
     d = len(vs)
     vs = list(SR.var(v) for v in vs)
     vd = vs[-1]
@@ -285,7 +285,6 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, M):
     G, H = SR(G), SR(H)
 
     W = DifferentialWeylAlgebra(PolynomialRing(SR, tvars))
-    WR = W.base_ring()
     T = PolynomialRing(SR, tvars).gens()
     D = list(W.differentials())
 
@@ -294,7 +293,9 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, M):
     v = matrix(W,[D[k] for k in range(d-1)])
     Epsilon = -(v * Hessinv.change_ring(W) * v.transpose())[0,0]
 
-    g = solve(H,vd)[0].rhs()
+    #g = solve(H,vd)[0].rhs()
+    g = NewtonSeries(H.subs({v:v+v.subs(cp) for v in vs}), vs, 3 * M) 
+    g = g.subs({v:v-v.subs(cp) for v in vs}) + vd.subs(cp)
     tsubs = [v == v.subs(cp)*exp(I*t) for [v,t] in zip(vs,tvars)]
     tsubs += [vd==g.subs(tsubs)]
 
@@ -329,7 +330,7 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, M):
     def Clj(l,j):
         return (-1)**j*SR(eval_op(EE[l+j],PP[l]))/(2**(l+j)*factorial(l)*factorial(l+j))
 
-    return [(-1)**j * sum([Clj(l,j) for l in range(2 * j + 1)]) for j in range(M)]
+    return [sum([Clj(l,j) for l in range(2 * j + 1)]) for j in range(M)]
 
 def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None):
     r"""Compute minimal critical points of a combinatorial multivariate
