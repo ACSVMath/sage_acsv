@@ -2,7 +2,7 @@
 of multivariate rational functions.
 """
 
-from sage.all import AA, PolynomialRing, QQ, QQbar, SR, gcd, prod, pi
+from sage.all import AA, PolynomialRing, QQ, QQbar, SR, RIF, gcd, prod, pi
 
 from sage_acsv.kronecker import _kronecker_representation, _msolve_kronecker_representation
 from sage_acsv.helpers import ACSVException, RationalFunctionReduce, DetHessianWithLog, OutputFormat
@@ -316,12 +316,26 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, use_
     # Solutions to Pt are solutions to the system where t is not 1
     one_minus_t = gcd(Pd - Qt, P)
     Pt, _ = P.quo_rem(one_minus_t)
+    
+    """
     rts_t_zo = list(
         filter(
             lambda k: (Qt/Pd).subs(u_=k) > 0 and (Qt/Pd).subs(u_=k) < 1,
             Pt.roots(AA, multiplicities=False)
         )
     )
+    """
+    
+    rts_t_zo = list()
+    for k in Pt.roots(AA, multiplicities=False):
+        num = Qt.subs(u_=k)
+        denom = Pd.subs(u_=k)
+        RIF(num)
+        RIF(denom)
+        vt = num/denom
+        if vt > 0 and vt < 1:
+            rts_t_zo.append(k)
+
     non_min = [[(q/Pd).subs(u_=u) for q in Qs[0:-2]] for u in rts_t_zo]
 
     # Filter the real roots for minimal points with positive coords
@@ -352,6 +366,7 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, use_
     if len(pos_minimals) == 0:
         raise ACSVException("No smooth minimal critical points found.")
     elif len(pos_minimals) > 1:
+        print(pos_minimals)
         raise ACSVException(
             "More than one minimal point with positive real coordinates found."
         )
