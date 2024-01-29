@@ -2,7 +2,7 @@
 of multivariate rational functions.
 """
 
-from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra
+from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra, Ideal
 from sage.all import gcd, prod, pi, matrix, solve, exp, log, taylor, add, I, factorial
 
 from sage_acsv.kronecker import _kronecker_representation
@@ -276,33 +276,23 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, M):
     List of constants ``C_j`` corresponding to the coefficients of the asymptotic expansion
     """
     
-    # Convert everything to symbolic ring
-    cp = {SR(v): V for (v, V) in zip(vs, cp)}
+    # Convert everything to algebraic ring? //symbolic ring
     d = len(vs)
-    vs = list(SR.var(v) for v in vs)
+    #vs = list(SR.var(v) for v in vs)
+    R = PolynomialRing(QQbar, vs)
+    vs = R.gens()
     vd = vs[-1]
     tvars = list(SR.var('t%d'%i) for i in range(d-1))
-    G, H = SR(G), SR(H)
+    G, H = R(SR(G)), R(SR(H))
 
-    W = DifferentialWeylAlgebra(PolynomialRing(SR, tvars))
-    T = PolynomialRing(SR, tvars).gens()
+    cp = {v: V for (v, V) in zip(vs, cp)}
+
+    W = DifferentialWeylAlgebra(PolynomialRing(QQbar, tvars))
+    TR = PolynomialRing(QQbar, tvars)
+    T = TR.gens()
+    tvars = T
+    #W = DifferentialWeylAlgebra(TR)
     D = list(W.differentials())
-
-    Hess = GetHessian(H, vs, r, cp)
-    Hessinv = Hess.inverse()
-    v = matrix(W,[D[k] for k in range(d-1)])
-    Epsilon = -(v * Hessinv.change_ring(W) * v.transpose())[0,0]
-
-    #g = solve(H,vd)[0].rhs()
-    g = NewtonSeries(H.subs({v:v+v.subs(cp) for v in vs}), vs, 3 * M) 
-    g = g.subs({v:v-v.subs(cp) for v in vs}) + vd.subs(cp)
-    tsubs = [v == v.subs(cp)*exp(I*t) for [v,t] in zip(vs,tvars)]
-    tsubs += [vd==g.subs(tsubs)]
-
-    P = (-G/g/H.derivative(vd)).subs(tsubs)
-    psi = log(g.subs(tsubs)/g.subs(cp)) + I * add([r[k]*tvars[k] for k in range(d-1)])/r[-1]
-    v = matrix(SR,[tvars[k] for k in range(d-1)])
-    psiTilde = psi - (v * Hess * v.transpose())[0,0]/2
 
     def to_poly(p,k):
         if k == 0:
@@ -315,10 +305,48 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, M):
         else:
             return add([prod([factorial(k) for k in E[0][1]])*E[1]*f[(v for v in E[0][1])] for E in dop])
 
-    # Compute Taylor expansions to sufficient orders
-    N = 2*M
-    PsiSeries = to_poly(taylor(psiTilde,*((v,0) for v in tvars), N),d-2)
-    PSeries = to_poly(taylor(P,*((v,0) for v in tvars), N),d-2)
+    Hess = GetHessian(H, vs, r, cp)
+    Hessinv = Hess.inverse()
+    v = matrix(W,[D[k] for k in range(d-1)])
+    Epsilon = -(v * Hessinv.change_ring(W) * v.transpose())[0,0]
+
+    N = 2 * M + 1
+    XR = PolynomialRing(QQbar, 'x_')
+    x_ = XR.gens()[0]
+    logSeries = XR(log(x_+1).series(x_, N).truncate().canonicalize_radical())
+    expSeries = XR(exp(x_).series(x_, N).truncate().canonicalize_radical())
+    
+    #g = solve(H,vd)[0].rhs()
+    g = NewtonSeries(H.subs({v:v+v.subs(cp) for v in vs}), vs, 3 * M) 
+    g = g.subs({v:v-v.subs(cp) for v in vs}) + vd.subs(cp)
+    tsubs = {v : v.subs(cp)*expSeries.subs(x_ = I*t) for [v,t] in zip(vs,tvars)}
+    tsubs[vd] = g.subs(tsubs)
+
+    psi = logSeries.subs(x_ = g.subs(tsubs)/g.subs(cp) - 1)
+    psi += I * add([r[k]*tvars[k] for k in range(d-1)])/r[-1]
+
+    v = matrix(TR,[tvars[k] for k in range(d-1)])
+    psiTilde = psi - (v * Hess * v.transpose())[0,0]/2
+    PsiSeries = psiTilde
+    if (len(tvars) == 1):
+        PsiSeries = PsiSeries.mod(tvars[0]**N)
+    else:
+        PsiSeries = PsiSeries.mod(Ideal(tvars)**N)
+
+    P_num = -G.subs(tsubs)
+    P_denom = (g*H.derivative(vd)).subs(tsubs)
+    if (len(tvars) == 1):
+        P = P_num.mod(tvars[0]**N)/P_denom().mod(tvars[0]**N)
+    else:
+        P = P_num.mod(Ideal(tvars)**N)/P_denom().mod(Ideal(tvars)**N)
+    Pconst = P_denom.subs({x:0 for x in tvars})
+    print()
+    PDSeries = XR(SR(1/(Pconst - x_)).series(x_, N).truncate())
+    PSeries = P_num * PDSeries.subs(x_=P_denom - Pconst)
+    #PSeries = TR(taylor(P,*((v,0) for v in tvars), N))
+    print(3)
+    print(PSeries)
+    print(PSeries.parent())
 
     # Precompute products used for asymptotics
     EE = [Epsilon**k for k in range(3*M-2)]
