@@ -3,7 +3,7 @@ of multivariate rational functions.
 """
 
 from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra, Ideal
-from sage.all import gcd, prod, pi, matrix, solve, exp, log, taylor, add, I, factorial
+from sage.all import gcd, prod, pi, matrix, exp, log, add, I, factorial
 
 from sage_acsv.kronecker import _kronecker_representation
 from sage_acsv.helpers import ACSVException, NewtonSeries, RationalFunctionReduce, DetHessianWithLog, OutputFormat, GetHessian
@@ -279,9 +279,8 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, M):
     List of constants ``C_j`` corresponding to the coefficients of the asymptotic expansion
     """
     
-    # Convert everything to algebraic ring? //symbolic ring
+    # Convert everything to field of algebraic numbers
     d = len(vs)
-    #vs = list(SR.var(v) for v in vs)
     R = PolynomialRing(QQbar, vs)
     vs = R.gens()
     vd = vs[-1]
@@ -294,14 +293,9 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, M):
     TR = PolynomialRing(QQbar, tvars)
     T = TR.gens()
     tvars = T
-    #W = DifferentialWeylAlgebra(TR)
     D = list(W.differentials())
-
-    def to_poly(p,k):
-        if k == 0:
-            return add([a*T[k]**int(b) for [a,b] in p.coefficients(tvars[k])])
-        return add([to_poly(a,k-1)*T[k]**int(b) for [a,b] in p.coefficients(tvars[k])])
     
+    # Function to apply differential operator dop on function f
     def eval_op(dop, f):
         if len(f.parent().gens()) == 1:
             return add([prod([factorial(k) for k in E[0][1]])*E[1]*f[E[0][1][0]] for E in dop])
@@ -313,21 +307,25 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, M):
     v = matrix(W,[D[k] for k in range(d-1)])
     Epsilon = -(v * Hessinv.change_ring(W) * v.transpose())[0,0]
 
+    # P and PsiTilde only need to be computed to order 2M
     N = 2 * M + 1
     XR = PolynomialRing(QQbar, 'x_')
     x_ = XR.gens()[0]
     logSeries = XR(log(x_+1).series(x_, N).truncate().canonicalize_radical())
     expSeries = XR(exp(x_).series(x_, N).truncate().canonicalize_radical())
     
-    #g = solve(H,vd)[0].rhs()
-    g = NewtonSeries(H.subs({v:v+v.subs(cp) for v in vs}), vs, 3 * M) 
+    # Find series expansion of function g given implicitly by 
+    # H(w_1, ..., w_{d-1}, g(w_1, ..., w_{d-1})) = 0 up to needed order
+    g = NewtonSeries(H.subs({v:v+v.subs(cp) for v in vs}), vs, N) 
     g = g.subs({v:v-v.subs(cp) for v in vs}) + vd.subs(cp)
+
+    # Polar change of coordinates
     tsubs = {v : v.subs(cp)*expSeries.subs(x_ = I*t) for [v,t] in zip(vs,tvars)}
     tsubs[vd] = g.subs(tsubs)
 
+    # Compute PsiTilde up to needed order
     psi = logSeries.subs(x_ = g.subs(tsubs)/g.subs(cp) - 1)
     psi += I * add([r[k]*tvars[k] for k in range(d-1)])/r[-1]
-
     v = matrix(TR,[tvars[k] for k in range(d-1)])
     psiTilde = psi - (v * Hess * v.transpose())[0,0]/2
     PsiSeries = psiTilde
@@ -336,12 +334,15 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, M):
     else:
         PsiSeries = PsiSeries.mod(Ideal(tvars)**N)
 
+    # Compute series expansion of P = -G/(g*H_{z_d}) up to needed order
     P_num = -G.subs(tsubs)
     P_denom = (g*H.derivative(vd)).subs(tsubs)
     if (len(tvars) == 1):
-        P = P_num.mod(tvars[0]**N)/P_denom.mod(tvars[0]**N)
+        P_num = P_num.mod(tvars[0]**N)
+        P_denom = P_denom.mod(tvars[0]**N)
     else:
-        P = P_num.mod(Ideal(tvars)**N)/P_denom.mod(Ideal(tvars)**N)
+        P_num = P_num.mod(Ideal(tvars)**N)
+        P_denom = P_denom.mod(Ideal(tvars)**N)
     Pconst = P_denom.subs({v:0 for v in tvars})
     PDSeries = XR(SR(1/(Pconst + x_)).series(x_, N).truncate())
     PSeries = P_num * PDSeries.subs(x_=P_denom - Pconst)
