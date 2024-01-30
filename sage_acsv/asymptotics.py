@@ -210,6 +210,9 @@ def diagonal_asy(F, r=None, linear_form=None, M=1, return_points=False, output_f
     asm_vals = [
         (c, QQ(1 - d)/2, b.sqrt(), add([a[j]/(rd*n)**j for j in range(M)]))
         for (a, b, c) in asm_quantities
+    ] if M > 1 else [
+        (c, QQ(1 - d)/2, b.sqrt(), a[0])
+        for (a, b, c) in asm_quantities
     ]
     timer.checkpoint("Final Asymptotics")
 
@@ -237,7 +240,7 @@ def diagonal_asy(F, r=None, linear_form=None, M=1, return_points=False, output_f
             for (base, exponent, constant, expansion) in asm_vals
         ]
         if output_format == OutputFormat.SYMBOLIC:
-            result = sum([a**n * b * c * (d * e).expand() for (a, b, c, d, e) in result])
+            result = sum([a**n * b * c * d * e for (a, b, c, d, e) in result])
 
     elif output_format == OutputFormat.ASYMPTOTIC:
         from sage.all import AsymptoticRing
@@ -336,17 +339,12 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, M):
     P_num = -G.subs(tsubs)
     P_denom = (g*H.derivative(vd)).subs(tsubs)
     if (len(tvars) == 1):
-        P = P_num.mod(tvars[0]**N)/P_denom().mod(tvars[0]**N)
+        P = P_num.mod(tvars[0]**N)/P_denom.mod(tvars[0]**N)
     else:
-        P = P_num.mod(Ideal(tvars)**N)/P_denom().mod(Ideal(tvars)**N)
-    Pconst = P_denom.subs({x:0 for x in tvars})
-    print()
-    PDSeries = XR(SR(1/(Pconst - x_)).series(x_, N).truncate())
+        P = P_num.mod(Ideal(tvars)**N)/P_denom.mod(Ideal(tvars)**N)
+    Pconst = P_denom.subs({v:0 for v in tvars})
+    PDSeries = XR(SR(1/(Pconst + x_)).series(x_, N).truncate())
     PSeries = P_num * PDSeries.subs(x_=P_denom - Pconst)
-    #PSeries = TR(taylor(P,*((v,0) for v in tvars), N))
-    print(3)
-    print(PSeries)
-    print(PSeries.parent())
 
     # Precompute products used for asymptotics
     EE = [Epsilon**k for k in range(3*M-2)]
