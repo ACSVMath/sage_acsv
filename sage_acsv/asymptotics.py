@@ -2,10 +2,10 @@
 of multivariate rational functions.
 """
 
-from sage.all import AA, PolynomialRing, QQ, QQbar, SR, RIF, gcd, prod, pi
+from sage.all import AA, PolynomialRing, QQ, QQbar, SR, RIF, gcd, prod, pi, xgcd
 
 from sage_acsv.kronecker import _kronecker_representation, _msolve_kronecker_representation
-from sage_acsv.helpers import ACSVException, RationalFunctionReduce, DetHessianWithLog, OutputFormat
+from sage_acsv.helpers import ACSVException, IntervalOperator, RationalFunctionReduce, DetHessianWithLog, OutputFormat
 from sage_acsv.debug import Timer, acsv_logger
 
 
@@ -328,15 +328,22 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, use_
     
     rts_t_zo = list()
     for k in Pt.roots(AA, multiplicities=False):
-        num = Qt.subs(u_=k)
-        denom = Pd.subs(u_=k)
-        RIF(num)
-        RIF(denom)
+        num = Qt.subs(u_=k); RIF(num)
+        denom = Pd.subs(u_=k); RIF(denom)
         vt = num/denom
         if vt > 0 and vt < 1:
             rts_t_zo.append(k)
 
     non_min = [[(q/Pd).subs(u_=u) for q in Qs[0:-2]] for u in rts_t_zo]
+
+    # Change the equations to only deal with t=1 solutions
+    newP = one_minus_t
+    newPd = one_minus_t.derivative()
+    _, invPd, _ = xgcd(Pd, newP)
+    Qs = [(Q*newPd*invPd).quo_rem(newP)[1] for Q in Qs]
+    P = newP
+    Pd = newPd
+    iv = IntervalOperator(P, Qs, u_)
 
     # Filter the real roots for minimal points with positive coords
     pos_minimals = []
@@ -346,7 +353,7 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, use_
         if any([k <= 0 for k in v]):
             continue
         for pt in non_min:
-            if all([a == b for (a, b) in zip(v, pt)]):
+            if all([iv.equals(a, b) for (a, b) in zip(v, pt)]):
                 is_min = False
                 break
         if is_min:
@@ -377,7 +384,7 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, use_
 
     for u in one_minus_t.roots(QQbar, multiplicities=False):
         v = [(q/Pd).subs(u_=u) for q in Qs[0:-2]]
-        if all([a.abs() == b.abs() for (a, b) in zip(minCP, v)]):
+        if all([iv.modulus_equals(a,b) for (a, b) in zip(minCP, v)]):
             minimals.append(u)
 
     # Get minimal point coords, and make exact if possible

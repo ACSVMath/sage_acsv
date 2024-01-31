@@ -1,6 +1,8 @@
 from enum import Enum
 
-from sage.all import QQ, ceil, gcd, matrix, randint
+
+from sage.all import QQ, RIF, CIF, PolynomialRing, RealIntervalField, ComplexIntervalField
+from sage.all import ceil, gcd, matrix, randint, sqrt, log, factorial
 
 
 class OutputFormat(Enum):
@@ -112,6 +114,76 @@ def DetHessianWithLog(H, vs, r):
     # Return determinant
     return matrix(Hess).determinant()
 
+class IntervalOperator():
+    def __init__(self, P, Qs, u_):
+        self.P = P
+        self.Qs = Qs
+        deg = P.degree()
+        degQMax = max([Q.degree() for Q in Qs])
+        norm = self._getNorm(self.P)
+        precision = ((deg+2)/2)*log(deg) + log(norm)*(deg-1)
+
+        Pd = P.derivative(u_)
+        precisionByQ = []
+        precisionModByQ = []
+        for Q in Qs:
+            # Precision for Q depends on degree and height of annihilating polynomial
+            # In this case, the annihilating polynomial has the same degree as P
+            PdQDegree = max(Pd.degree(), Q.degree())
+            PdQHeight = max(self._getHeight(Pd), self._getHeight(Q))
+            h = PdQDegree + PdQHeight * deg + self._safeLog(factorial(deg + PdQDegree)) + PdQDegree + deg
+            precisionByQ.append(((deg+2)/2) * self._safeLog(deg) + (deg-1) * (h * self._safeLog(sqrt(deg))) + 5)
+
+            # Bound the degree and height of the minimal polynomial of each coordinate
+            # Recall that Res(P, Pd*x-Q) is an annhilating polynomial
+            degMax = deg
+            heightMax = self._getHeight(P) * degQMax + self._getHeight(Q) * deg + \
+                        log(factorial(deg + degQMax)) + log(2) * deg
+            
+            # Determine precision needed for 
+            mod_bound = (degMax**2-1)*log(degMax+1) + (2 * heightMax + log(degMax+1))*(degMax-1) + \
+                        2 * heightMax * degMax + 2 * degMax * log(degMax) + degMax * log(sqrt(degMax**2+1))
+            precisionModByQ.append(mod_bound)
+
+        # Number of binary digits needed in approximation of Q_j/P'
+        self.coord_separation = max(precisionByQ+[precision])
+        self.coord_separation = self._safeInt(self.coord_separation) + 1
+
+        # Number of binary digits needed in approximation of Q_j/P'
+        self.modulus_separation = max(precisionModByQ)
+        self.modulus_separation = self._safeInt(self.modulus_separation) + 1
+        
+    def equals(self, x, y, separation = None, real=False):
+        separation = separation or self.coord_separation
+        Field = RIF if real else CIF
+        prec = Field.precision()
+        Field(x), Field(y)
+        while prec < separation:
+            if not (Field(x)-Field(y)).contains_zero():
+                return False
+            prec = min(prec * 2, separation)
+            Field = RealIntervalField(prec) if real else ComplexIntervalField(prec)
+            Field(x), Field(y)
+        return True
+
+    def modulus_equals(self, x, y):
+        return self.equals(x.abs(),y.abs(),separation=self.modulus_separation, real=True)
+
+    def _getNorm(self, F):
+        return sqrt(sum([abs(x**2) for x in F.coefficients()]))
+    
+    def _getHeight(self, F):
+        return self._safeLog(max([abs(x) for x in F.coefficients()]))
+    
+    def _safeLog(self, x, base=2):
+        return log(max(x, 1), base)
+
+    def _safeInt(self, x):
+        try:
+            return int(x)
+        except:
+            if type(x) == type(RIF(0)):
+                return int(x.center())
 
 class ACSVException(Exception):
     def __init__(self, message, retry=False):
