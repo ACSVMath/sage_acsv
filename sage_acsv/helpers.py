@@ -140,27 +140,27 @@ def NewtonSeries(Phi, vs, N):
     Computes series expansion approximation of g defined implicitly by Phi(x,g(x)) = 0
     """
 
-    x = vs[:-1]
-    y = vs[-1]
+    X = vs[:-1]
+    Y = vs[-1]
 
-    def ModX(F, x, N):
-        return F.mod(Ideal(x)**N)
+    def ModX(F, N):
+        return F.mod(Ideal(X)**N)
 
-    def ModY(F, y, N):
-        return F.mod(y**N)
+    def ModY(F, N):
+        return F.mod(Y**N)
 
-    def Mod(F, vs, N):
-        return ModX(ModY(F, vs[-1], N), vs[:-1], N)
+    def Mod(F, N):
+        return ModX(ModY(F, N), N)
 
     def NewtonRecur(H, N):
         if N == 1:
-            return 0, 1/H.derivative(y).subs({v:0 for v in vs})
+            return 0, 1/H.derivative(Y).subs({v:0 for v in vs})
         F, G = NewtonRecur(H, ceil(N/2))
-        G = G + (1-G*H.derivative(y).subs(y = F))*G
-        F = F - G*H.subs(y=F)
-        return ModX(F, x, N), ModX(G, x, ceil(N/2))
+        G = G + (1-G*H.derivative(Y).subs({Y:F}))*G
+        F = F - G*H.subs({Y:F})
+        return ModX(F, N), ModX(G, ceil(N/2))
     
-    return NewtonRecur(Mod(Phi, vs, N), N)[0]
+    return NewtonRecur(Mod(Phi, N), N)[0]
 
 class ACSVException(Exception):
     def __init__(self, message, retry=False):

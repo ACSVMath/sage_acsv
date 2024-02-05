@@ -284,13 +284,13 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, M):
     R = PolynomialRing(QQbar, vs)
     vs = R.gens()
     vd = vs[-1]
-    tvars = list(SR.var('t%d'%i) for i in range(d-1))
+    tvars = tuple(SR.var('t%d'%i) for i in range(d-1))
     G, H = R(SR(G)), R(SR(H))
 
     cp = {v: V for (v, V) in zip(vs, cp)}
 
     W = DifferentialWeylAlgebra(PolynomialRing(QQbar, tvars))
-    TR = PolynomialRing(QQbar, tvars)
+    TR = QQbar[[tvars]]
     T = TR.gens()
     tvars = T
     D = list(W.differentials())
@@ -309,43 +309,31 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, M):
 
     # P and PsiTilde only need to be computed to order 2M
     N = 2 * M + 1
-    XR = PolynomialRing(QQbar, 'x_')
-    x_ = XR.gens()[0]
-    logSeries = XR(log(x_+1).series(x_, N).truncate().canonicalize_radical())
-    expSeries = XR(exp(x_).series(x_, N).truncate().canonicalize_radical())
     
     # Find series expansion of function g given implicitly by 
     # H(w_1, ..., w_{d-1}, g(w_1, ..., w_{d-1})) = 0 up to needed order
-    g = NewtonSeries(H.subs({v:v+v.subs(cp) for v in vs}), vs, N) 
+    g = NewtonSeries(H.subs({v:v+v.subs(cp) for v in vs}), vs, N)
     g = g.subs({v:v-v.subs(cp) for v in vs}) + vd.subs(cp)
 
     # Polar change of coordinates
-    tsubs = {v : v.subs(cp)*expSeries.subs(x_ = I*t) for [v,t] in zip(vs,tvars)}
+    tsubs = {v : v.subs(cp)*exp(I*t).add_bigoh(N) for [v,t] in zip(vs,tvars)}
     tsubs[vd] = g.subs(tsubs)
 
     # Compute PsiTilde up to needed order
-    psi = logSeries.subs(x_ = g.subs(tsubs)/g.subs(cp) - 1)
+    psi = log(g.subs(tsubs)/g.subs(cp)).add_bigoh(N)
     psi += I * add([r[k]*tvars[k] for k in range(d-1)])/r[-1]
     v = matrix(TR,[tvars[k] for k in range(d-1)])
     psiTilde = psi - (v * Hess * v.transpose())[0,0]/2
-    PsiSeries = psiTilde
-    if (len(tvars) == 1):
-        PsiSeries = PsiSeries.mod(tvars[0]**N)
-    else:
-        PsiSeries = PsiSeries.mod(Ideal(tvars)**N)
+    PsiSeries = psiTilde.truncate(N)
 
     # Compute series expansion of P = -G/(g*H_{z_d}) up to needed order
-    P_num = -G.subs(tsubs)
-    P_denom = (g*H.derivative(vd)).subs(tsubs)
-    if (len(tvars) == 1):
-        P_num = P_num.mod(tvars[0]**N)
-        P_denom = P_denom.mod(tvars[0]**N)
-    else:
-        P_num = P_num.mod(Ideal(tvars)**N)
-        P_denom = P_denom.mod(Ideal(tvars)**N)
-    Pconst = P_denom.subs({v:0 for v in tvars})
-    PDSeries = XR(SR(1/(Pconst + x_)).series(x_, N).truncate())
-    PSeries = P_num * PDSeries.subs(x_=P_denom - Pconst)
+    P_num = -G.subs(tsubs).add_bigoh(N)
+    P_denom = (g*H.derivative(vd)).subs(tsubs).add_bigoh(N)
+    PSeries = (P_num/P_denom).truncate(N)
+
+    if len(tvars) > 1:
+        PsiSeries = PsiSeries.polynomial()
+        PSeries = PSeries.polynomial()
 
     # Precompute products used for asymptotics
     EE = [Epsilon**k for k in range(3*M-2)]
