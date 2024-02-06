@@ -1,6 +1,6 @@
 from enum import Enum
 
-from sage.all import QQ, ceil, gcd, matrix, randint
+from sage.all import QQbar, ceil, gcd, matrix, randint
 
 
 class OutputFormat(Enum):
@@ -96,7 +96,8 @@ def DetHessianWithLog(H, vs, r):
             ] for v1 in vs
         ]
     )
-    V = [QQ(r[k] / r[-1]) for k in range(d)]
+
+    V = [QQbar(r[k] / r[-1]) for k in range(d)]
 
     # Build (d-1) x (d-1) Matrix for Hessian
     Hess = [
