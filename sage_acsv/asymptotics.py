@@ -316,20 +316,15 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, use_
     # Solutions to Pt are solutions to the system where t is not 1
     one_minus_t = gcd(Pd - Qt, P)
     Pt, _ = P.quo_rem(one_minus_t)
-    
-    """
-    rts_t_zo = list(
-        filter(
-            lambda k: (Qt/Pd).subs(u_=k) > 0 and (Qt/Pd).subs(u_=k) < 1,
-            Pt.roots(AA, multiplicities=False)
-        )
-    )
-    """
+    Ptd = Pt.derivative()
+    _, invPtd, _ = xgcd(Pd, Pt)
+    Qts = [(Q*Ptd*invPtd).quo_rem(Pt)[1] for Q in Qs]
+    Qt = Qts[-2]
     
     rts_t_zo = list()
     for k in Pt.roots(AA, multiplicities=False):
         num = Qt.subs(u_=k); RIF(num)
-        denom = Pd.subs(u_=k); RIF(denom)
+        denom = Ptd.subs(u_=k); RIF(denom)
         vt = num/denom
         if vt > 0 and vt < 1:
             rts_t_zo.append(k)

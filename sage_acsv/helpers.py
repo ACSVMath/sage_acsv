@@ -119,37 +119,36 @@ class IntervalOperator():
         self.P = P
         self.Qs = Qs
         deg = P.degree()
-        degQMax = max([Q.degree() for Q in Qs])
-        norm = self._getNorm(self.P)
-        precision = ((deg+2)/2)*log(deg) + log(norm)*(deg-1)
 
         Pd = P.derivative(u_)
         precisionByQ = []
         precisionModByQ = []
         for Q in Qs:
             # Precision for Q depends on degree and height of annihilating polynomial
-            # In this case, the annihilating polynomial has the same degree as P
+            # Recall that Res(P, Pd*x-Q) is an annhilating polynomial
             PdQDegree = max(Pd.degree(), Q.degree())
             PdQHeight = max(self._getHeight(Pd), self._getHeight(Q))
-            h = PdQDegree + PdQHeight * deg + self._safeLog(factorial(deg + PdQDegree)) + PdQDegree + deg
-            precisionByQ.append(((deg+2)/2) * self._safeLog(deg) + (deg-1) * (h * self._safeLog(sqrt(deg))) + 5)
 
-            # Bound the degree and height of the minimal polynomial of each coordinate
-            # Recall that Res(P, Pd*x-Q) is an annhilating polynomial
-            degMax = deg
-            heightMax = self._getHeight(P) * degQMax + self._getHeight(Q) * deg + \
-                        log(factorial(deg + degQMax)) + log(2) * deg
+            degMax = PdQDegree
+            heightMax = 2 * PdQHeight * PdQDegree + \
+                        2 * PdQDegree * self._safeLog(PdQDegree)
             
-            # Determine precision needed for 
-            mod_bound = (degMax**2-1)*log(degMax+1) + (2 * heightMax + log(degMax+1))*(degMax-1) + \
-                        2 * heightMax * degMax + 2 * degMax * log(degMax) + degMax * log(sqrt(degMax**2+1))
+            # Determine precision needed for coordinate separation
+            precisionByQ.append(((degMax+2)/2) * self._safeLog(degMax) + \
+                                (degMax-1) * (heightMax * self._safeLog(sqrt(degMax+1))))
+            
+            # Determine precision needed for modulus separation
+            mod_bound = (degMax**2-1)*self._safeLog(degMax+1) + \
+                        (2 * heightMax + self._safeLog(degMax+1))*(degMax-1) + \
+                        2 * heightMax * degMax + 2 * degMax * self._safeLog(degMax) + \
+                        degMax * self._safeLog(sqrt(degMax**2+1))
             precisionModByQ.append(mod_bound)
 
-        # Number of binary digits needed in approximation of Q_j/P'
-        self.coord_separation = max(precisionByQ+[precision])
+        # Number of binary digits needed in approximation of Q_j/P' to separate all coordinates
+        self.coord_separation = max(precisionByQ)
         self.coord_separation = self._safeInt(self.coord_separation) + 1
 
-        # Number of binary digits needed in approximation of Q_j/P'
+        # Number of binary digits needed in approximation of Q_j/P' to separate all moduli
         self.modulus_separation = max(precisionModByQ)
         self.modulus_separation = self._safeInt(self.modulus_separation) + 1
         
