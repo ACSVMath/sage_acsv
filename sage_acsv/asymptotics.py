@@ -329,7 +329,7 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, use_
         if vt > 0 and vt < 1:
             rts_t_zo.append(k)
 
-    non_min = [[(q/Pd).subs(u_=u) for q in Qs[0:-2]] for u in rts_t_zo]
+    non_min = [[(q/Ptd).subs(u_=u) for q in Qts[0:-2]] for u in rts_t_zo]
 
     # Change the equations to only deal with t=1 solutions
     newP = one_minus_t
