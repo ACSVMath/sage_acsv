@@ -126,13 +126,13 @@ class IntervalOperator():
         for Q in Qs:
             # Precision for Q depends on degree and height of annihilating polynomial
             # Recall that Res(P, Pd*x-Q) is an annhilating polynomial
-            PdQDegree = max(Pd.degree(), Q.degree())
+            PQDegree = max(P.degree(), Q.degree())
             PdQHeight = max(self._getHeight(Pd), self._getHeight(Q))
 
-            degMax = PdQDegree
-            heightMax = 2 * PdQHeight * PdQDegree + \
-                        2 * PdQDegree * self._safeLog(PdQDegree)
-            
+            degMax = PQDegree
+            heightMax = PQDegree * (PdQHeight + self._getHeight(P)) + \
+                        2 * PQDegree * self._safeLog(PQDegree)
+
             # Determine precision needed for coordinate separation
             precisionByQ.append(((degMax+2)/2) * self._safeLog(degMax) + \
                                 (degMax-1) * (heightMax * self._safeLog(sqrt(degMax+1))))
