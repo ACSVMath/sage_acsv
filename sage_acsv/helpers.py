@@ -1,6 +1,6 @@
 from enum import Enum
 
-from sage.all import QQ, Ideal
+from sage.all import QQbar, Ideal
 from sage.all import ceil, gcd, matrix, randint
 
 
@@ -97,7 +97,8 @@ def GetHessian(H, vs, r, CP = None):
             ] for v1 in vs
         ]
     )
-    V = [QQ(r[k] / r[-1]) for k in range(d)]
+
+    V = [QQbar(r[k] / r[-1]) for k in range(d)]
 
     # Build (d-1) x (d-1) Matrix for Hessian
     Hess = [

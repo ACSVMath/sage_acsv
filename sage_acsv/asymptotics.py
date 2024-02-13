@@ -138,6 +138,8 @@ def diagonal_asy(F, r=None, linear_form=None, M=1, return_points=False, output_f
         n = len(H.variables())
         r = [1 for _ in range(n)]
 
+    r = [AA(ri) for ri in r]
+
     # Initialize variables
     vs = list(H.variables())
 
@@ -188,7 +190,7 @@ def diagonal_asy(F, r=None, linear_form=None, M=1, return_points=False, output_f
     Det = DetHessianWithLog(H, vsT[0:-2], r)
 
     # Find exponential growth
-    T = prod([vs[i]**r[i] for i in range(d)])
+    T = prod([SR(vs[i])**r[i] for i in range(d)])
 
 
     # Find constants appearing in asymptotics in terms of original variables
@@ -196,16 +198,26 @@ def diagonal_asy(F, r=None, linear_form=None, M=1, return_points=False, output_f
     B = SR(1 / Det / rd**(d-1) / 2**(d-1))
     C = SR(1 / T)
 
-    # Compute constants at contributing singularities
-    asm_quantities = [
-        [GeneralTermAsymptotics(G, H, r, vs, cp, M)]
-            + [QQbar(q.subs([SR(v) == V for (v, V) in zip(vs, cp)])) for q in [B, C]]
-        for cp in min_crit_pts
-    ] if M > 1 else [
-        [[QQbar(A.subs([SR(v) == V for (v, V) in zip(vs, cp)]))]] + 
-            [QQbar(q.subs([SR(v) == V for (v, V) in zip(vs, cp)])) for q in [B, C]]
-        for cp in min_crit_pts
-    ]
+    try:
+        asm_quantities = [
+            [GeneralTermAsymptotics(G, H, r, vs, cp, M)]
+                + [QQbar(q.subs([SR(v) == V for (v, V) in zip(vs, cp)])) for q in [B, C]]
+            for cp in min_crit_pts
+        ] if M > 1 else [
+            [[QQbar(A.subs([SR(v) == V for (v, V) in zip(vs, cp)]))]] + 
+                [QQbar(q.subs([SR(v) == V for (v, V) in zip(vs, cp)])) for q in [B, C]]
+            for cp in min_crit_pts
+        ]
+    except:
+        asm_quantities = [
+            [GeneralTermAsymptotics(G, H, r, vs, cp, M)]
+                + [q.subs([SR(v) == V for (v, V) in zip(vs, cp)]) for q in [B, C]]
+            for cp in min_crit_pts
+        ] if M > 1 else [
+            [[A.subs([SR(v) == V for (v, V) in zip(vs, cp)])]] + 
+                [q.subs([SR(v) == V for (v, V) in zip(vs, cp)]) for q in [B, C]]
+            for cp in min_crit_pts
+        ]
 
     n = SR.var('n')
     asm_vals = [
@@ -398,12 +410,36 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, use_
     if r is None:
         r = [1 for i in range(len(vs))]
 
+    # Make copy of r so they don't get mutated outside of function
+    r = list(r)
+
+    # Replace irrational r with variable ri, add min poly to system
+    ri_to_val = {}
+    rvars = []
+    for i, var in enumerate(r):
+        if (AA(var).minpoly().degree() > 1):
+            ri = SR.var('r%s'%i)
+            r[i] = ri
+            rvars.append(ri)
+            ri_to_val[ri] = AA(var)
+
+    expanded_R = PolynomialRing(QQ, len(vsT) + len(rvars) + 1, vs + rvars + [t, lambda_, u_])
+    vs = [expanded_R(v) for v in vs]
+    t, lambda_, u_ = expanded_R(t), expanded_R(lambda_), expanded_R(u_)
+    G, H = expanded_R(G), expanded_R(H)
+
+    rvars = [expanded_R(ri) for ri in rvars]
+    ri_to_val = {expanded_R(ri):val for (ri, val) in ri_to_val.items()}
+    r = [expanded_R(ri) for ri in r]
+
+    vsT = vs + rvars + [t, lambda_]
+
     # Create the critical point equations system
     vsH = H.variables()
     system = [
-        vsH[i]*H.derivative(vsH[i]) - r[i]*lambda_
+        vsH[i]*H.derivative(vsH[i]) - expanded_R(r[i])*lambda_
         for i in range(len(vsH))
-    ] + [H, H.subs({z: z*t for z in vsH})]
+    ] + [H, H.subs({z: z*t for z in vsH})] + [ri_to_val[ri].minpoly().subs(ri) for ri in rvars]
 
     # Compute the Kronecker representation of our system
     timer.checkpoint()
@@ -412,7 +448,7 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, use_
         _kronecker_representation(system, u_, vsT, lambda_, linear_form)
     timer.checkpoint("Kronecker")
 
-    Qt = Qs[-2]  # Qs ordering is H.variables() + [t, lambda_]
+    Qt = Qs[-2]  # Qs ordering is H.variables() + rvars + [t, lambda_]
     Pd = P.derivative()
 
     # Solutions to Pt are solutions to the system where t is not 1
@@ -444,7 +480,8 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, use_
 
     pos_minimals = list(
         filter(
-            lambda v: all([k > 0 for k in v[:-2]]),
+            lambda v: all([k > 0 for k in v[:-2]]) and \
+                      all([rval == ri_to_val[ri] for (ri, rval) in zip(rvars, v[len(vs):-2])]),
             list([(q/Pd).subs(u_=u) for q in Qs] for u in one_minus_t.roots(AA, multiplicities=False))
         )
     )
@@ -504,12 +541,15 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, use_
 
     for u in one_minus_t.roots(QQbar, multiplicities=False):
         v = [(q/Pd).subs(u_=u) for q in Qs[0:-2]]
+        rv = {ri : (q/Pd).subs(u_=u) for (ri, q) in zip(rvars, Qs[len(vs):-2])}
+        if (any([rv[ri] != ri_to_val[ri] for ri in rvars])):
+            continue
         if all([a.abs() == b.abs() for (a, b) in zip(minCP, v)]):
             minimals.append(u)
 
     # Get minimal point coords, and make exact if possible
-    minimal_coords = [[(q/Pd).subs(u_=u) for q in Qs[0:-2]] for u in minimals]
+    minimal_coords = [[(q/Pd).subs(u_=u) for q in Qs[0:-2-len(rvars)]] for u in minimals]
     [[a.exactify() for a in b] for b in minimal_coords]
 
     timer.checkpoint("Minimal Points")
-    return [[(q/Pd).subs(u_=u) for q in Qs[0:-2]] for u in minimals]
+    return [[(q/Pd).subs(u_=u) for q in Qs[0:-2-len(rvars)]] for u in minimals]
