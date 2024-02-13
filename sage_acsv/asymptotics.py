@@ -338,9 +338,36 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, use_
     Qs = [(Q*newPd*invPd).quo_rem(newP)[1] for Q in Qs]
     P = newP
     Pd = newPd
-    iv = IntervalOperator(P, Qs, u_)
+    #iv = IntervalOperator(P, Qs, u_)
+
+    pos_minimals = list(
+        filter(
+            lambda v: not any([k <= 0 for k in v[:-2]]),
+            list([(q/Pd).subs(u_=u) for q in Qs] for u in one_minus_t.roots(AA, multiplicities=False))
+        )
+    )
+
+    PrecisionField = RIF
+    prec = PrecisionField.precision()
+    non_min_idx = set()
+    for pt in non_min:
+        idx = range(len(pos_minimals))
+        # Each non minimal pt should correspond to one pos real point where t =1
+        while len(idx) > 1:
+            idx = filter(
+                lambda i: all(
+                    [(PrecisionField(v) - PrecisionField(w)).contains_zero() for (v, w) in zip(pos_minimals[i], pt)]
+                ),
+                idx
+            )
+            prec *= 2
+            PrecisionField = RealIntervalField(prec)
+        non_min_idx.add(idx[0])
+
+    pos_minimals = [pos_minimals[i] for i in range(len(pos_minimals)) if i not in non_min_idx]
 
     # Filter the real roots for minimal points with positive coords
+    """
     pos_minimals = []
     for u in one_minus_t.roots(AA, multiplicities=False):
         is_min = True
@@ -353,10 +380,12 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, use_
                 break
         if is_min:
             pos_minimals.append(u)
+    """
+
 
     # Remove non-smooth points and points with zero coordinates (where lambda=0)
     for i in range(len(pos_minimals)):
-        x = (Qs[-1]/Pd).subs(u_=pos_minimals[i])
+        x = pos_minimals[i][-1]
         if x == 0:
             acsv_logger.warning(
                 f"Removing critical point {pos_minimals[i]} because it either "
@@ -374,12 +403,12 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, use_
         )
 
     # Find all minimal critical points
-    minCP = [(q/Pd).subs(u_=pos_minimals[0]) for q in Qs[0:-2]]
+    minCP = pos_minimals[0][:-2]
     minimals = []
 
     for u in one_minus_t.roots(QQbar, multiplicities=False):
         v = [(q/Pd).subs(u_=u) for q in Qs[0:-2]]
-        if all([iv.modulus_equals(a,b) for (a, b) in zip(minCP, v)]):
+        if all([a.abs() == b.abs() for (a, b) in zip(minCP, v)]):
             minimals.append(u)
 
     # Get minimal point coords, and make exact if possible
