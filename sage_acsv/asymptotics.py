@@ -2,10 +2,10 @@
 of multivariate rational functions.
 """
 
-from sage.all import AA, PolynomialRing, QQ, QQbar, SR, RIF, gcd, prod, pi, xgcd
+from sage.all import AA, PolynomialRing, QQ, QQbar, SR, RIF, RealIntervalField, gcd, prod, pi, xgcd
 
 from sage_acsv.kronecker import _kronecker_representation, _msolve_kronecker_representation
-from sage_acsv.helpers import ACSVException, IntervalOperator, RationalFunctionReduce, DetHessianWithLog, OutputFormat
+from sage_acsv.helpers import ACSVException, RationalFunctionReduce, DetHessianWithLog, OutputFormat
 from sage_acsv.debug import Timer, acsv_logger
 
 
@@ -338,25 +338,48 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, use_
     Qs = [(Q*newPd*invPd).quo_rem(newP)[1] for Q in Qs]
     P = newP
     Pd = newPd
-    iv = IntervalOperator(P, Qs, u_)
+    #iv = IntervalOperator(P, Qs, u_)
+
+    pos_minimals = list(
+        filter(
+            lambda v: all([k > 0 for k in v[:-2]]),
+            list([(q/Pd).subs(u_=u) for q in Qs] for u in one_minus_t.roots(AA, multiplicities=False))
+        )
+    )
 
     # Filter the real roots for minimal points with positive coords
-    pos_minimals = []
-    for u in one_minus_t.roots(AA, multiplicities=False):
-        is_min = True
-        v = [(q/Pd).subs(u_=u) for q in Qs[0:-2]]
-        if any([k <= 0 for k in v]):
-            continue
-        for pt in non_min:
-            if all([iv.equals(a, b) for (a, b) in zip(v, pt)]):
-                is_min = False
-                break
-        if is_min:
-            pos_minimals.append(u)
+    prec_bound = 3 * P.degree()**3 * max([max([abs(x) for x in F.coefficients()]) for F in [P, Pd] + Qs])
+    PrecisionField = RIF
+    prec = PrecisionField.precision()
+    non_min_idx = set()
+    for pt in non_min:
+        idx = range(len(pos_minimals))
+        while len(idx) > 1:
+            if (prec > prec_bound):
+                raise ACSVException(
+                    "Non-minimal point associated with multiple minimal candidates. This should never happen. " + \
+                    "If you are seeing this error, something has gone horribly wrong."
+                )
+
+            idx = list(
+                filter(
+                    lambda i: all(
+                        [(PrecisionField(v) - PrecisionField(w)).contains_zero() for (v, w) in zip(pos_minimals[i], pt)]
+                    ),
+                    idx
+                )
+            )
+            prec *= 2
+            PrecisionField = RealIntervalField(prec)
+
+        if len(idx) > 0:
+            non_min_idx.add(idx[0])
+
+    pos_minimals = [pos_minimals[i] for i in range(len(pos_minimals)) if i not in non_min_idx]
 
     # Remove non-smooth points and points with zero coordinates (where lambda=0)
     for i in range(len(pos_minimals)):
-        x = (Qs[-1]/Pd).subs(u_=pos_minimals[i])
+        x = pos_minimals[i][-1]
         if x == 0:
             acsv_logger.warning(
                 f"Removing critical point {pos_minimals[i]} because it either "
@@ -374,12 +397,12 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, use_
         )
 
     # Find all minimal critical points
-    minCP = [(q/Pd).subs(u_=pos_minimals[0]) for q in Qs[0:-2]]
+    minCP = pos_minimals[0][:-2]
     minimals = []
 
     for u in one_minus_t.roots(QQbar, multiplicities=False):
         v = [(q/Pd).subs(u_=u) for q in Qs[0:-2]]
-        if all([iv.modulus_equals(a,b) for (a, b) in zip(minCP, v)]):
+        if all([a.abs() == b.abs() for (a, b) in zip(minCP, v)]):
             minimals.append(u)
 
     # Get minimal point coords, and make exact if possible
