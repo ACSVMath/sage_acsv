@@ -1,8 +1,8 @@
 from enum import Enum
 
+from sage.all import QQ, Ideal
+from sage.all import ceil, gcd, matrix, randint
 
-from sage.all import QQ, RIF, CIF, PolynomialRing, RealIntervalField, ComplexIntervalField
-from sage.all import ceil, gcd, matrix, randint, sqrt, log, factorial
 
 
 class OutputFormat(Enum):
@@ -66,10 +66,8 @@ def GenerateLinearForm(system, vsT, u_, linear_form=None):
         for z in vsT
     ])
 
-
-def DetHessianWithLog(H, vs, r):
-    r"""Computes the determinant of `z_d H_{z_d} Hess`, where `Hess` is
-    the Hessian of a given map.
+def GetHessian(H, vs, r, CP = None):
+    r"""Computes Hessian of a given map
 
     The map underlying `Hess` is defined as
     `(z_1, \ldots, z_{d-1}) \mapsto z_1 \cdots z_{d-1} \log(g(z_1, \ldots, z_{d-1}))`,
@@ -78,13 +76,14 @@ def DetHessianWithLog(H, vs, r):
 
     INPUT:
 
-    * ``H`` -- a polynomail (the denominator of the rational GF `F` in ACSV)
+    * ``H`` -- a polynomial (the denominator of the rational GF `F` in ACSV)
     * ``vs`` -- list of variables ``z_1, ..., z_d``
     * ``r`` -- direction vector of length `d` with positive integers
+    * ``CP`` -- (Optional) a critical point to evaluate the Hessian at
 
     OUTPUT:
 
-    The determinant as a rational function in the variables ``vs``.
+    The Hessian of the given map as a matrix
     """
     z_d = vs[-1]
     d = len(vs)
@@ -111,8 +110,59 @@ def DetHessianWithLog(H, vs, r):
     for i in range(d-1):
         Hess[i][i] = Hess[i][i] + V[i]
 
+    Hess = matrix(Hess)
+
+    return Hess.subs(CP) if CP is not None else Hess
+
+def DetHessianWithLog(H, vs, r):
+    r"""Computes the determinant of `z_d H_{z_d} Hess`, where `Hess` is
+    the Hessian of a given map.
+
+    The map underlying `Hess` is defined as
+    `(z_1, \ldots, z_{d-1}) \mapsto z_1 \cdots z_{d-1} \log(g(z_1, \ldots, z_{d-1}))`,
+    with `g` defined from IFT via `H(z_a1,...,z_{d-1},g(z_1,...,z_{d-1}))` at
+    a critical point in direction `r`.
+
+    INPUT:
+
+    * ``H`` -- a polynomial (the denominator of the rational GF `F` in ACSV)
+    * ``vs`` -- list of variables ``z_1, ..., z_d``
+    * ``r`` -- direction vector of length `d` with positive integers
+
+    OUTPUT:
+
+    The determinant as a rational function in the variables ``vs``.
+    """
     # Return determinant
+    Hess = GetHessian(H, vs, r)
     return matrix(Hess).determinant()
+
+def NewtonSeries(Phi, vs, N):
+    """
+    Computes series expansion approximation of g defined implicitly by Phi(x,g(x)) = 0
+    """
+
+    X = vs[:-1]
+    Y = vs[-1]
+
+    def ModX(F, N):
+        return F.mod(Ideal(X)**N)
+
+    def ModY(F, N):
+        return F.mod(Y**N)
+
+    def Mod(F, N):
+        return ModX(ModY(F, N), N)
+
+    def NewtonRecur(H, N):
+        if N == 1:
+            return 0, 1/H.derivative(Y).subs({v:0 for v in vs})
+        F, G = NewtonRecur(H, ceil(N/2))
+        G = G + (1-G*H.derivative(Y).subs({Y:F}))*G
+        F = F - G*H.subs({Y:F})
+        return ModX(F, N), ModX(G, ceil(N/2))
+    
+    return NewtonRecur(Mod(Phi, N), N)[0]
 
 class ACSVException(Exception):
     def __init__(self, message, retry=False):
