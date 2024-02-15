@@ -214,7 +214,7 @@ def diagonal_asy(F, r=None, linear_form=None, M=1, return_points=False, output_f
                 + [q.subs([SR(v) == V for (v, V) in zip(vs, cp)]) for q in [B, C]]
             for cp in min_crit_pts
         ] if M > 1 else [
-            [[A.subs([SR(v) == V for (v, V) in zip(vs, cp)])]] + 
+            [[QQbar(A.subs([SR(v) == V for (v, V) in zip(vs, cp)]))]] + 
                 [q.subs([SR(v) == V for (v, V) in zip(vs, cp)]) for q in [B, C]]
             for cp in min_crit_pts
         ]
