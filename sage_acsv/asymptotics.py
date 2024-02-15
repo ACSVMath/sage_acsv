@@ -2,10 +2,10 @@
 of multivariate rational functions.
 """
 
-from sage.all import AA, PolynomialRing, QQ, QQbar, SR, RIF, gcd, prod, pi, xgcd
+from sage.all import AA, PolynomialRing, QQ, QQbar, SR, RIF, RealIntervalField, gcd, prod, pi, xgcd
 
 from sage_acsv.kronecker import _kronecker_representation, _msolve_kronecker_representation
-from sage_acsv.helpers import ACSVException, IntervalOperator, RationalFunctionReduce, DetHessianWithLog, OutputFormat
+from sage_acsv.helpers import ACSVException, RationalFunctionReduce, DetHessianWithLog, OutputFormat
 from sage_acsv.debug import Timer, acsv_logger
 
 
@@ -342,46 +342,40 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, use_
 
     pos_minimals = list(
         filter(
-            lambda v: not any([k <= 0 for k in v[:-2]]),
+            lambda v: all([k > 0 for k in v[:-2]]),
             list([(q/Pd).subs(u_=u) for q in Qs] for u in one_minus_t.roots(AA, multiplicities=False))
         )
     )
 
+    # Filter the real roots for minimal points with positive coords
+    prec_bound = 3 * P.degree()**3 * max([max([abs(x) for x in F.coefficients()]) for F in [P, Pd] + Qs])
     PrecisionField = RIF
     prec = PrecisionField.precision()
     non_min_idx = set()
     for pt in non_min:
         idx = range(len(pos_minimals))
-        # Each non minimal pt should correspond to one pos real point where t =1
         while len(idx) > 1:
-            idx = filter(
-                lambda i: all(
-                    [(PrecisionField(v) - PrecisionField(w)).contains_zero() for (v, w) in zip(pos_minimals[i], pt)]
-                ),
-                idx
+            if (prec > prec_bound):
+                raise ACSVException(
+                    "Non-minimal point associated with multiple minimal candidates. This should never happen. " + \
+                    "If you are seeing this error, something has gone horribly wrong."
+                )
+
+            idx = list(
+                filter(
+                    lambda i: all(
+                        [(PrecisionField(v) - PrecisionField(w)).contains_zero() for (v, w) in zip(pos_minimals[i], pt)]
+                    ),
+                    idx
+                )
             )
             prec *= 2
             PrecisionField = RealIntervalField(prec)
-        non_min_idx.add(idx[0])
+
+        if len(idx) > 0:
+            non_min_idx.add(idx[0])
 
     pos_minimals = [pos_minimals[i] for i in range(len(pos_minimals)) if i not in non_min_idx]
-
-    # Filter the real roots for minimal points with positive coords
-    """
-    pos_minimals = []
-    for u in one_minus_t.roots(AA, multiplicities=False):
-        is_min = True
-        v = [(q/Pd).subs(u_=u) for q in Qs[0:-2]]
-        if any([k <= 0 for k in v]):
-            continue
-        for pt in non_min:
-            if all([iv.equals(a, b) for (a, b) in zip(v, pt)]):
-                is_min = False
-                break
-        if is_min:
-            pos_minimals.append(u)
-    """
-
 
     # Remove non-smooth points and points with zero coordinates (where lambda=0)
     for i in range(len(pos_minimals)):
