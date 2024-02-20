@@ -256,7 +256,7 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, use_
 
     * ``G, H`` -- Coprime polynomials with `F = G/H`
     * ``variables`` -- Tuple of variables of ``G`` and ``H``, followed
-      by ``lambda_, t, u_``
+      by ``lambda_, u_``
     * ``r`` -- (Optional) Length `d` vector of positive integers
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions
@@ -276,11 +276,11 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, use_
     Examples::
 
         sage: from sage_acsv import MinimalCriticalCombinatorial
-        sage: R.<x, y, w, lambda_, t, u_> = QQ[]
+        sage: R.<x, y, w, lambda_, u_> = QQ[]
         sage: pts = MinimalCriticalCombinatorial(
         ....:     1,
         ....:     1 - w*(y + x + x^2*y + x*y^2),
-        ....:     ([w, x, y], lambda_, t, u_)
+        ....:     ([w, x, y], lambda_, u_)
         ....: )
         sage: sorted(pts)
         [[-1/4, -1, -1], [1/4, 1, 1]]
