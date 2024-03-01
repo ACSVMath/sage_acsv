@@ -133,8 +133,19 @@ def _kronecker_representation(system, u_, vs, lambda_=None, linear_form=None):
 
 def _msolve_kronecker_representation(system, u_, vs):
     result = get_parametrization(vs, system)
+    _, nvars, _, msvars, _, param = result[1]
 
-    _, nvars, _, _, _, param = result[1]
+    # msolve may reorder the variables, so order them back
+    Qparams = param[1][2]
+    vsExt = [str(v) for v in vs]
+    # Check if no new variable was created by msolve
+    # If so, the linear_form used is just zd
+    # i.e. u_ = zd and Qd = zd * P'(zd)
+    if nvars == len(vs):
+        Pdz = [0] + [-c for c in param[1][1][1]]
+        Qparams.append([[1, Pdz], 1])
+    pidx = [msvars.index(v) for v in vsExt]
+    Qparams = [Qparams[i] for i in pidx]
 
     R = PolynomialRing(QQ, u_)
     u_ = R(u_)
@@ -143,17 +154,11 @@ def _msolve_kronecker_representation(system, u_, vs):
     P = sum([c * u_**i for (i, c) in enumerate(P_coeffs)])
 
     Qs = []
-    for Q_param in param[1][2]:
+    for Q_param in Qparams:
         Q_coeffs = Q_param[0][1]
         c_div = Q_param[1]
         Q = -sum([c * u_**i for (i, c) in enumerate(Q_coeffs)])/c_div
         Qs.append(Q)
-
-    # Check if no new variable was created by msolve
-    # If so, the linear_form used is just zd
-    # i.e. u_ = zd and Qd = zd * P'(zd)
-    if nvars == len(vs):
-        Qs.append(-u_ * P.derivative())
 
     return P, Qs
 
