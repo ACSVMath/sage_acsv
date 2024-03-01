@@ -3,7 +3,7 @@ of multivariate rational functions.
 """
 
 from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra, RealIntervalField, RIF
-from sage.all import gcd, prod, pi, matrix, exp, log, add, I, factorial, xgcd
+from sage.all import gcd, prod, pi, matrix, exp, log, add, I, factorial, xgcd, lcm
 
 from sage_acsv.kronecker import _kronecker_representation, _msolve_kronecker_representation
 from sage_acsv.helpers import ACSVException, NewtonSeries, RationalFunctionReduce, DetHessianWithLog, OutputFormat, GetHessian
@@ -439,7 +439,12 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, use_
     system = [
         vsH[i]*H.derivative(vsH[i]) - expanded_R(r[i])*lambda_
         for i in range(len(vsH))
-    ] + [H, H.subs({z: z*t for z in vsH})] + [ri_to_val[ri].minpoly().subs(ri) for ri in rvars]
+    ] + [H, H.subs({z: z*t for z in vsH})]
+
+    for ri in rvars:
+        mp = ri_to_val[ri].minpoly().subs(ri)
+        l = lcm([x.denominator() for x in mp.coefficients()])
+        system.append(l * ri_to_val[ri].minpoly().subs(ri))
 
     # Compute the Kronecker representation of our system
     timer.checkpoint()
