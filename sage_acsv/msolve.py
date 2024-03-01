@@ -26,7 +26,7 @@ def get_parametrization(vs, system):
     msolve_out.check_returncode()
 
     result = msolve_out.stdout
-    result = ast.literal_eval(result[:-2])
+    result = ast.literal_eval(result[:-2].replace('/', ''))
 
     if result[0] != 0:
         raise ACSVException("Issue with msolve parametrization - system does not have finitely many solutions")
