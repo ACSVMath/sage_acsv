@@ -497,6 +497,8 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, use_
     prec = PrecisionField.precision()
     non_min_idx = set()
     for pt in non_min:
+        if any([v<0 for v in pt]):
+            continue
         idx = range(len(pos_minimals))
         while len(idx) > 1:
             if (prec > prec_bound):
