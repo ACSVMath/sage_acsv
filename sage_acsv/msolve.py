@@ -1,8 +1,8 @@
 import os
 import tempfile
 import subprocess
-import ast
 
+from sage.misc.sage_eval import sage_eval
 from sage.features.msolve import msolve
 from sage_acsv.helpers import ACSVException
 
@@ -26,7 +26,7 @@ def get_parametrization(vs, system):
     msolve_out.check_returncode()
 
     result = msolve_out.stdout
-    result = ast.literal_eval(result[:-2])
+    result = sage_eval(result[:-2])
 
     if result[0] != 0:
         raise ACSVException("Issue with msolve parametrization - system does not have finitely many solutions")
