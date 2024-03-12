@@ -1,6 +1,8 @@
 from enum import Enum
 
-from sage.all import QQ, ceil, gcd, matrix, randint
+
+from sage.all import QQ, AA, RIF, CIF, PolynomialRing, RealIntervalField, ComplexIntervalField
+from sage.all import ceil, gcd, matrix, randint, sqrt, log, factorial
 
 
 class OutputFormat(Enum):
@@ -112,6 +114,26 @@ def DetHessianWithLog(H, vs, r):
     # Return determinant
     return matrix(Hess).determinant()
 
+def CountRootsInInterval(F, t_, start, end):
+    R = PolynomialRing(AA, t_)
+    F_prev = R(F.radical())
+    F_cur = F_prev.derivative(t_)
+
+    ss = [F_prev.subs({t_:start})]
+    es = [F_prev.subs({t_:end})]
+    while F_cur != 0:
+        ss.append(F_cur.subs({t_:start}))
+        es.append(F_cur.subs({t_:end}))
+
+        _, rem = F_prev.quo_rem(F_cur)
+        F_prev, F_cur = F_cur, -rem
+
+    ss = list(filter(lambda x: x != 0, ss))
+    es = list(filter(lambda x: x != 0, es))
+    alt_s = len([_ for i in range(1, len(ss)) if ss[i] * ss[i-1] < 0 ])
+    alt_e = len([_ for i in range(1, len(es)) if es[i] * es[i-1] < 0 ])
+
+    return alt_s - alt_e
 
 class ACSVException(Exception):
     def __init__(self, message, retry=False):
