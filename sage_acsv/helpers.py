@@ -58,7 +58,7 @@ def GenerateLinearForm(system, vsT, u_, linear_form=None):
         return u_ - linear_form
 
     maxcoeff = ceil(max([
-        max([abs(x) for x in f.coefficients()]) for f in system
+        max([abs(x) for x in f.coefficients()]) for f in system if f != 0
     ]))
     maxdegree = max([f.degree() for f in system])
     return u_ - sum([

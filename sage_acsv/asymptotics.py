@@ -2,12 +2,13 @@
 of multivariate rational functions.
 """
 
-from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra, RealIntervalField, RIF
+from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra, RealIntervalField, RIF, Ideal
 from sage.all import gcd, prod, pi, matrix, exp, log, add, I, factorial, xgcd, lcm
 
 from sage_acsv.kronecker import _kronecker_representation, _msolve_kronecker_representation
 from sage_acsv.helpers import ACSVException, NewtonSeries, RationalFunctionReduce, DetHessianWithLog, OutputFormat, GetHessian
 from sage_acsv.debug import Timer, acsv_logger
+from sage_acsv.whitney import WhitneyStrat, PrimaryDecomposition
 
 
 MAX_MIN_CRIT_RETRIES = 3
@@ -483,11 +484,211 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, use_
     Pd = newPd
     #iv = IntervalOperator(P, Qs, u_)
 
+    pos_minimals = FilterMinimalPoints(rvars, vs, P, Qs, non_min, ri_to_val)
+
+    # Verify necessary assumptions
+    if len(pos_minimals) == 0:
+        raise ACSVException("No smooth minimal critical points found.")
+    elif len(pos_minimals) > 1:
+        print(pos_minimals)
+        raise ACSVException(
+            "More than one minimal point with positive real coordinates found."
+        )
+
+    # Find all minimal critical points
+    minCP = pos_minimals[0][:-2]
+    minimals = []
+
+    for u in one_minus_t.roots(QQbar, multiplicities=False):
+        v = [(q/Pd).subs(u_=u) for q in Qs[0:-2]]
+        rv = {ri : (q/Pd).subs(u_=u) for (ri, q) in zip(rvars, Qs[len(vs):-2])}
+        if (any([rv[ri] != ri_to_val[ri] for ri in rvars])):
+            continue
+        if all([a.abs() == b.abs() for (a, b) in zip(minCP, v)]):
+            minimals.append(u)
+
+    # Get minimal point coords, and make exact if possible
+    minimal_coords = [[(q/Pd).subs(u_=u) for q in Qs[0:-2-len(rvars)]] for u in minimals]
+    [[a.exactify() for a in b] for b in minimal_coords]
+
+    timer.checkpoint("Minimal Points")
+    return [[(q/Pd).subs(u_=u) for q in Qs[0:-2-len(rvars)]] for u in minimals]
+
+def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=None, use_msolve=False):
+    r"""Compute minimal critical points of a combinatorial multivariate
+    rational function F=G/H admitting a finite number of critical points.
+
+    Typically, this function is called as a subroutine of :func:`.diagonal_asy`.
+
+    INPUT:
+
+    * ``G, H`` -- Coprime polynomials with `F = G/H`
+    * ``variables`` -- Tuple of variables of ``G`` and ``H``, followed
+      by ``lambda_, t, u_``
+    * ``r`` -- (Optional) Length `d` vector of positive integers
+    * ``linear_form`` -- (Optional) A linear combination of the input
+      variables that separates the critical point solutions
+
+    OUTPUT:
+
+    List of minimal critical points of `F` in the direction `r`,
+    as a list of tuples of algebraic numbers.
+
+    NOTE:
+
+    The code randomly generates a linear form, which for generic rational functions
+    separates the solutions of an intermediate polynomial system with high probability.
+    This separation step can fail, but (assuming F has a finite number of critical points)
+    the code can be rerun until a separating form is found.
+
+    Examples::
+
+        sage: from sage_acsv import MinimalCriticalCombinatorial
+        sage: R.<x, y, w, lambda_, t, u_> = QQ[]
+        sage: pts = MinimalCriticalCombinatorial(
+        ....:     1,
+        ....:     1 - w*(y + x + x^2*y + x*y^2),
+        ....:     ([w, x, y], lambda_, t, u_)
+        ....: )
+        sage: sorted(pts)
+        [[-1/4, -1, -1], [1/4, 1, 1]]
+        """
+
+    timer = Timer()
+
+    # Fetch the variables we need
+    vs, lambda_, t, u_ = variables
+    vsT = vs + [t, lambda_]
+
+    # If direction r is not given, default to the diagonal
+    if r is None:
+        r = [1 for i in range(len(vs))]
+
+    # Make copy of r so they don't get mutated outside of function
+    r = list(r)
+
+    # Replace irrational r with variable ri, add min poly to system
+    ri_to_val = {}
+    rvars = []
+    for i, var in enumerate(r):
+        if (AA(var).minpoly().degree() > 1):
+            ri = SR.var('r%s'%i)
+            r[i] = ri
+            rvars.append(ri)
+            ri_to_val[ri] = AA(var)
+
+    expanded_R = PolynomialRing(QQ, len(vsT) + len(rvars) + 1, vs + rvars + [t, lambda_, u_])
+    vs = [expanded_R(v) for v in vs]
+    t, lambda_, u_ = expanded_R(t), expanded_R(lambda_), expanded_R(u_)
+    G, H = expanded_R(G), expanded_R(H)
+
+    rvars = [expanded_R(ri) for ri in rvars]
+    ri_to_val = {expanded_R(ri):val for (ri, val) in ri_to_val.items()}
+    r = [expanded_R(ri) for ri in r]
+
+    vsT = vs + rvars + [t, lambda_]
+
+    # Compute the critical point system for each stratum
+    
+    #strata, crits, t = GetCriticalPointIdeals(H, r, vs)
+    pure_H = PolynomialRing(QQ, len(vs), vs)
+    whitney_strat = WhitneyStrat(Ideal(pure_H(H)), pure_H)
+    #whitney_strat = [s.change_ring(expanded_R) for s in whitney_strat]
+
+    critical_point_ideals = []
+    for stratum in whitney_strat:
+        critical_point_ideals.append([])
+        for P in PrimaryDecomposition(stratum):
+            c = len(vs) - P.dimension()
+            P_ext = P.change_ring(expanded_R)
+            M = matrix(
+                [
+                    [v * f.derivative(v) for v in vs] for f in P_ext.gens()
+                ] + [r]
+            )
+            cpid = P_ext + Ideal([expanded_R(0)] + M.minors(c+1)) + H.subs({v:v*t for v in vs}) + (prod(vs)*lambda_ - 1)
+            critical_point_ideals[-1].append((P, cpid))
+
+    print(critical_point_ideals)
+    contributing_points = []
+    for d in reversed(range(len(critical_point_ideals))):
+        ideals = critical_point_ideals[d]
+        contributing_candidates = []
+
+        minimal_in_stratum = False
+        
+        for _, ideal in ideals:
+            P, Qs = _msolve_kronecker_representation(ideal.gens(), u_, vsT) if use_msolve else \
+                _kronecker_representation(ideal.gens(), u_, vsT, lambda_, linear_form)
+
+            Qt = Qs[-2]  # Qs ordering is H.variables() + rvars + [t, lambda_]
+            Pd = P.derivative()
+
+            # Solutions to Pt are solutions to the system where t is not 1
+            one_minus_t = gcd(Pd - Qt, P)
+            Pt, _ = P.quo_rem(one_minus_t)
+            Ptd = Pt.derivative()
+            _, invPtd, _ = xgcd(Pd, Pt)
+            Qts = [(Q*Ptd*invPtd).quo_rem(Pt)[1] for Q in Qs]
+            Qt = Qts[-2]
+
+            if not minimal_in_stratum:
+                rts_t_zo = list()
+                for k in Pt.roots(AA, multiplicities=False):
+                    num = Qt.subs(u_=k); RIF(num)
+                    denom = Ptd.subs(u_=k); RIF(denom)
+                    vt = num/denom
+                    if vt > 0 and vt < 1:
+                        rts_t_zo.append(k)
+
+                non_min = [[(q/Ptd).subs(u_=u) for q in Qts[0:-2]] for u in rts_t_zo]
+
+            # Change the equations to only deal with t=1 solutions
+            newP = one_minus_t
+            newPd = one_minus_t.derivative()
+            _, invPd, _ = xgcd(Pd, newP)
+            Qs = [(Q*newPd*invPd).quo_rem(newP)[1] for Q in Qs]
+            P = newP
+            Pd = newPd
+
+            if not minimal_in_stratum:
+                pos_minimals = FilterMinimalPoints(rvars, vs, P, Qs, non_min, ri_to_val)
+
+                if len(pos_minimals) > 1:
+                    print(pos_minimals)
+                    raise ACSVException(
+                        "More than one minimal point with positive real coordinates found."
+                    )
+                elif len(pos_minimals) == 1:
+                    minimal_in_stratum = True
+
+            for u in P.roots(QQbar, multiplicities=False):
+                rv = {ri : (q/Pd).subs(u_=u) for (ri, q) in zip(rvars, Qs[len(vs):-2])}
+                if (any([rv[ri] != ri_to_val[ri] for ri in rvars])):
+                    continue
+                contributing_candidates.append(u)
+
+        # If real minimal critical point found in stratum, determine if all other points are contributing
+        if minimal_in_stratum:
+            for u in contributing_candidates:
+                w = [(q/Pd).subs(u_=u) for q in Qs[0:len(vs)]]
+                for i in range(d):
+                    stratum = whitney_strat[i]
+                    if stratum.subs({pure_H(wi):val for wi, val in zip(vs, w)}) == Ideal(pure_H(0)):
+                        print("Non-generic critical point found - {w} is contained in {dim}-dimensional stratum".format(w = str(w), dim = i))
+                        break
+                else:
+                    contributing_points.append(w)
+
+    return contributing_points
+
+def FilterMinimalPoints(rvars, vs, P, Qs, non_min, ri_to_val):
+    Pd = P.derivative()
     pos_minimals = list(
         filter(
             lambda v: all([k > 0 for k in v[:-2]]) and \
                       all([rval == ri_to_val[ri] for (ri, rval) in zip(rvars, v[len(vs):-2])]),
-            list([(q/Pd).subs(u_=u) for q in Qs] for u in one_minus_t.roots(AA, multiplicities=False))
+            list([(q/Pd).subs(u_=u) for q in Qs] for u in P.roots(AA, multiplicities=False))
         )
     )
 
@@ -533,30 +734,4 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, use_
             )
             pos_minimals.pop(i)
 
-    # Verify necessary assumptions
-    if len(pos_minimals) == 0:
-        raise ACSVException("No smooth minimal critical points found.")
-    elif len(pos_minimals) > 1:
-        print(pos_minimals)
-        raise ACSVException(
-            "More than one minimal point with positive real coordinates found."
-        )
-
-    # Find all minimal critical points
-    minCP = pos_minimals[0][:-2]
-    minimals = []
-
-    for u in one_minus_t.roots(QQbar, multiplicities=False):
-        v = [(q/Pd).subs(u_=u) for q in Qs[0:-2]]
-        rv = {ri : (q/Pd).subs(u_=u) for (ri, q) in zip(rvars, Qs[len(vs):-2])}
-        if (any([rv[ri] != ri_to_val[ri] for ri in rvars])):
-            continue
-        if all([a.abs() == b.abs() for (a, b) in zip(minCP, v)]):
-            minimals.append(u)
-
-    # Get minimal point coords, and make exact if possible
-    minimal_coords = [[(q/Pd).subs(u_=u) for q in Qs[0:-2-len(rvars)]] for u in minimals]
-    [[a.exactify() for a in b] for b in minimal_coords]
-
-    timer.checkpoint("Minimal Points")
-    return [[(q/Pd).subs(u_=u) for q in Qs[0:-2-len(rvars)]] for u in minimals]
+    return pos_minimals
