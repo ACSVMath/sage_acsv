@@ -2,7 +2,7 @@
 of multivariate rational functions.
 """
 
-from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra, RealIntervalField, RIF, Ideal
+from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra, RealIntervalField, RIF, Ideal, Polyhedron
 from sage.all import gcd, prod, pi, matrix, exp, log, add, I, factorial, xgcd, lcm
 
 from sage_acsv.kronecker import _kronecker_representation, _msolve_kronecker_representation
@@ -564,7 +564,8 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
     if r is None:
         r = [1 for i in range(len(vs))]
 
-    # Make copy of r so they don't get mutated outside of function
+    # Make copies of r so they don't get mutated outside of function
+    r_copy = list(r)
     r = list(r)
 
     # Replace irrational r with variable ri, add min poly to system
@@ -609,17 +610,16 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
             cpid = P_ext + Ideal([expanded_R(0)] + M.minors(c+1)) + H.subs({v:v*t for v in vs}) + (prod(vs)*lambda_ - 1)
             critical_point_ideals[-1].append((P, cpid))
 
-    print(critical_point_ideals)
-    contributing_points = []
+    critical_points = []
     for d in reversed(range(len(critical_point_ideals))):
         ideals = critical_point_ideals[d]
-        contributing_candidates = []
-
-        minimal_in_stratum = False
+        critical_candidates = []
         
         for _, ideal in ideals:
             P, Qs = _msolve_kronecker_representation(ideal.gens(), u_, vsT) if use_msolve else \
                 _kronecker_representation(ideal.gens(), u_, vsT, lambda_, linear_form)
+
+            minimal_in_stratum = False
 
             Qt = Qs[-2]  # Qs ordering is H.variables() + rvars + [t, lambda_]
             Pd = P.derivative()
@@ -651,36 +651,78 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
             P = newP
             Pd = newPd
 
-            if not minimal_in_stratum:
-                pos_minimals = FilterMinimalPoints(rvars, vs, P, Qs, non_min, ri_to_val)
+            pos_minimals = FilterMinimalPoints(rvars, vs, P, Qs, non_min, ri_to_val)
 
-                if len(pos_minimals) > 1:
-                    print(pos_minimals)
-                    raise ACSVException(
-                        "More than one minimal point with positive real coordinates found."
-                    )
-                elif len(pos_minimals) == 1:
-                    minimal_in_stratum = True
+            if len(pos_minimals) > 1:
+                print(pos_minimals)
+                raise ACSVException(
+                    "More than one minimal point with positive real coordinates found."
+                )
+            elif len(pos_minimals) == 1:
+                minimal_in_stratum = True
 
-            for u in P.roots(QQbar, multiplicities=False):
-                rv = {ri : (q/Pd).subs(u_=u) for (ri, q) in zip(rvars, Qs[len(vs):-2])}
-                if (any([rv[ri] != ri_to_val[ri] for ri in rvars])):
-                    continue
-                contributing_candidates.append(u)
+            if minimal_in_stratum:
+                for u in P.roots(QQbar, multiplicities=False):
+                    rv = {ri : (q/Pd).subs(u_=u) for (ri, q) in zip(rvars, Qs[len(vs):-2])}
+                    if (any([rv[ri] != ri_to_val[ri] for ri in rvars])):
+                        continue
+                    critical_candidates.append((Qs, Pd, u))
 
         # If real minimal critical point found in stratum, determine if all other points are contributing
-        if minimal_in_stratum:
-            for u in contributing_candidates:
+        if critical_candidates:
+            for Qs, Pd, u in critical_candidates:
                 w = [(q/Pd).subs(u_=u) for q in Qs[0:len(vs)]]
                 for i in range(d):
                     stratum = whitney_strat[i]
                     if stratum.subs({pure_H(wi):val for wi, val in zip(vs, w)}) == Ideal(pure_H(0)):
-                        print("Non-generic critical point found - {w} is contained in {dim}-dimensional stratum".format(w = str(w), dim = i))
-                        break
-                else:
-                    contributing_points.append(w)
+                        raise ACSVException(
+                            "Non-generic critical point found - {w} is contained in {dim}-dimensional stratum".format(w = str(w), dim = i)
+                        )
+                critical_points.append(w)
+            break
 
-    return contributing_points
+    # If w lies in the transverse intersection of smooth components of V(H), compute
+    # the normal cone conditions
+    # TODO - check if this condition is satisfied
+    all_components = list(PrimaryDecomposition(Ideal(H)))
+    
+    r = r_copy
+    contributing_points = []
+    for critical_point in critical_points:
+
+        critical_subs = {v:point for v, point in zip(vs, critical_point)}
+        # Compute irreducible components of H that contain the point
+        components = list(
+            P for P in all_components
+            if P.subs(critical_subs) == Ideal(P.parent()(0))
+        )
+        
+        gens = [f for P in components for f in P.gens()]
+        vkjs = []
+        for f in gens:
+            for v in vs:
+                if f.derivative(v).subs(critical_subs)!=0:
+                    vkjs.append(v)
+                    break
+            else:
+                raise ACSVException("Point vanishes at all partials")
+  
+        normals = matrix(
+            list(
+                [AA(
+                    f.derivative(v).subs(critical_subs) * critical_subs[v] / (
+                        critical_subs[vkj] * f.derivative(vkj).subs(critical_subs)
+                    )
+                ) for v in vs] for vkj, f in zip(vkjs, gens)
+            )
+        )
+        
+        polytope = Polyhedron(rays=normals)
+
+        if r in polytope:
+            contributing_points.append(critical_point)
+
+    return (contributing_points, True) if contributing_points else (critical_points, False)
 
 def FilterMinimalPoints(rvars, vs, P, Qs, non_min, ri_to_val):
     Pd = P.derivative()
