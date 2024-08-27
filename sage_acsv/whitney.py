@@ -1,19 +1,18 @@
 from sage.all import Ideal, PolynomialRing, ProjectiveSpace, QQ
 from sage.all import  matrix
 
-def PrimaryDecompositionM2(Id):
+def PrimaryDecompositionM2(Id, m2):
     """
     Uses Macaulay2 to compute the primary decomposition of an ideal
     """
-    import macaulay2
 
-    Id = macaulay2.ideal(Id)
+    Id = m2.ideal(Id)
     for J in Id.decompose():
         yield J.sage()
 
-def PrimaryDecomposition(Id, m2=False):
-    if m2:
-        return PrimaryDecompositionM2(Id)
+def PrimaryDecomposition(Id, m2=None):
+    if m2 is not None:
+        return PrimaryDecompositionM2(Id, m2)
     return Id.primary_decomposition()
 
 def Con(X, P, RZ):
@@ -31,7 +30,7 @@ def Con(X, P, RZ):
     
     return (X.defining_ideal().change_ring(RZ)+JacZ).saturation(Jac.change_ring(RZ))[0]
 
-def Decompose(Y,X,P,R,RZ):
+def Decompose(Y,X,P,R,RZ, m2=None):
     r"""
     Given varieties X and Y, returns the points in Y that fail Whitney's condition B
     with respect to X
@@ -46,7 +45,7 @@ def Decompose(Y,X,P,R,RZ):
     
     J = Con(X, P, RZ) + Y.defining_ideal().change_ring(RZ)
     J = Ideal(J.groebner_basis())
-    for IQ in PrimaryDecomposition(J):
+    for IQ in PrimaryDecomposition(J, m2):
         K = IQ.elimination_ideal([v for v in RZ.gens() if v not in R.gens()]).change_ring(R)
         W = P.subscheme(K)
         if W.dimension() < Y.dimension():
@@ -70,7 +69,7 @@ def Merge(Xs, Ys):
         
     return res
     
-def WhitneyStratProjective(X, P):
+def WhitneyStratProjective(X, P, m2=None):
     r"""
     Computes a WhitneyStratification of projective variety X in the ring P
     """
@@ -91,7 +90,7 @@ def WhitneyStratProjective(X, P):
     if (k == mu):
         print("mu same dim as X")
     
-    for IZ in PrimaryDecomposition(X_sing.defining_ideal()):
+    for IZ in PrimaryDecomposition(X_sing.defining_ideal(), m2):
         Z = P.subscheme(IZ)
         i = Z.dimension()
         Xs[i] = Xs[i].union(Z)
@@ -100,23 +99,23 @@ def WhitneyStratProjective(X, P):
         Xd = Xs[d]
         if Xd.dimension() < d:
             continue
-        Xs = Merge(Xs, Decompose(Xd, X, P, R, RZ))
-        Xs = Merge(Xs, WhitneyStratProjective(Xd, P))
+        Xs = Merge(Xs, Decompose(Xd, X, P, R, RZ, m2))
+        Xs = Merge(Xs, WhitneyStratProjective(Xd, P, m2))
         
     return Xs
 
-def WhitneyStrat(IX, R):
+def WhitneyStrat(IX, R, m2=None):
     vs = R.gens()
     P, vsP = ProjectiveSpace(QQ, len(vs), list(vs)+['z0']).objgens()
     
     z0 = vsP[-1]
     R_hom = z0.parent()
-    proj_strat = WhitneyStratProjective(P.subscheme(IX.change_ring(R_hom).homogenize(z0)), P)
+    proj_strat = WhitneyStratProjective(P.subscheme(IX.change_ring(R_hom).homogenize(z0)), P, m2)
     
     
     strat = [Ideal(R(1)) for _ in range(len(proj_strat))]
     for stratum in proj_strat:
-        for Id in PrimaryDecomposition(stratum.defining_ideal()):
+        for Id in PrimaryDecomposition(stratum.defining_ideal(), m2):
             newId = Id.subs({z0:1}).change_ring(R)
             strat[newId.dimension()] = strat[newId.dimension()].intersection(newId)
             

@@ -514,7 +514,7 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, use_
     timer.checkpoint("Minimal Points")
     return [[(q/Pd).subs(u_=u) for q in Qs[0:-2-len(rvars)]] for u in minimals]
 
-def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=None, use_msolve=False):
+def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=None, use_msolve=False, m2=None, whitney_strat=None):
     r"""Compute minimal critical points of a combinatorial multivariate
     rational function F=G/H admitting a finite number of critical points.
 
@@ -590,16 +590,17 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
     vsT = vs + rvars + [t, lambda_]
 
     # Compute the critical point system for each stratum
-    
-    #strata, crits, t = GetCriticalPointIdeals(H, r, vs)
     pure_H = PolynomialRing(QQ, len(vs), vs)
-    whitney_strat = WhitneyStrat(Ideal(pure_H(H)), pure_H)
-    #whitney_strat = [s.change_ring(expanded_R) for s in whitney_strat]
+
+    if whitney_strat is None:
+        whitney_strat = WhitneyStrat(Ideal(pure_H(H)), pure_H, m2)
+    else:
+        whitney_strat = [prod([Ideal([pure_H(f) for f in comp]) for comp in stratum]) for stratum in whitney_strat]
 
     critical_point_ideals = []
     for stratum in whitney_strat:
         critical_point_ideals.append([])
-        for P in PrimaryDecomposition(stratum):
+        for P in PrimaryDecomposition(stratum, m2):
             c = len(vs) - P.dimension()
             P_ext = P.change_ring(expanded_R)
             M = matrix(
@@ -616,10 +617,10 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
         critical_candidates = []
         
         for _, ideal in ideals:
+            if ideal.dimension() < 0:
+                continue
             P, Qs = _msolve_kronecker_representation(ideal.gens(), u_, vsT) if use_msolve else \
                 _kronecker_representation(ideal.gens(), u_, vsT, lambda_, linear_form)
-
-            minimal_in_stratum = False
 
             Qt = Qs[-2]  # Qs ordering is H.variables() + rvars + [t, lambda_]
             Pd = P.derivative()
@@ -632,16 +633,15 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
             Qts = [(Q*Ptd*invPtd).quo_rem(Pt)[1] for Q in Qs]
             Qt = Qts[-2]
 
-            if not minimal_in_stratum:
-                rts_t_zo = list()
-                for k in Pt.roots(AA, multiplicities=False):
-                    num = Qt.subs(u_=k); RIF(num)
-                    denom = Ptd.subs(u_=k); RIF(denom)
-                    vt = num/denom
-                    if vt > 0 and vt < 1:
-                        rts_t_zo.append(k)
+            rts_t_zo = list()
+            for k in Pt.roots(AA, multiplicities=False):
+                num = Qt.subs(u_=k); RIF(num)
+                denom = Ptd.subs(u_=k); RIF(denom)
+                vt = num/denom
+                if vt > 0 and vt < 1:
+                    rts_t_zo.append(k)
 
-                non_min = [[(q/Ptd).subs(u_=u) for q in Qts[0:-2]] for u in rts_t_zo]
+            non_min = [[(q/Ptd).subs(u_=u) for q in Qts[0:-2]] for u in rts_t_zo]
 
             # Change the equations to only deal with t=1 solutions
             newP = one_minus_t
@@ -659,19 +659,20 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
                     "More than one minimal point with positive real coordinates found."
                 )
             elif len(pos_minimals) == 1:
-                minimal_in_stratum = True
+                minimal = pos_minimals[0]
 
-            if minimal_in_stratum:
                 for u in P.roots(QQbar, multiplicities=False):
                     rv = {ri : (q/Pd).subs(u_=u) for (ri, q) in zip(rvars, Qs[len(vs):-2])}
                     if (any([rv[ri] != ri_to_val[ri] for ri in rvars])):
                         continue
-                    critical_candidates.append((Qs, Pd, u))
 
-        # If real minimal critical point found in stratum, determine if all other points are contributing
+                    w = [(q/Pd).subs(u_=u) for q in Qs[0:len(vs)]]
+                    if all([abs(w_i)==abs(min_i) for w_i, min_i in zip(w, minimal)]):
+                        critical_candidates.append(w)
+
+        # Determine if minimal critical points are contributing
         if critical_candidates:
-            for Qs, Pd, u in critical_candidates:
-                w = [(q/Pd).subs(u_=u) for q in Qs[0:len(vs)]]
+            for w in critical_candidates:
                 for i in range(d):
                     stratum = whitney_strat[i]
                     if stratum.subs({pure_H(wi):val for wi, val in zip(vs, w)}) == Ideal(pure_H(0)):
