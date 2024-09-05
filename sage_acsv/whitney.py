@@ -105,6 +105,22 @@ def WhitneyStratProjective(X, P, m2=None):
     return Xs
 
 def WhitneyStrat(IX, R, m2=None):
+    r"""
+    Computes the Whitney Stratification of a pure-dimensional algebraic variety. Uses
+    an algorithm developed by Helmer and Nanda (2022).
+
+    INPUT:
+
+    * ``IX`` - A `k`-dimensional polynomial ideal representation of the algebraic variety `X`
+    * ``R`` - Base ring of the ideal. Should be a PolynomialRing object
+    * ``m2`` -- (Optional) The option to pass in a SageMath Macaulay2 interface for
+        computing primary decompositions. Macaulay2 must be installed by the user
+
+    OUTPUT:
+
+    A list `[IX_0, IX_1, ..., IX_k]` of polynomial ideals representing the Whitney stratification of `X`.
+    `IX_j` reprensents the `j`-dimensional stratum.
+    """
     vs = R.gens()
     P, vsP = ProjectiveSpace(QQ, len(vs), list(vs)+['z0']).objgens()
     

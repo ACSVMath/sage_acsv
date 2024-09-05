@@ -528,11 +528,18 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
     * ``r`` -- (Optional) Length `d` vector of positive integers
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions
+    * ``use_msolve`` -- (Optional) Boolean value indicating if user wants to use msolve
+        to parametrize the critical point equations. Msolve must be installed by the user
+    * ``m2`` -- (Optional) The option to pass in a SageMath Macaulay2 interface for
+        computing primary decompositions. Macaulay2 must be installed by the user
+    * ``whitney_strat`` -- (Optional) The user can pass in a Whitney Stratification of V(H)
+        to save computation time. The program will not check if this stratification is correct.
 
     OUTPUT:
 
-    List of minimal critical points of `F` in the direction `r`,
-    as a list of tuples of algebraic numbers.
+    A tuple whose first elemenent is a list of minimal critical points of `F` in the direction `r`,
+    as a list of tuples of algebraic numbers. The second element is a boolean value indicating
+    if the points were determined to be contributing.
 
     NOTE:
 
@@ -543,16 +550,69 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
 
     Examples::
 
-        sage: from sage_acsv import MinimalCriticalCombinatorial
-        sage: R.<x, y, w, lambda_, t, u_> = QQ[]
-        sage: pts = MinimalCriticalCombinatorial(
+        sage: from sage_acsv import MinimalCriticalCombinatorialNonSmooth
+        sage: var('x,y,lambda_,t,u_')
+        sage: pts, contrib = MinimalCriticalCombinatorialNonSmooth(
         ....:     1,
-        ....:     1 - w*(y + x + x^2*y + x*y^2),
-        ....:     ([w, x, y], lambda_, t, u_)
+        ....:     (1-(2*x+y)/3)*(1-(3*x+y)/4),
+        ....:     ([x, y], lambda_, t, u_),
         ....: )
         sage: sorted(pts)
-        [[-1/4, -1, -1], [1/4, 1, 1]]
-        """
+        [[3/4, 3/2]]
+        sage: contrib
+        True
+
+    Example where the critical point is on a lower dimensional stratum::
+
+        sage: from sage_acsv import MinimalCriticalCombinatorialNonSmooth
+        sage: var('x,y,lambda_,t,u_')
+        sage: pts, contrib = MinimalCriticalCombinatorialNonSmooth(
+        ....:     1,
+        ....:     (1-(2*x+y)/3)*(1-(3*x+y)/4),
+        ....:     ([x, y], lambda_, t, u_),
+        ....:     r=[17/24, 7/24],
+        ....: )
+        sage: sorted(pts)
+        [[1,1]]
+        sage: contrib
+        True
+
+    Non-generic critical point found::
+
+        sage: from sage_acsv import MinimalCriticalCombinatorialNonSmooth
+        sage: var('x,y,lambda_,t,u_')
+        sage: try:
+        ....:   MinimalCriticalCombinatorialNonSmooth(
+        ....:       1,
+        ....:       (1-(2*x+y)/3)*(1-(3*x+y)/4),
+        ....:       ([x, y], lambda_, t, u_),
+        ....:       r=[2,1],
+        ....:   )
+        ....: except ACSVException as e: 
+        ....:   print(e)
+        Non-generic critical point found - [1, 1] is contained in 0-dimensional stratum
+
+    Lattice path example::
+
+        sage: from sage_acsv import MinimalCriticalCombinatorialNonSmooth
+        sage: var('v,x,y,lambda_,t,u_')
+        sage: whitney_strat = [
+        ....:   [(1,)],
+        ....:   [(1-v*(1+x^2+x*y^2), 1-y), (1-y, 1+x^2), (1-v*(1+x^2+x*y^2), 1+x^2)],
+        ....:   [((1-v*(1+x^2+x*y^2))*(1-y)*(1+x^2),)]
+        ....: ]
+        sage: pts, contrib = MinimalCriticalCombinatorialNonSmooth(
+        ....:     1,
+        ....:     (1-v*(1+x^2+x*y^2))*(1-y)*(1+x^2),
+        ....:     ([x, y, v], lambda_, t, u_),
+        ....:     whitney_strat=whitney_strat
+        ....: )
+        sage: sorted(pts)
+        [[1, 1, 1/3]]
+        sage: contrib
+        True
+
+    """
 
     timer = Timer()
 
