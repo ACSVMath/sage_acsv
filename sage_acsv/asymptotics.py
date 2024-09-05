@@ -552,6 +552,7 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
 
         sage: from sage_acsv import MinimalCriticalCombinatorialNonSmooth
         sage: var('x,y,lambda_,t,u_')
+        (x, y, lambda_, t, u_)
         sage: pts, contrib = MinimalCriticalCombinatorialNonSmooth(
         ....:     1,
         ....:     (1-(2*x+y)/3)*(1-(3*x+y)/4),
@@ -566,6 +567,7 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
 
         sage: from sage_acsv import MinimalCriticalCombinatorialNonSmooth
         sage: var('x,y,lambda_,t,u_')
+        (x, y, lambda_, t, u_)
         sage: pts, contrib = MinimalCriticalCombinatorialNonSmooth(
         ....:     1,
         ....:     (1-(2*x+y)/3)*(1-(3*x+y)/4),
@@ -573,7 +575,7 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
         ....:     r=[17/24, 7/24],
         ....: )
         sage: sorted(pts)
-        [[1,1]]
+        [[1, 1]]
         sage: contrib
         True
 
@@ -581,6 +583,7 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
 
         sage: from sage_acsv import MinimalCriticalCombinatorialNonSmooth
         sage: var('x,y,lambda_,t,u_')
+        (x, y, lambda_, t, u_)
         sage: try:
         ....:   MinimalCriticalCombinatorialNonSmooth(
         ....:       1,
@@ -588,7 +591,7 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
         ....:       ([x, y], lambda_, t, u_),
         ....:       r=[2,1],
         ....:   )
-        ....: except ACSVException as e: 
+        ....: except Exception as e: 
         ....:   print(e)
         Non-generic critical point found - [1, 1] is contained in 0-dimensional stratum
 
@@ -596,6 +599,7 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
 
         sage: from sage_acsv import MinimalCriticalCombinatorialNonSmooth
         sage: var('v,x,y,lambda_,t,u_')
+        (v, x, y, lambda_, t, u_)
         sage: whitney_strat = [
         ....:   [(1,)],
         ....:   [(1-v*(1+x^2+x*y^2), 1-y), (1-y, 1+x^2), (1-v*(1+x^2+x*y^2), 1+x^2)],
@@ -726,7 +730,7 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
                     if (any([rv[ri] != ri_to_val[ri] for ri in rvars])):
                         continue
 
-                    w = [(q/Pd).subs(u_=u) for q in Qs[0:len(vs)]]
+                    w = [QQbar((q/Pd).subs(u_=u)) for q in Qs[0:len(vs)]]
                     if all([abs(w_i)==abs(min_i) for w_i, min_i in zip(w, minimal)]):
                         critical_candidates.append(w)
 
@@ -791,7 +795,7 @@ def FilterMinimalPoints(rvars, vs, P, Qs, non_min, ri_to_val):
         filter(
             lambda v: all([k > 0 for k in v[:-2]]) and \
                       all([rval == ri_to_val[ri] for (ri, rval) in zip(rvars, v[len(vs):-2])]),
-            list([(q/Pd).subs(u_=u) for q in Qs] for u in P.roots(AA, multiplicities=False))
+            list([AA((q/Pd).subs(u_=u)) for q in Qs] for u in P.roots(AA, multiplicities=False))
         )
     )
 
