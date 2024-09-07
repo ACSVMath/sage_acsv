@@ -58,21 +58,21 @@ def diagonal_asy(F, r=None, linear_form=None, M=1, return_points=False, output_f
         sage: var('x,y,z,w')
         (x, y, z, w)
         sage: diagonal_asy(1/(1-x-y))
-        [(4, 1/sqrt(n), 1/sqrt(pi), 1/2, 2)]
+        [(4, 1/sqrt(n), 1/sqrt(pi), 1)]
         sage: diagonal_asy(1/(1-(1+x)*y), r = [1,2], return_points=True)
-        ([(4, 1/sqrt(n), 1/sqrt(pi), 1, 1)], [[1, 1/2]])
+        ([(4, 1/sqrt(n), 1/sqrt(pi), 1)], [[1, 1/2]])
         sage: diagonal_asy(1/(1-(x+y+z)+(3/4)*x*y*z), output_format="symbolic")
         0.840484893481498?*24.68093482214177?^n/(pi*n)
         sage: diagonal_asy(1/(1-(x+y+z)+(3/4)*x*y*z))
-        [(24.68093482214177?, 1/n, 1/pi, 0.2631346242918721?, 3.194125044331764?)]
+        [(24.68093482214177?, 1/n, 1/pi, 0.840484893481498?)]
         sage: var('n')
         n
         sage: asy = diagonal_asy(
         ....:     1/(1 - w*(1 + x)*(1 + y)*(1 + z)*(x*y*z + y*z + y + z + 1))
         ....: )
         sage: sum([
-        ....:      a.radical_expression()^n * b * c * d.radical_expression() * e
-        ....:      for (a, b, c, d, e) in asy
+        ....:      a.radical_expression()^n * b * c * d.radical_expression()
+        ....:      for (a, b, c, d) in asy
         ....: ])
         1/4*(12*sqrt(2) + 17)^n*sqrt(17/2*sqrt(2) + 12)/(pi^(3/2)*n^(3/2))
 
@@ -83,9 +83,9 @@ def diagonal_asy(F, r=None, linear_form=None, M=1, return_points=False, output_f
         sage: var('x')
         x
         sage: diagonal_asy(1/(1 - 2*x))
-        [(2, 1, 1, 1, 1)]
+        [(2, 1, 1, 1)]
         sage: diagonal_asy(1/(1 - 2*x), output_format="tuple")
-        [(2, 1, 1, 1, 1)]
+        [(2, 1, 1, 1)]
 
     Passing ``"symbolic"`` lets the function return an element of the
     symbolic ring in the variable ``n`` that describes the asymptotic growth::
@@ -115,7 +115,7 @@ def diagonal_asy(F, r=None, linear_form=None, M=1, return_points=False, output_f
         INFO:sage_acsv:... Executed Kronecker in ... seconds.
         INFO:sage_acsv:... Executed Minimal Points in ... seconds.
         INFO:sage_acsv:... Executed Final Asymptotics in ... seconds.
-        [(4, 1/sqrt(n), 1/sqrt(pi), 1/2, 2)]
+        [(4, 1/sqrt(n), 1/sqrt(pi), 1)]
         sage: acsv_logger.setLevel(logging.WARNING)
 
 
@@ -236,11 +236,11 @@ def diagonal_asy(F, r=None, linear_form=None, M=1, return_points=False, output_f
     if output_format in (OutputFormat.TUPLE, OutputFormat.SYMBOLIC):
         n = SR.var('n')
         result = [
-            (base, n**exponent, pi**exponent, constant, expansion)
+            (base, n**exponent, pi**exponent, constant*expansion)
             for (base, exponent, constant, expansion) in asm_vals
         ]
         if output_format == OutputFormat.SYMBOLIC:
-            result = sum([a**n * b * c * d * e for (a, b, c, d, e) in result])
+            result = sum([a**n * b * c * d for (a, b, c, d) in result])
 
     elif output_format == OutputFormat.ASYMPTOTIC:
         from sage.all import AsymptoticRing
