@@ -317,7 +317,7 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, M):
 
     Hess = GetHessian(H, vs, r, cp)
     Hessinv = Hess.inverse()
-    v = matrix(W,[D[k] for k in range(d-1)])
+    v = matrix(W,[[D[k] for k in range(d-1)]])
     Epsilon = -(v * Hessinv.change_ring(W) * v.transpose())[0,0]
 
     # P and PsiTilde only need to be computed to order 2M
