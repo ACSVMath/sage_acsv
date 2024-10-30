@@ -113,6 +113,13 @@ def diagonal_asy(
         sage: growth.parent()
         Asymptotic Ring <SR^n * n^QQ * Arg_SR^n> over Symbolic Ring
 
+    Increasing the precision of the expansion returns an expansion with more terms
+    (works for all available output formats)::
+
+        sage: diagonal_asy(1/(1 - x - y), expansion_precision=3, output_format="asymptotic")
+        1/sqrt(pi)*4^n*n^(-1/2) - 1/8/sqrt(pi)*4^n*n^(-3/2) + 1/128/sqrt(pi)*4^n*n^(-5/2)
+        + O(4^n*n^(-7/2))
+
     The function times individual steps of the algorithm, timings can
     be displayed by increasing the printed verbosity level of our debug logger::
 
