@@ -252,7 +252,7 @@ def diagonal_asy(
     if output_format in (OutputFormat.TUPLE, OutputFormat.SYMBOLIC):
         n = SR.var('n')
         result = [
-            (base, n**exponent, pi**exponent, constant*expansion)
+            (base, n**exponent, pi**exponent, constant * expansion)
             for (base, exponent, constant, expansion) in asm_vals
         ]
         if output_format == OutputFormat.SYMBOLIC:
