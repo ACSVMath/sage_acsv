@@ -23,9 +23,9 @@ def diagonal_asy(F, r=None, linear_form=None, M=1, return_points=False, output_f
     * ``r`` -- A vector of length d of positive integers.
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions.
-    & ``M`` -- A positive integer value. This is the number of terms to compute in
-      the asymptotic expansion. The default value ``M = 1`` will only compute the
-      leading term.
+    * ``expansion_precision`` -- A positive integer value. This is the number of terms to
+      compute in the asymptotic expansion. Defaults to 1, which only computes the leading
+      term.
     * ``return_points`` -- If ``True``, also returns the coordinates of
       minimal critical points. By default ``False``.
     * ``output_format`` -- (Optional) A string or :class:`.OutputFormat` specifying
