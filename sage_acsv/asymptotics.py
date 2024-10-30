@@ -276,24 +276,27 @@ def diagonal_asy(
 
     return result
 
-def GeneralTermAsymptotics(G, H, r, vs, cp, M):
+def GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision):
     r"""
-    Compute general (not necessarily leading) terms of asymptotic expansion for a given critical
-    point of a combinatorial multivariate rational function.
+    Compute coefficients of general (not necessarily leading) terms of
+    the asymptotic expansion for a given critical
+    point of a rational combinatorial multivariate rational function.
 
     Typically, this function is called as a subroutine of :func:`.diagonal_asy`.
 
     INPUT:
 
-    * ``G, H`` -- Coprime polynomials with `F = G/H`
-    * ``vs`` -- Tuple of variables of ``G`` and ``H``
-    * ``r`` -- Length `d` vector of positive integers
-    * ``cp`` -- A minimal critical point of F
-    * ``M`` -- A positive integer representing the number of terms to compute in the expansion
+    * ``G, H`` -- Coprime polynomials with `F = G/H`.
+    * ``vs`` -- Tuple of variables occurring in `G` and `H`.
+    * ``r`` -- The direction. A length `d` vector of positive integers.
+    * ``cp`` -- A minimal critical point of `F` with coordinates specified in the
+      same order as in ``vs``.
+    * ``expansion_precision`` -- A positive integer value. This is the number of terms
+      for which to compute coefficients in the asymptotic expansion.
 
     OUTPUT:
 
-    List of constants ``C_j`` corresponding to the coefficients of the asymptotic expansion
+    List of coefficients of the asymptotic expansion.
     """
     
     # Convert everything to field of algebraic numbers
@@ -325,7 +328,7 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, M):
     Epsilon = -(v * Hessinv.change_ring(W) * v.transpose())[0,0]
 
     # P and PsiTilde only need to be computed to order 2M
-    N = 2 * M + 1
+    N = 2 * expansion_precision + 1
     
     # Find series expansion of function g given implicitly by 
     # H(w_1, ..., w_{d-1}, g(w_1, ..., w_{d-1})) = 0 up to needed order
@@ -353,16 +356,16 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, M):
         PSeries = PSeries.polynomial()
 
     # Precompute products used for asymptotics
-    EE = [Epsilon**k for k in range(3*M-2)]
-    PP = [PSeries] + [0 for k in range(2*M-2)]
-    for k in range(1,2*M-1):
+    EE = [Epsilon**k for k in range(3*expansion_precision-2)]
+    PP = [PSeries] + [0 for k in range(2*expansion_precision-2)]
+    for k in range(1,2*expansion_precision-1):
         PP[k] = PP[k-1]*PsiSeries
 
     # Function to compute constants appearing in asymptotic expansion
     def Clj(l,j):
         return (-1)**j*SR(eval_op(EE[l+j],PP[l]))/(2**(l+j)*factorial(l)*factorial(l+j))
 
-    return [sum([Clj(l,j) for l in range(2 * j + 1)]) for j in range(M)]
+    return [sum([Clj(l,j) for l in range(2 * j + 1)]) for j in range(expansion_precision)]
 
 def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None):
     r"""Compute minimal critical points of a combinatorial multivariate
