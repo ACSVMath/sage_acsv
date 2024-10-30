@@ -253,10 +253,11 @@ def diagonal_asy(
 
     elif output_format == OutputFormat.ASYMPTOTIC:
         from sage.all import AsymptoticRing
-        AR = AsymptoticRing('SR^n * n^QQ', SR)
+        SR_without_n = SR.subring(rejecting_variables=('n',))
+        AR = AsymptoticRing('SR^n * n^QQ', SR_without_n)
         n = AR.gen()
         result = sum([
-            base**n * n**exponent * pi**exponent * constant * (expansion + (n**(-M)).O())
+            constant * pi**exponent * base**n * n**exponent * (AR(expansion) + (n**(-expansion_precision)).O())
             for (base, exponent, constant, expansion) in asm_vals
         ])
 
