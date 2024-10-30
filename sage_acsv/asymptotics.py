@@ -2,17 +2,26 @@
 of multivariate rational functions.
 """
 
-from sage.all import AA, PolynomialRing, QQ, QQbar, SR, gcd, prod, pi
+from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra
+from sage.all import gcd, prod, pi, matrix, exp, log, I, factorial, srange
 
 from sage_acsv.kronecker import _kronecker_representation
-from sage_acsv.helpers import ACSVException, RationalFunctionReduce, DetHessianWithLog, OutputFormat
+from sage_acsv.helpers import ACSVException, NewtonSeries, RationalFunctionReduce, OutputFormat, GetHessian
 from sage_acsv.debug import Timer, acsv_logger
 
 
 MAX_MIN_CRIT_RETRIES = 3
 
 
-def diagonal_asy(F, r=None, linear_form=None, return_points=False, output_format=None, as_symbolic=False):
+def diagonal_asy(
+    F,
+    r=None,
+    linear_form=None,
+    expansion_precision=1,
+    return_points=False,
+    output_format=None,
+    as_symbolic=False
+):
     r"""Asymptotics in a given direction r of the multivariate rational function F.
 
     INPUT:
@@ -22,6 +31,9 @@ def diagonal_asy(F, r=None, linear_form=None, return_points=False, output_format
     * ``r`` -- A vector of length d of positive integers.
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions.
+    * ``expansion_precision`` -- A positive integer value. This is the number of terms to
+      compute in the asymptotic expansion. Defaults to 1, which only computes the leading
+      term.
     * ``return_points`` -- If ``True``, also returns the coordinates of
       minimal critical points. By default ``False``.
     * ``output_format`` -- (Optional) A string or :class:`.OutputFormat` specifying
@@ -101,6 +113,13 @@ def diagonal_asy(F, r=None, linear_form=None, return_points=False, output_format
         sage: growth.parent()
         Asymptotic Ring <SR^n * n^QQ * Arg_SR^n> over Symbolic Ring
 
+    Increasing the precision of the expansion returns an expansion with more terms
+    (works for all available output formats)::
+
+        sage: diagonal_asy(1/(1 - x - y), expansion_precision=3, output_format="asymptotic")
+        1/sqrt(pi)*4^n*n^(-1/2) - 1/8/sqrt(pi)*4^n*n^(-3/2) + 1/128/sqrt(pi)*4^n*n^(-5/2)
+        + O(4^n*n^(-7/2))
+
     The function times individual steps of the algorithm, timings can
     be displayed by increasing the printed verbosity level of our debug logger::
 
@@ -149,6 +168,7 @@ def diagonal_asy(F, r=None, linear_form=None, return_points=False, output_format
     all_variables = (vs, lambda_, t, u_)
     d = len(vs)
     rd = r[-1]
+    vd = vs[-1]
 
     # Make sure G and H are coprime, and that H does not vanish at 0
     G, H = RationalFunctionReduce(G, H)
@@ -179,34 +199,50 @@ def diagonal_asy(F, r=None, linear_form=None, return_points=False, output_format
         return
 
     timer = Timer()
+
     # Find det(zH_z Hess) where Hess is the Hessian of z_1...z_n * log(g(z_1, ..., z_n))
-    Det = DetHessianWithLog(H, vsT[0:-2], r)
+    Det = GetHessian(H, vsT[0:-2], r).determinant()
 
     # Find exponential growth
     T = prod([SR(vs[i])**r[i] for i in range(d)])
 
+
     # Find constants appearing in asymptotics in terms of original variables
-    A = SR(-G / vs[-1] / H.derivative(vs[-1]))
+    A = SR(-G / vd / H.derivative(vd))
     B = SR(1 / Det / rd**(d-1) / 2**(d-1))
     C = SR(1 / T)
 
     # Compute constants at contributing singularities
-    try:
-        asm_quantities = [
-            [QQbar(q.subs([SR(v) == V for (v, V) in zip(vs, cp)])) for q in [A, B, C]]
-            for cp in min_crit_pts
-        ]
-    except:
-        asm_quantities = [
-            [q.subs([SR(v) == V for (v, V) in zip(vs, cp)]) for q in [A, B, C]]
-            for cp in min_crit_pts
-        ]
+    n = SR.var('n')
+    asm_quantities = []
+    for cp in min_crit_pts:
+        subs_dict = {SR(v): V for (v, V) in zip(vs, cp)}
+        if expansion_precision == 1: 
+            # TODO: GeneralTermAsymptotics should return the expansion
+            # when passing a precision of 1
+            expansion = A.subs(subs_dict)
+            try:
+                expansion = QQbar(expansion)
+            except (ValueError, TypeError):
+                pass
+        else:
+            expansion = sum([
+                term / (rd * n)**(term_order)
+                for term_order, term in enumerate(
+                    GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision)
+                )
+            ])
+        B = B.subs(subs_dict)
+        C = C.subs(subs_dict)
+        try:
+            B = QQbar(B)
+            C = QQbar(C)
+        except (ValueError, TypeError):
+            pass
+        asm_quantities.append([expansion, B, C])
 
     n = SR.var('n')
-    asm_vals = [
-        (c, QQ(1 - d)/2, a * b.sqrt())
-        for (a, b, c) in asm_quantities
-    ]
+    asm_vals = [(c, QQ(1 - d)/2, b.sqrt(), a) for (a, b, c) in asm_quantities]
     timer.checkpoint("Final Asymptotics")
 
     if as_symbolic:
@@ -229,20 +265,20 @@ def diagonal_asy(F, r=None, linear_form=None, return_points=False, output_format
     if output_format in (OutputFormat.TUPLE, OutputFormat.SYMBOLIC):
         n = SR.var('n')
         result = [
-            (base, n**exponent, pi**exponent, constant)
-            for (base, exponent, constant) in asm_vals
+            (base, n**exponent, pi**exponent, constant * expansion)
+            for (base, exponent, constant, expansion) in asm_vals
         ]
         if output_format == OutputFormat.SYMBOLIC:
             result = sum([a**n * b * c * d for (a, b, c, d) in result])
 
     elif output_format == OutputFormat.ASYMPTOTIC:
         from sage.all import AsymptoticRing
-        AR = AsymptoticRing('SR^n * n^QQ', SR)
+        SR_without_n = SR.subring(rejecting_variables=('n',))
+        AR = AsymptoticRing('SR^n * n^QQ', SR_without_n)
         n = AR.gen()
         result = sum([
-            base**n * n**exponent * pi**exponent * constant 
-            + (base**n * n**(exponent - 1)).O()
-            for (base, exponent, constant) in asm_vals
+            constant * pi**exponent * base**n * n**exponent * (AR(expansion) + (n**(-expansion_precision)).O())
+            for (base, exponent, constant, expansion) in asm_vals
         ])
 
     else:
@@ -253,6 +289,115 @@ def diagonal_asy(F, r=None, linear_form=None, return_points=False, output_format
 
     return result
 
+def GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision):
+    r"""
+    Compute coefficients of general (not necessarily leading) terms of
+    the asymptotic expansion for a given critical
+    point of a rational combinatorial multivariate rational function.
+
+    Typically, this function is called as a subroutine of :func:`.diagonal_asy`.
+
+    INPUT:
+
+    * ``G, H`` -- Coprime polynomials with `F = G/H`.
+    * ``vs`` -- Tuple of variables occurring in `G` and `H`.
+    * ``r`` -- The direction. A length `d` vector of positive integers.
+    * ``cp`` -- A minimal critical point of `F` with coordinates specified in the
+      same order as in ``vs``.
+    * ``expansion_precision`` -- A positive integer value. This is the number of terms
+      for which to compute coefficients in the asymptotic expansion.
+
+    OUTPUT:
+
+    List of coefficients of the asymptotic expansion.
+
+    EXAMPLES::
+
+        sage: from sage_acsv import GeneralTermAsymptotics
+        sage: R.<x, y, z> = QQ[]
+        sage: GeneralTermAsymptotics(1, 1 - x - y, [1, 1], [x, y], [1/2, 1/2], 5)
+        [2, -1/4, 1/64, 5/512, -21/16384]
+        sage: GeneralTermAsymptotics(1, 1 - x - y - z, [1, 1, 1], [x, y, z], [1/3, 1/3, 1/3], 4)
+        [3, -2/3, 2/27, 14/729]
+    """
+    
+    # Convert everything to field of algebraic numbers
+    d = len(vs)
+    R = PolynomialRing(QQbar, vs)
+    vs = R.gens()
+    vd = vs[-1]
+    tvars = SR.var('t', d - 1)
+    G, H = R(SR(G)), R(SR(H))
+
+    cp = {v: V for (v, V) in zip(vs, cp)}
+
+    W = DifferentialWeylAlgebra(PolynomialRing(QQbar, tvars))
+    TR = QQbar[[tvars]]
+    T = TR.gens()
+    tvars = T
+    D = list(W.differentials())
+    
+    # Function to apply differential operator dop on function f
+    def eval_op(dop, f):
+        if len(f.parent().gens()) == 1:
+            return sum([
+                prod([factorial(k) for k in E[0][1]]) * E[1] * f[E[0][1][0]]
+                for E in dop
+            ])
+        else:
+            return sum([
+                prod([factorial(k) for k in E[0][1]]) * E[1] * f[E[0][1]]
+                for E in dop
+            ])
+
+    Hess = GetHessian(H, vs, r, cp)
+    Hessinv = Hess.inverse()
+    v = matrix(W, [D[:d-1]])
+    Epsilon = -(v * Hessinv.change_ring(W) * v.transpose())[0,0]
+
+    # P and PsiTilde only need to be computed to order 2M
+    N = 2 * expansion_precision + 1
+    
+    # Find series expansion of function g given implicitly by 
+    # H(w_1, ..., w_{d-1}, g(w_1, ..., w_{d-1})) = 0 up to needed order
+    g = NewtonSeries(H.subs({v: v + cp[v] for v in vs}), vs, N)
+    g = g.subs({v: v - cp[v] for v in vs}) + cp[vd]
+
+    # Polar change of coordinates
+    tsubs = {v: cp[v] * exp(I*t).add_bigoh(N) for v, t in zip(vs, tvars)}
+    tsubs[vd] = g.subs(tsubs)
+
+    # Compute PsiTilde up to needed order
+    psi = log(g.subs(tsubs) / g.subs(cp)).add_bigoh(N)
+    psi += I * sum([r[k]*tvars[k] for k in range(d-1)])/r[-1]
+    v = matrix(TR, [tvars[k] for k in range(d-1)])
+    psiTilde = psi - (v * Hess * v.transpose())[0, 0] / 2
+    PsiSeries = psiTilde.truncate(N)
+
+    # Compute series expansion of P = -G/(g*H_{z_d}) up to needed order
+    P_num = -G.subs(tsubs).add_bigoh(N)
+    P_denom = (g * H.derivative(vd)).subs(tsubs).add_bigoh(N)
+    PSeries = (P_num / P_denom).truncate(N)
+
+    if len(tvars) > 1:
+        PsiSeries = PsiSeries.polynomial()
+        PSeries = PSeries.polynomial()
+
+    # Precompute products used for asymptotics
+    EE = [Epsilon**k for k in range(3*expansion_precision - 2)]
+    PP = [PSeries]
+    for k in range(1,2*expansion_precision-1):
+        PP.append(PP[k-1] * PsiSeries)
+
+    # Function to compute constants appearing in asymptotic expansion
+    def constants_clj(ell, j):
+        extra_contrib = (-1)**j / (2**(ell + j) * factorial(ell) * factorial(ell + j))
+        return extra_contrib * SR(eval_op(EE[ell + j], PP[ell]))
+
+    return [
+        sum([constants_clj(ell, j) for ell in srange(2*j + 1)])
+        for j in srange(expansion_precision)
+    ]
 
 def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None):
     r"""Compute minimal critical points of a combinatorial multivariate
