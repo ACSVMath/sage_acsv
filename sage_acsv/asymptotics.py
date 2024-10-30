@@ -13,7 +13,15 @@ from sage_acsv.debug import Timer, acsv_logger
 MAX_MIN_CRIT_RETRIES = 3
 
 
-def diagonal_asy(F, r=None, linear_form=None, M=1, return_points=False, output_format=None, as_symbolic=False):
+def diagonal_asy(
+    F,
+    r=None,
+    linear_form=None,
+    expansion_precision=1,
+    return_points=False,
+    output_format=None,
+    as_symbolic=False
+):
     r"""Asymptotics in a given direction r of the multivariate rational function F.
 
     INPUT:
@@ -196,24 +204,25 @@ def diagonal_asy(F, r=None, linear_form=None, M=1, return_points=False, output_f
     C = SR(1 / T)
 
     # Compute constants at contributing singularities
-    asm_quantities = [
-        [GeneralTermAsymptotics(G, H, r, vs, cp, M)]
-            + [QQbar(q.subs([SR(v) == V for (v, V) in zip(vs, cp)])) for q in [B, C]]
-        for cp in min_crit_pts
-    ] if M > 1 else [
-        [[QQbar(A.subs([SR(v) == V for (v, V) in zip(vs, cp)]))]] + 
-            [QQbar(q.subs([SR(v) == V for (v, V) in zip(vs, cp)])) for q in [B, C]]
-        for cp in min_crit_pts
-    ]
+    n = SR.var('n')
+    asm_quantities = []
+    for cp in min_crit_pts:
+        subs_dict = {SR(v): V for (v, V) in zip(vs, cp)}
+        if expansion_precision == 1: 
+            # TODO: GeneralTermAsymptotics should return the expansion
+            # when passing a precision of 1
+            expansion = QQbar(A.subs(subs_dict))
+        else:
+            expansion = sum([
+                term / (rd * n)**(term_order)
+                for term_order, term in enumerate(
+                    GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision)
+                )
+            ])
+        asm_quantities.append([expansion, QQbar(B.subs(subs_dict)), QQbar(C.subs(subs_dict))])
 
     n = SR.var('n')
-    asm_vals = [
-        (c, QQ(1 - d)/2, b.sqrt(), add([a[j]/(rd*n)**j for j in range(M)]))
-        for (a, b, c) in asm_quantities
-    ] if M > 1 else [
-        (c, QQ(1 - d)/2, b.sqrt(), a[0])
-        for (a, b, c) in asm_quantities
-    ]
+    asm_vals = [(c, QQ(1 - d)/2, b.sqrt(), a) for (a, b, c) in asm_quantities]
     timer.checkpoint("Final Asymptotics")
 
     if as_symbolic:
