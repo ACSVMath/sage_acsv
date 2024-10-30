@@ -3,7 +3,7 @@ of multivariate rational functions.
 """
 
 from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra, Ideal
-from sage.all import gcd, prod, pi, matrix, exp, log, add, I, factorial
+from sage.all import gcd, prod, pi, matrix, exp, log, add, I, factorial, srange
 
 from sage_acsv.kronecker import _kronecker_representation
 from sage_acsv.helpers import ACSVException, NewtonSeries, RationalFunctionReduce, DetHessianWithLog, OutputFormat, GetHessian
@@ -297,6 +297,15 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision):
     OUTPUT:
 
     List of coefficients of the asymptotic expansion.
+
+    EXAMPLES::
+
+        sage: from sage_acsv import GeneralTermAsymptotics
+        sage: R.<x, y, z> = QQ[]
+        sage: GeneralTermAsymptotics(1, 1 - x - y, [1, 1], [x, y], [1/2, 1/2], 5)
+        [2, -1/4, 1/64, 5/512, -21/16384]
+        sage: GeneralTermAsymptotics(1, 1 - x - y - z, [1, 1, 1], [x, y, z], [1/3, 1/3, 1/3], 4)
+        [3, -2/3, 2/27, 14/729]
     """
     
     # Convert everything to field of algebraic numbers
@@ -304,7 +313,7 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision):
     R = PolynomialRing(QQbar, vs)
     vs = R.gens()
     vd = vs[-1]
-    tvars = tuple(SR.var('t%d'%i) for i in range(d-1))
+    tvars = SR.var('t', d - 1)
     G, H = R(SR(G)), R(SR(H))
 
     cp = {v: V for (v, V) in zip(vs, cp)}
@@ -318,13 +327,19 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision):
     # Function to apply differential operator dop on function f
     def eval_op(dop, f):
         if len(f.parent().gens()) == 1:
-            return add([prod([factorial(k) for k in E[0][1]])*E[1]*f[E[0][1][0]] for E in dop])
+            return sum([
+                prod([factorial(k) for k in E[0][1]]) * E[1] * f[E[0][1][0]]
+                for E in dop
+            ])
         else:
-            return add([prod([factorial(k) for k in E[0][1]])*E[1]*f[(v for v in E[0][1])] for E in dop])
+            return sum([
+                prod([factorial(k) for k in E[0][1]]) * E[1] * f[E[0][1]]
+                for E in dop
+            ])
 
     Hess = GetHessian(H, vs, r, cp)
     Hessinv = Hess.inverse()
-    v = matrix(W,[[D[k] for k in range(d-1)]])
+    v = matrix(W, [D[:d-1]])
     Epsilon = -(v * Hessinv.change_ring(W) * v.transpose())[0,0]
 
     # P and PsiTilde only need to be computed to order 2M
@@ -332,40 +347,44 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision):
     
     # Find series expansion of function g given implicitly by 
     # H(w_1, ..., w_{d-1}, g(w_1, ..., w_{d-1})) = 0 up to needed order
-    g = NewtonSeries(H.subs({v:v+v.subs(cp) for v in vs}), vs, N)
-    g = g.subs({v:v-v.subs(cp) for v in vs}) + vd.subs(cp)
+    g = NewtonSeries(H.subs({v: v + cp[v] for v in vs}), vs, N)
+    g = g.subs({v: v - cp[v] for v in vs}) + cp[vd]
 
     # Polar change of coordinates
-    tsubs = {v : v.subs(cp)*exp(I*t).add_bigoh(N) for [v,t] in zip(vs,tvars)}
+    tsubs = {v: cp[v] * exp(I*t).add_bigoh(N) for v, t in zip(vs, tvars)}
     tsubs[vd] = g.subs(tsubs)
 
     # Compute PsiTilde up to needed order
-    psi = log(g.subs(tsubs)/g.subs(cp)).add_bigoh(N)
-    psi += I * add([r[k]*tvars[k] for k in range(d-1)])/r[-1]
-    v = matrix(TR,[tvars[k] for k in range(d-1)])
-    psiTilde = psi - (v * Hess * v.transpose())[0,0]/2
+    psi = log(g.subs(tsubs) / g.subs(cp)).add_bigoh(N)
+    psi += I * sum([r[k]*tvars[k] for k in range(d-1)])/r[-1]
+    v = matrix(TR, [tvars[k] for k in range(d-1)])
+    psiTilde = psi - (v * Hess * v.transpose())[0,0] / 2
     PsiSeries = psiTilde.truncate(N)
 
     # Compute series expansion of P = -G/(g*H_{z_d}) up to needed order
     P_num = -G.subs(tsubs).add_bigoh(N)
-    P_denom = (g*H.derivative(vd)).subs(tsubs).add_bigoh(N)
-    PSeries = (P_num/P_denom).truncate(N)
+    P_denom = (g * H.derivative(vd)).subs(tsubs).add_bigoh(N)
+    PSeries = (P_num / P_denom).truncate(N)
 
     if len(tvars) > 1:
         PsiSeries = PsiSeries.polynomial()
         PSeries = PSeries.polynomial()
 
     # Precompute products used for asymptotics
-    EE = [Epsilon**k for k in range(3*expansion_precision-2)]
-    PP = [PSeries] + [0 for k in range(2*expansion_precision-2)]
+    EE = [Epsilon**k for k in range(3*expansion_precision - 2)]
+    PP = [PSeries]
     for k in range(1,2*expansion_precision-1):
-        PP[k] = PP[k-1]*PsiSeries
+        PP.append(PP[k-1] * PsiSeries)
 
     # Function to compute constants appearing in asymptotic expansion
-    def Clj(l,j):
-        return (-1)**j*SR(eval_op(EE[l+j],PP[l]))/(2**(l+j)*factorial(l)*factorial(l+j))
+    def constants_clj(ell, j):
+        extra_contrib = (-1)**j / (2**(ell + j) * factorial(ell) * factorial(ell + j))
+        return extra_contrib * SR(eval_op(EE[ell+j],PP[ell]))
 
-    return [sum([Clj(l,j) for l in range(2 * j + 1)]) for j in range(expansion_precision)]
+    return [
+        sum([constants_clj(ell, j) for ell in srange(2*j + 1)])
+        for j in srange(expansion_precision)
+    ]
 
 def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None):
     r"""Compute minimal critical points of a combinatorial multivariate
