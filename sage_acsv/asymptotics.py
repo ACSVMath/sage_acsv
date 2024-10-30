@@ -2,10 +2,10 @@
 of multivariate rational functions.
 """
 
-from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra
-from sage.all import gcd, prod, pi, matrix, exp, log, I, factorial, srange
+from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra, RIF, RealIntervalField
+from sage.all import gcd, prod, pi, matrix, exp, log, I, factorial, srange, xgcd
 
-from sage_acsv.kronecker import _kronecker_representation
+from sage_acsv.kronecker import _kronecker_representation, _msolve_kronecker_representation
 from sage_acsv.helpers import ACSVException, NewtonSeries, RationalFunctionReduce, OutputFormat, GetHessian
 from sage_acsv.debug import Timer, acsv_logger
 
@@ -20,7 +20,8 @@ def diagonal_asy(
     expansion_precision=1,
     return_points=False,
     output_format=None,
-    as_symbolic=False
+    as_symbolic=False,
+    use_msolve=False,
 ):
     r"""Asymptotics in a given direction r of the multivariate rational function F.
 
@@ -181,7 +182,8 @@ def diagonal_asy(
             min_crit_pts = MinimalCriticalCombinatorial(
                 G, H, all_variables,
                 r=r,
-                linear_form=linear_form
+                linear_form=linear_form,
+                use_msolve=use_msolve
             )
             break
         except Exception as e:
@@ -386,7 +388,7 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision):
         for j in srange(expansion_precision)
     ]
 
-def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None):
+def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, use_msolve=False):
     r"""Compute minimal critical points of a combinatorial multivariate
     rational function F=G/H admitting a finite number of critical points.
 
@@ -445,7 +447,9 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None):
 
     # Compute the Kronecker representation of our system
     timer.checkpoint()
-    P, Qs = _kronecker_representation(system, u_, vsT, lambda_, linear_form)
+
+    P, Qs = _msolve_kronecker_representation(system, u_, vsT) if use_msolve else \
+        _kronecker_representation(system, u_, vsT, lambda_, linear_form)
     timer.checkpoint("Kronecker")
 
     Qt = Qs[-2]  # Qs ordering is H.variables() + [t, lambda_]
@@ -454,31 +458,70 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None):
     # Solutions to Pt are solutions to the system where t is not 1
     one_minus_t = gcd(Pd - Qt, P)
     Pt, _ = P.quo_rem(one_minus_t)
-    rts_t_zo = list(
+    Ptd = Pt.derivative()
+    _, invPtd, _ = xgcd(Pd, Pt)
+    Qts = [(Q*Ptd*invPtd).quo_rem(Pt)[1] for Q in Qs]
+    Qt = Qts[-2]
+    
+    rts_t_zo = list()
+    for k in Pt.roots(AA, multiplicities=False):
+        num = Qt.subs(u_=k); RIF(num)
+        denom = Ptd.subs(u_=k); RIF(denom)
+        vt = num/denom
+        if vt > 0 and vt < 1:
+            rts_t_zo.append(k)
+
+    non_min = [[(q/Ptd).subs(u_=u) for q in Qts[0:-2]] for u in rts_t_zo]
+
+    # Change the equations to only deal with t=1 solutions
+    newP = one_minus_t
+    newPd = one_minus_t.derivative()
+    _, invPd, _ = xgcd(Pd, newP)
+    Qs = [(Q*newPd*invPd).quo_rem(newP)[1] for Q in Qs]
+    P = newP
+    Pd = newPd
+    #iv = IntervalOperator(P, Qs, u_)
+
+    pos_minimals = list(
         filter(
-            lambda k: (Qt/Pd).subs(u_=k) > 0 and (Qt/Pd).subs(u_=k) < 1,
-            Pt.roots(AA, multiplicities=False)
+            lambda v: all([k > 0 for k in v[:-2]]),
+            list([(q/Pd).subs(u_=u) for q in Qs] for u in one_minus_t.roots(AA, multiplicities=False))
         )
     )
-    non_min = [[(q/Pd).subs(u_=u) for q in Qs[0:-2]] for u in rts_t_zo]
 
     # Filter the real roots for minimal points with positive coords
-    pos_minimals = []
-    for u in one_minus_t.roots(AA, multiplicities=False):
-        is_min = True
-        v = [(q/Pd).subs(u_=u) for q in Qs[0:-2]]
-        if any([k <= 0 for k in v]):
-            continue
-        for pt in non_min:
-            if all([a == b for (a, b) in zip(v, pt)]):
-                is_min = False
-                break
-        if is_min:
-            pos_minimals.append(u)
+    prec_bound = 3 * P.degree()**3 * max([max([abs(x) for x in F.coefficients()]) for F in [P, Pd] + Qs])
+    PrecisionField = RIF
+    prec = PrecisionField.precision()
+    non_min_idx = set()
+    for pt in non_min:
+        idx = range(len(pos_minimals))
+        while len(idx) > 1:
+            if (prec > prec_bound):
+                raise ACSVException(
+                    "Non-minimal point associated with multiple minimal candidates. This should never happen. " + \
+                    "If you are seeing this error, something has gone horribly wrong."
+                )
+
+            idx = list(
+                filter(
+                    lambda i: all(
+                        [(PrecisionField(v) - PrecisionField(w)).contains_zero() for (v, w) in zip(pos_minimals[i], pt)]
+                    ),
+                    idx
+                )
+            )
+            prec *= 2
+            PrecisionField = RealIntervalField(prec)
+
+        if len(idx) > 0:
+            non_min_idx.add(idx[0])
+
+    pos_minimals = [pos_minimals[i] for i in range(len(pos_minimals)) if i not in non_min_idx]
 
     # Remove non-smooth points and points with zero coordinates (where lambda=0)
     for i in range(len(pos_minimals)):
-        x = (Qs[-1]/Pd).subs(u_=pos_minimals[i])
+        x = pos_minimals[i][-1]
         if x == 0:
             acsv_logger.warning(
                 f"Removing critical point {pos_minimals[i]} because it either "
@@ -490,12 +533,13 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None):
     if len(pos_minimals) == 0:
         raise ACSVException("No smooth minimal critical points found.")
     elif len(pos_minimals) > 1:
+        print(pos_minimals)
         raise ACSVException(
             "More than one minimal point with positive real coordinates found."
         )
 
     # Find all minimal critical points
-    minCP = [(q/Pd).subs(u_=pos_minimals[0]) for q in Qs[0:-2]]
+    minCP = pos_minimals[0][:-2]
     minimals = []
 
     for u in one_minus_t.roots(QQbar, multiplicities=False):
