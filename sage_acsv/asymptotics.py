@@ -358,7 +358,7 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision):
     psi = log(g.subs(tsubs) / g.subs(cp)).add_bigoh(N)
     psi += I * sum([r[k]*tvars[k] for k in range(d-1)])/r[-1]
     v = matrix(TR, [tvars[k] for k in range(d-1)])
-    psiTilde = psi - (v * Hess * v.transpose())[0,0] / 2
+    psiTilde = psi - (v * Hess * v.transpose())[0, 0] / 2
     PsiSeries = psiTilde.truncate(N)
 
     # Compute series expansion of P = -G/(g*H_{z_d}) up to needed order
@@ -379,7 +379,7 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision):
     # Function to compute constants appearing in asymptotic expansion
     def constants_clj(ell, j):
         extra_contrib = (-1)**j / (2**(ell + j) * factorial(ell) * factorial(ell + j))
-        return extra_contrib * SR(eval_op(EE[ell+j],PP[ell]))
+        return extra_contrib * SR(eval_op(EE[ell + j], PP[ell]))
 
     return [
         sum([constants_clj(ell, j) for ell in srange(2*j + 1)])
