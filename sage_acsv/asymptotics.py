@@ -2,17 +2,18 @@
 of multivariate rational functions.
 """
 
-from sage.all import AA, PolynomialRing, QQ, QQbar, SR, gcd, prod, pi
+from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra, RealIntervalField, RIF
+from sage.all import gcd, prod, pi, matrix, exp, log, add, I, factorial, xgcd, lcm
 
-from sage_acsv.kronecker import _kronecker_representation
-from sage_acsv.helpers import ACSVException, RationalFunctionReduce, DetHessianWithLog, OutputFormat
+from sage_acsv.kronecker import _kronecker_representation, _msolve_kronecker_representation
+from sage_acsv.helpers import ACSVException, NewtonSeries, RationalFunctionReduce, DetHessianWithLog, OutputFormat, GetHessian
 from sage_acsv.debug import Timer, acsv_logger
 
 
 MAX_MIN_CRIT_RETRIES = 3
 
 
-def diagonal_asy(F, r=None, linear_form=None, return_points=False, output_format=None, as_symbolic=False):
+def diagonal_asy(F, r=None, linear_form=None, M=1, return_points=False, output_format=None, as_symbolic=False, use_msolve=False):
     r"""Asymptotics in a given direction r of the multivariate rational function F.
 
     INPUT:
@@ -22,6 +23,9 @@ def diagonal_asy(F, r=None, linear_form=None, return_points=False, output_format
     * ``r`` -- A vector of length d of positive integers.
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions.
+    & ``M`` -- A positive integer value. This is the number of terms to compute in
+      the asymptotic expansion. The default value ``M = 1`` will only compute the
+      leading term.
     * ``return_points`` -- If ``True``, also returns the coordinates of
       minimal critical points. By default ``False``.
     * ``output_format`` -- (Optional) A string or :class:`.OutputFormat` specifying
@@ -134,6 +138,8 @@ def diagonal_asy(F, r=None, linear_form=None, return_points=False, output_format
         n = len(H.variables())
         r = [1 for _ in range(n)]
 
+    r = [AA(ri) for ri in r]
+
     # Initialize variables
     vs = list(H.variables())
 
@@ -147,6 +153,7 @@ def diagonal_asy(F, r=None, linear_form=None, return_points=False, output_format
     all_variables = (vs, lambda_, t, u_)
     d = len(vs)
     rd = r[-1]
+    vd = vs[-1]
 
     # Make sure G and H are coprime, and that H does not vanish at 0
     G, H = RationalFunctionReduce(G, H)
@@ -161,7 +168,8 @@ def diagonal_asy(F, r=None, linear_form=None, return_points=False, output_format
             min_crit_pts = MinimalCriticalCombinatorial(
                 G, H, all_variables,
                 r=r,
-                linear_form=linear_form
+                linear_form=linear_form,
+                use_msolve=use_msolve
             )
             break
         except Exception as e:
@@ -177,25 +185,46 @@ def diagonal_asy(F, r=None, linear_form=None, return_points=False, output_format
         return
 
     timer = Timer()
+
     # Find det(zH_z Hess) where Hess is the Hessian of z_1...z_n * log(g(z_1, ..., z_n))
     Det = DetHessianWithLog(H, vsT[0:-2], r)
 
     # Find exponential growth
-    T = prod([vs[i]**r[i] for i in range(d)])
+    T = prod([SR(vs[i])**r[i] for i in range(d)])
+
 
     # Find constants appearing in asymptotics in terms of original variables
-    A = SR(-G / vs[-1] / H.derivative(vs[-1]))
+    A = SR(-G / vd / H.derivative(vd))
     B = SR(1 / Det / rd**(d-1) / 2**(d-1))
     C = SR(1 / T)
 
-    # Compute constants at contributing singularities
-    asm_quantities = [
-        [QQbar(q.subs([SR(v) == V for (v, V) in zip(vs, cp)])) for q in [A, B, C]]
-        for cp in min_crit_pts
-    ]
+    try:
+        asm_quantities = [
+            [GeneralTermAsymptotics(G, H, r, vs, cp, M)]
+                + [QQbar(q.subs([SR(v) == V for (v, V) in zip(vs, cp)])) for q in [B, C]]
+            for cp in min_crit_pts
+        ] if M > 1 else [
+            [[QQbar(A.subs([SR(v) == V for (v, V) in zip(vs, cp)]))]] + 
+                [QQbar(q.subs([SR(v) == V for (v, V) in zip(vs, cp)])) for q in [B, C]]
+            for cp in min_crit_pts
+        ]
+    except:
+        asm_quantities = [
+            [GeneralTermAsymptotics(G, H, r, vs, cp, M)]
+                + [q.subs([SR(v) == V for (v, V) in zip(vs, cp)]) for q in [B, C]]
+            for cp in min_crit_pts
+        ] if M > 1 else [
+            [[QQbar(A.subs([SR(v) == V for (v, V) in zip(vs, cp)]))]] + 
+                [q.subs([SR(v) == V for (v, V) in zip(vs, cp)]) for q in [B, C]]
+            for cp in min_crit_pts
+        ]
+
     n = SR.var('n')
     asm_vals = [
-        (c, QQ(1 - d)/2, a * b.sqrt())
+        (c, QQ(1 - d)/2, b.sqrt(), add([a[j]/(rd*n)**j for j in range(M)]))
+        for (a, b, c) in asm_quantities
+    ] if M > 1 else [
+        (c, QQ(1 - d)/2, b.sqrt(), a[0])
         for (a, b, c) in asm_quantities
     ]
     timer.checkpoint("Final Asymptotics")
@@ -220,8 +249,8 @@ def diagonal_asy(F, r=None, linear_form=None, return_points=False, output_format
     if output_format in (OutputFormat.TUPLE, OutputFormat.SYMBOLIC):
         n = SR.var('n')
         result = [
-            (base, n**exponent, pi**exponent, constant)
-            for (base, exponent, constant) in asm_vals
+            (base, n**exponent, pi**exponent, constant*expansion)
+            for (base, exponent, constant, expansion) in asm_vals
         ]
         if output_format == OutputFormat.SYMBOLIC:
             result = sum([a**n * b * c * d for (a, b, c, d) in result])
@@ -231,9 +260,8 @@ def diagonal_asy(F, r=None, linear_form=None, return_points=False, output_format
         AR = AsymptoticRing('SR^n * n^QQ', SR)
         n = AR.gen()
         result = sum([
-            base**n * n**exponent * pi**exponent * constant 
-            + (base**n * n**(exponent - 1)).O()
-            for (base, exponent, constant) in asm_vals
+            base**n * n**exponent * pi**exponent * constant * (expansion + (n**(-M)).O())
+            for (base, exponent, constant, expansion) in asm_vals
         ])
 
     else:
@@ -244,8 +272,95 @@ def diagonal_asy(F, r=None, linear_form=None, return_points=False, output_format
 
     return result
 
+def GeneralTermAsymptotics(G, H, r, vs, cp, M):
+    r"""
+    Compute general (not necessarily leading) terms of asymptotic expansion for a given critical
+    point of a combinatorial multivariate rational function.
 
-def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None):
+    Typically, this function is called as a subroutine of :func:`.diagonal_asy`.
+
+    INPUT:
+
+    * ``G, H`` -- Coprime polynomials with `F = G/H`
+    * ``vs`` -- Tuple of variables of ``G`` and ``H``
+    * ``r`` -- Length `d` vector of positive integers
+    * ``cp`` -- A minimal critical point of F
+    * ``M`` -- A positive integer representing the number of terms to compute in the expansion
+
+    OUTPUT:
+
+    List of constants ``C_j`` corresponding to the coefficients of the asymptotic expansion
+    """
+    
+    # Convert everything to field of algebraic numbers
+    d = len(vs)
+    R = PolynomialRing(QQbar, vs)
+    vs = R.gens()
+    vd = vs[-1]
+    tvars = tuple(SR.var('t%d'%i) for i in range(d-1))
+    G, H = R(SR(G)), R(SR(H))
+
+    cp = {v: V for (v, V) in zip(vs, cp)}
+
+    W = DifferentialWeylAlgebra(PolynomialRing(QQbar, tvars))
+    TR = QQbar[[tvars]]
+    T = TR.gens()
+    tvars = T
+    D = list(W.differentials())
+    
+    # Function to apply differential operator dop on function f
+    def eval_op(dop, f):
+        if len(f.parent().gens()) == 1:
+            return add([prod([factorial(k) for k in E[0][1]])*E[1]*f[E[0][1][0]] for E in dop])
+        else:
+            return add([prod([factorial(k) for k in E[0][1]])*E[1]*f[(v for v in E[0][1])] for E in dop])
+
+    Hess = GetHessian(H, vs, r, cp)
+    Hessinv = Hess.inverse()
+    v = matrix(W,[[D[k] for k in range(d-1)]])
+    Epsilon = -(v * Hessinv.change_ring(W) * v.transpose())[0,0]
+
+    # P and PsiTilde only need to be computed to order 2M
+    N = 2 * M + 1
+    
+    # Find series expansion of function g given implicitly by 
+    # H(w_1, ..., w_{d-1}, g(w_1, ..., w_{d-1})) = 0 up to needed order
+    g = NewtonSeries(H.subs({v:v+v.subs(cp) for v in vs}), vs, N)
+    g = g.subs({v:v-v.subs(cp) for v in vs}) + vd.subs(cp)
+
+    # Polar change of coordinates
+    tsubs = {v : v.subs(cp)*exp(I*t).add_bigoh(N) for [v,t] in zip(vs,tvars)}
+    tsubs[vd] = g.subs(tsubs)
+
+    # Compute PsiTilde up to needed order
+    psi = log(g.subs(tsubs)/g.subs(cp)).add_bigoh(N)
+    psi += I * add([r[k]*tvars[k] for k in range(d-1)])/r[-1]
+    v = matrix(TR,[tvars[k] for k in range(d-1)])
+    psiTilde = psi - (v * Hess * v.transpose())[0,0]/2
+    PsiSeries = psiTilde.truncate(N)
+
+    # Compute series expansion of P = -G/(g*H_{z_d}) up to needed order
+    P_num = -G.subs(tsubs).add_bigoh(N)
+    P_denom = (g*H.derivative(vd)).subs(tsubs).add_bigoh(N)
+    PSeries = (P_num/P_denom).truncate(N)
+
+    if len(tvars) > 1:
+        PsiSeries = PsiSeries.polynomial()
+        PSeries = PSeries.polynomial()
+
+    # Precompute products used for asymptotics
+    EE = [Epsilon**k for k in range(3*M-2)]
+    PP = [PSeries] + [0 for k in range(2*M-2)]
+    for k in range(1,2*M-1):
+        PP[k] = PP[k-1]*PsiSeries
+
+    # Function to compute constants appearing in asymptotic expansion
+    def Clj(l,j):
+        return (-1)**j*SR(eval_op(EE[l+j],PP[l]))/(2**(l+j)*factorial(l)*factorial(l+j))
+
+    return [sum([Clj(l,j) for l in range(2 * j + 1)]) for j in range(M)]
+
+def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, use_msolve=False):
     r"""Compute minimal critical points of a combinatorial multivariate
     rational function F=G/H admitting a finite number of critical points.
 
@@ -295,49 +410,122 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None):
     if r is None:
         r = [1 for i in range(len(vs))]
 
+    # Make copy of r so they don't get mutated outside of function
+    r = list(r)
+
+    # Replace irrational r with variable ri, add min poly to system
+    ri_to_val = {}
+    rvars = []
+    for i, var in enumerate(r):
+        if (AA(var).minpoly().degree() > 1):
+            ri = SR.var('r%s'%i)
+            r[i] = ri
+            rvars.append(ri)
+            ri_to_val[ri] = AA(var)
+
+    expanded_R = PolynomialRing(QQ, len(vsT) + len(rvars) + 1, vs + rvars + [t, lambda_, u_])
+    vs = [expanded_R(v) for v in vs]
+    t, lambda_, u_ = expanded_R(t), expanded_R(lambda_), expanded_R(u_)
+    G, H = expanded_R(G), expanded_R(H)
+
+    rvars = [expanded_R(ri) for ri in rvars]
+    ri_to_val = {expanded_R(ri):val for (ri, val) in ri_to_val.items()}
+    r = [expanded_R(ri) for ri in r]
+
+    vsT = vs + rvars + [t, lambda_]
+
     # Create the critical point equations system
     vsH = H.variables()
     system = [
-        vsH[i]*H.derivative(vsH[i]) - r[i]*lambda_
+        vsH[i]*H.derivative(vsH[i]) - expanded_R(r[i])*lambda_
         for i in range(len(vsH))
     ] + [H, H.subs({z: z*t for z in vsH})]
 
+    for ri in rvars:
+        mp = ri_to_val[ri].minpoly().subs(ri)
+        l = lcm([x.denominator() for x in mp.coefficients()])
+        system.append(l * ri_to_val[ri].minpoly().subs(ri))
+
     # Compute the Kronecker representation of our system
     timer.checkpoint()
-    P, Qs = _kronecker_representation(system, u_, vsT, lambda_, linear_form)
+
+    P, Qs = _msolve_kronecker_representation(system, u_, vsT) if use_msolve else \
+        _kronecker_representation(system, u_, vsT, lambda_, linear_form)
     timer.checkpoint("Kronecker")
 
-    Qt = Qs[-2]  # Qs ordering is H.variables() + [t, lambda_]
+    Qt = Qs[-2]  # Qs ordering is H.variables() + rvars + [t, lambda_]
     Pd = P.derivative()
 
     # Solutions to Pt are solutions to the system where t is not 1
     one_minus_t = gcd(Pd - Qt, P)
     Pt, _ = P.quo_rem(one_minus_t)
-    rts_t_zo = list(
+    Ptd = Pt.derivative()
+    _, invPtd, _ = xgcd(Pd, Pt)
+    Qts = [(Q*Ptd*invPtd).quo_rem(Pt)[1] for Q in Qs]
+    Qt = Qts[-2]
+    
+    rts_t_zo = list()
+    for k in Pt.roots(AA, multiplicities=False):
+        num = Qt.subs(u_=k); RIF(num)
+        denom = Ptd.subs(u_=k); RIF(denom)
+        vt = num/denom
+        if vt > 0 and vt < 1:
+            rts_t_zo.append(k)
+
+    non_min = [[(q/Ptd).subs(u_=u) for q in Qts[0:-2]] for u in rts_t_zo]
+
+    # Change the equations to only deal with t=1 solutions
+    newP = one_minus_t
+    newPd = one_minus_t.derivative()
+    _, invPd, _ = xgcd(Pd, newP)
+    Qs = [(Q*newPd*invPd).quo_rem(newP)[1] for Q in Qs]
+    P = newP
+    Pd = newPd
+    #iv = IntervalOperator(P, Qs, u_)
+
+    pos_minimals = list(
         filter(
-            lambda k: (Qt/Pd).subs(u_=k) > 0 and (Qt/Pd).subs(u_=k) < 1,
-            Pt.roots(AA, multiplicities=False)
+            lambda v: all([k > 0 for k in v[:-2]]) and \
+                      all([rval == ri_to_val[ri] for (ri, rval) in zip(rvars, v[len(vs):-2])]),
+            list([(q/Pd).subs(u_=u) for q in Qs] for u in one_minus_t.roots(AA, multiplicities=False))
         )
     )
-    non_min = [[(q/Pd).subs(u_=u) for q in Qs[0:-2]] for u in rts_t_zo]
 
     # Filter the real roots for minimal points with positive coords
-    pos_minimals = []
-    for u in one_minus_t.roots(AA, multiplicities=False):
-        is_min = True
-        v = [(q/Pd).subs(u_=u) for q in Qs[0:-2]]
-        if any([k <= 0 for k in v]):
+    prec_bound = 3 * P.degree()**3 * max([max([abs(x) for x in F.coefficients()]) for F in [P, Pd] + Qs])
+    PrecisionField = RIF
+    prec = PrecisionField.precision()
+    non_min_idx = set()
+    for pt in non_min:
+        if any([v<0 for v in pt]):
             continue
-        for pt in non_min:
-            if all([a == b for (a, b) in zip(v, pt)]):
-                is_min = False
-                break
-        if is_min:
-            pos_minimals.append(u)
+        idx = range(len(pos_minimals))
+        while len(idx) > 1:
+            if (prec > prec_bound):
+                raise ACSVException(
+                    "Non-minimal point associated with multiple minimal candidates. This should never happen. " + \
+                    "If you are seeing this error, something has gone horribly wrong."
+                )
+
+            idx = list(
+                filter(
+                    lambda i: all(
+                        [(PrecisionField(v) - PrecisionField(w)).contains_zero() for (v, w) in zip(pos_minimals[i], pt)]
+                    ),
+                    idx
+                )
+            )
+            prec *= 2
+            PrecisionField = RealIntervalField(prec)
+
+        if len(idx) > 0:
+            non_min_idx.add(idx[0])
+
+    pos_minimals = [pos_minimals[i] for i in range(len(pos_minimals)) if i not in non_min_idx]
 
     # Remove non-smooth points and points with zero coordinates (where lambda=0)
     for i in range(len(pos_minimals)):
-        x = (Qs[-1]/Pd).subs(u_=pos_minimals[i])
+        x = pos_minimals[i][-1]
         if x == 0:
             acsv_logger.warning(
                 f"Removing critical point {pos_minimals[i]} because it either "
@@ -349,22 +537,26 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None):
     if len(pos_minimals) == 0:
         raise ACSVException("No smooth minimal critical points found.")
     elif len(pos_minimals) > 1:
+        print(pos_minimals)
         raise ACSVException(
             "More than one minimal point with positive real coordinates found."
         )
 
     # Find all minimal critical points
-    minCP = [(q/Pd).subs(u_=pos_minimals[0]) for q in Qs[0:-2]]
+    minCP = pos_minimals[0][:-2]
     minimals = []
 
     for u in one_minus_t.roots(QQbar, multiplicities=False):
         v = [(q/Pd).subs(u_=u) for q in Qs[0:-2]]
+        rv = {ri : (q/Pd).subs(u_=u) for (ri, q) in zip(rvars, Qs[len(vs):-2])}
+        if (any([rv[ri] != ri_to_val[ri] for ri in rvars])):
+            continue
         if all([a.abs() == b.abs() for (a, b) in zip(minCP, v)]):
             minimals.append(u)
 
     # Get minimal point coords, and make exact if possible
-    minimal_coords = [[(q/Pd).subs(u_=u) for q in Qs[0:-2]] for u in minimals]
+    minimal_coords = [[(q/Pd).subs(u_=u) for q in Qs[0:-2-len(rvars)]] for u in minimals]
     [[a.exactify() for a in b] for b in minimal_coords]
 
     timer.checkpoint("Minimal Points")
-    return [[(q/Pd).subs(u_=u) for q in Qs[0:-2]] for u in minimals]
+    return [[(q/Pd).subs(u_=u) for q in Qs[0:-2-len(rvars)]] for u in minimals]
