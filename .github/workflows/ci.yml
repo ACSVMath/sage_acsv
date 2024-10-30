@@ -10,10 +10,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - sagelib: "9.6"
-          - sagelib: "9.7"
-          - sagelib: "9.8"
           - sagelib: "10.0"
+          - sagelib: "10.1"
+          - sagelib: "10.2"
+          - sagelib: "10.3"
+          - sagelib: "10.4"
     steps:
       - uses: actions/checkout@v2
         with: { submodules: recursive }
