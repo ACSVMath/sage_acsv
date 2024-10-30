@@ -124,35 +124,37 @@ def GetHessian(H, variables, r, critical_point=None):
         hessian = hessian.subs(critical_point)
     return hessian
 
-    r"""Computes the determinant of `z_d H_{z_d} Hess`, where `Hess` is
-    the Hessian of a given map.
+def NewtonSeries(phi, variables, series_precision):
+    r"""Computes the series expansion of an implicitly defined function.
 
-    The map underlying `Hess` is defined as
-    `(z_1, \ldots, z_{d-1}) \mapsto z_1 \cdots z_{d-1} \log(g(z_1, \ldots, z_{d-1}))`,
-    with `g` defined from IFT via `H(z_a1,...,z_{d-1},g(z_1,...,z_{d-1}))` at
-    a critical point in direction `r`.
+    The function `g(x)` for which a series expansion is computed satisfies
 
+    .. math::
+
+        \Phi(x, g(x)) = 0
+    
     INPUT:
 
-    * ``H`` -- a polynomial (the denominator of the rational GF `F` in ACSV)
-    * ``vs`` -- list of variables ``z_1, ..., z_d``
-    * ``r`` -- direction vector of length `d` with positive integers
+    * ``phi`` -- A polynomial; the equation defining the function that is expanded.
+    * ``variables`` -- A list of variables in the equation. The last variable in this
+      list is the variable corresponding to `g(x)`.
+    * ``series_precision`` -- A positive integer, the precision of the series expansion.
 
     OUTPUT:
 
-    The determinant as a rational function in the variables ``vs``.
-    """
-    # Return determinant
-    Hess = GetHessian(H, vs, r)
-    return matrix(Hess).determinant()
+    A series expansion of the function `g(x)`.
 
-def NewtonSeries(Phi, vs, N):
-    """
-    Computes series expansion approximation of g defined implicitly by Phi(x,g(x)) = 0
+    EXAMPLES::
+
+        sage: from sage_acsv.helpers import NewtonSeries
+        sage: R.<x, T> = QQ[]
+        sage: NewtonSeries(x*T^2 - T + 1, [x, T], 7)
+        132*x^6 + 42*x^5 + 14*x^4 + 5*x^3 + 2*x^2 + x + 1
+
     """
 
-    X = vs[:-1]
-    Y = vs[-1]
+    X = variables[:-1]
+    Y = variables[-1]
 
     def ModX(F, N):
         return F.mod(Ideal(X)**N)
@@ -165,13 +167,13 @@ def NewtonSeries(Phi, vs, N):
 
     def NewtonRecur(H, N):
         if N == 1:
-            return 0, 1/H.derivative(Y).subs({v:0 for v in vs})
+            return 0, 1 / H.derivative(Y).subs({v: 0 for v in variables})
         F, G = NewtonRecur(H, ceil(N/2))
-        G = G + (1-G*H.derivative(Y).subs({Y:F}))*G
-        F = F - G*H.subs({Y:F})
+        G = G + (1 - G * H.derivative(Y).subs({Y: F})) * G
+        F = F - G*H.subs({Y: F})
         return ModX(F, N), ModX(G, ceil(N/2))
     
-    return NewtonRecur(Mod(Phi, N), N)[0]
+    return NewtonRecur(Mod(phi, series_precision), series_precision)[0]
 
 class ACSVException(Exception):
     def __init__(self, message, retry=False):

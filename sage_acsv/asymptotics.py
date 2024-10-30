@@ -6,7 +6,7 @@ from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra
 from sage.all import gcd, prod, pi, matrix, exp, log, I, factorial, srange
 
 from sage_acsv.kronecker import _kronecker_representation
-from sage_acsv.helpers import ACSVException, NewtonSeries, RationalFunctionReduce, DetHessianWithLog, OutputFormat, GetHessian
+from sage_acsv.helpers import ACSVException, NewtonSeries, RationalFunctionReduce, OutputFormat, GetHessian
 from sage_acsv.debug import Timer, acsv_logger
 
 
@@ -199,7 +199,7 @@ def diagonal_asy(
     timer = Timer()
 
     # Find det(zH_z Hess) where Hess is the Hessian of z_1...z_n * log(g(z_1, ..., z_n))
-    Det = DetHessianWithLog(H, vsT[0:-2], r)
+    Det = GetHessian(H, vsT[0:-2], r).determinant()
 
     # Find exponential growth
     T = prod([vs[i]**r[i] for i in range(d)])
