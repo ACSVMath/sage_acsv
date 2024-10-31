@@ -153,7 +153,10 @@ def diagonal_asy(
         n = len(H.variables())
         r = [1 for _ in range(n)]
 
-    r = [AA(ri) for ri in r]
+    try:
+        r = [QQ(ri) for ri in r]
+    except (ValueError, TypeError):
+        r = [AA(ri) for ri in r]
 
     # Initialize variables
     vs = list(H.variables())

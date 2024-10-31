@@ -1,7 +1,6 @@
 from enum import Enum
 
-from sage.all import QQbar, Ideal, ceil, gcd, matrix, randint
-
+from sage.all import AA, QQ, Ideal, ceil, gcd, matrix, randint
 
 class OutputFormat(Enum):
     """Output options for displaying the asymptotic behavior determined
@@ -107,7 +106,10 @@ def GetHessian(H, variables, r, critical_point=None):
         ]
     )
 
-    V = [QQbar(r[k] / r[-1]) for k in range(d)]
+    try:
+        V = [QQ(r[k] / r[-1]) for k in range(d)]
+    except (ValueError, TypeError):    
+        V = [AA(r[k] / r[-1]) for k in range(d)]
 
     # Build (d-1) x (d-1) Matrix for Hessian
     hessian = [
