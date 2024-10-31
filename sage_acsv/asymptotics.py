@@ -1,6 +1,7 @@
 """Functions for determining asymptotics of the coefficients
 of multivariate rational functions.
 """
+from copy import copy
 
 from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra
 from sage.all import gcd, prod, pi, matrix, exp, log, I, factorial, srange
@@ -22,13 +23,14 @@ def diagonal_asy(
     output_format=None,
     as_symbolic=False
 ):
-    r"""Asymptotics in a given direction r of the multivariate rational function F.
+    r"""Asymptotics in a given direction `r` of the multivariate rational function `F`.
 
     INPUT:
 
     * ``F`` -- The rational function ``G/H`` in ``d`` variables. This function is
       assumed to have a combinatorial expansion.
-    * ``r`` -- A vector of length d of positive integers.
+    * ``r`` -- A vector of length d of positive algebraic numbers (generally integers).
+      Defaults to the appropriate vector of all 1's if not specified.
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions.
     * ``expansion_precision`` -- A positive integer value. This is the number of terms to
@@ -120,6 +122,28 @@ def diagonal_asy(
         1/sqrt(pi)*4^n*n^(-1/2) - 1/8/sqrt(pi)*4^n*n^(-3/2) + 1/128/sqrt(pi)*4^n*n^(-5/2)
         + O(4^n*n^(-7/2))
 
+    The direction of the diagonal, `r`, defaults to the standard diagonal (i.e., the
+    vector of all 1's) if not specified. It also supports passing non-integer values,
+    notably rational numbers::
+
+        sage: diagonal_asy(1/(1 - x - y), r=(1, 17/42), output_format="symbolic")
+        1.317305628032865?*2.324541507270374?^n/(sqrt(pi)*sqrt(n))
+    
+    and even algebraic numbers (note, however, that the performance for complicated
+    algebraic numbers is significantly degraded)::
+
+        sage: diagonal_asy(1/(1 - x - y), r=(sqrt(2), 1))
+        [(2.414213562373095?/0.5857864376269049?^1.414213562373095?,
+          1/sqrt(n),
+          1/sqrt(pi),
+          0.9238795325112868?)]
+
+    ::
+
+        sage: diagonal_asy(1/(1 - x - y*x^2), r=(1, 1/2 - 1/2*sqrt(1/5)), output_format="asymptotic")
+        1.710862642974252?/sqrt(pi)*1.618033988749895?^n*n^(-1/2)
+        + O(1.618033988749895?^n*n^(-3/2))
+
     The function times individual steps of the algorithm, timings can
     be displayed by increasing the printed verbosity level of our debug logger::
 
@@ -152,6 +176,11 @@ def diagonal_asy(
     if r is None:
         n = len(H.variables())
         r = [1 for _ in range(n)]
+
+    try:
+        r = [QQ(ri) for ri in r]
+    except (ValueError, TypeError):
+        r = [AA(ri) for ri in r]
 
     # Initialize variables
     vs = list(H.variables())
@@ -202,7 +231,7 @@ def diagonal_asy(
     Det = GetHessian(H, vsT[0:-2], r).determinant()
 
     # Find exponential growth
-    T = prod([vs[i]**r[i] for i in range(d)])
+    T = prod([SR(vs[i])**r[i] for i in range(d)])
 
 
     # Find constants appearing in asymptotics in terms of original variables
@@ -218,7 +247,11 @@ def diagonal_asy(
         if expansion_precision == 1: 
             # TODO: GeneralTermAsymptotics should return the expansion
             # when passing a precision of 1
-            expansion = QQbar(A.subs(subs_dict))
+            expansion = A.subs(subs_dict)
+            try:
+                expansion = QQbar(expansion)
+            except (ValueError, TypeError):
+                pass
         else:
             expansion = sum([
                 term / (rd * n)**(term_order)
@@ -226,7 +259,14 @@ def diagonal_asy(
                     GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision)
                 )
             ])
-        asm_quantities.append([expansion, QQbar(B.subs(subs_dict)), QQbar(C.subs(subs_dict))])
+        B = B.subs(subs_dict)
+        C = C.subs(subs_dict)
+        try:
+            B = QQbar(B)
+            C = QQbar(C)
+        except (ValueError, TypeError):
+            pass
+        asm_quantities.append([expansion, B, C])
 
     n = SR.var('n')
     asm_vals = [(c, QQ(1 - d)/2, b.sqrt(), a) for (a, b, c) in asm_quantities]
@@ -288,7 +328,8 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision):
 
     * ``G, H`` -- Coprime polynomials with `F = G/H`.
     * ``vs`` -- Tuple of variables occurring in `G` and `H`.
-    * ``r`` -- The direction. A length `d` vector of positive integers.
+    * ``r`` -- The direction. A length `d` vector of positive algebraic numbers (usually
+      integers).
     * ``cp`` -- A minimal critical point of `F` with coordinates specified in the
       same order as in ``vs``.
     * ``expansion_precision`` -- A positive integer value. This is the number of terms
@@ -394,12 +435,13 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None):
 
     INPUT:
 
-    * ``G, H`` -- Coprime polynomials with `F = G/H`
+    * ``G, H`` -- Coprime polynomials with `F = G/H`.
     * ``variables`` -- Tuple of variables of ``G`` and ``H``, followed
-      by ``lambda_, t, u_``
-    * ``r`` -- (Optional) Length `d` vector of positive integers
+      by ``lambda_, t, u_``.
+    * ``r`` -- (Optional) the direction, a vector of positive algebraic
+      numbers (usually integers).
     * ``linear_form`` -- (Optional) A linear combination of the input
-      variables that separates the critical point solutions
+      variables that separates the critical point solutions.
 
     OUTPUT:
 
@@ -434,21 +476,56 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None):
 
     # If direction r is not given, default to the diagonal
     if r is None:
-        r = [1 for i in range(len(vs))]
+        r = [1 for _ in vs]
+
+    # Make copy of r so they don't get mutated outside of function
+    r = copy(r)
+
+    # Replace irrational r with variable ri, add min poly to system
+    r_variable_values = {}
+    r_subs = []
+    for idx, direction in enumerate(r):
+        r_i = direction
+        if AA(direction).minpoly().degree() > 1:
+            r_i = SR.var(f"r{idx}")
+            r_variable_values[r_i] = AA(direction)
+        r_subs.append(r_i)
+    
+    r = r_subs
+
+    # variables need to be ordered in this particular way
+    expanded_R_variables = vs + list(r_variable_values.keys()) + [t, lambda_, u_]
+    expanded_R = PolynomialRing(QQ, expanded_R_variables)
+
+    vs = [expanded_R(v) for v in vs]
+    t, lambda_, u_ = expanded_R(t), expanded_R(lambda_), expanded_R(u_)
+    G, H = expanded_R(G), expanded_R(H)
+
+    r_variable_values = {
+        expanded_R(ri): val for (ri, val) in r_variable_values.items()
+    }
+    r = [expanded_R(ri) for ri in r]
+
+    vsT = vs + list(r_variable_values.keys()) + [t, lambda_]
 
     # Create the critical point equations system
     vsH = H.variables()
     system = [
-        vsH[i]*H.derivative(vsH[i]) - r[i]*lambda_
-        for i in range(len(vsH))
-    ] + [H, H.subs({z: z*t for z in vsH})]
+        H_var * H.derivative(H_var) - r_var * lambda_
+        for H_var, r_var in zip(H.variables(), r)
+    ]
+    system.extend([H, H.subs({z: z*t for z in vsH})])
+    system.extend([
+        direction_value.minpoly().subs(direction_var)
+        for direction_var, direction_value in r_variable_values.items()
+    ])
 
     # Compute the Kronecker representation of our system
     timer.checkpoint()
     P, Qs = _kronecker_representation(system, u_, vsT, lambda_, linear_form)
     timer.checkpoint("Kronecker")
 
-    Qt = Qs[-2]  # Qs ordering is H.variables() + [t, lambda_]
+    Qt = Qs[-2]  # Qs ordering is H.variables() + rvars + [t, lambda_]
     Pd = P.derivative()
 
     # Solutions to Pt are solutions to the system where t is not 1
@@ -466,8 +543,14 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None):
     pos_minimals = []
     for u in one_minus_t.roots(AA, multiplicities=False):
         is_min = True
-        v = [(q/Pd).subs(u_=u) for q in Qs[0:-2]]
-        if any([k <= 0 for k in v]):
+        v = [(q/Pd).subs(u_=u) for q in Qs[:len(vs)]]
+        rv = {
+            ri: (q/Pd).subs(u_=u)
+            for (ri, q) in zip(r_variable_values, Qs[len(vs):-2])
+        }
+        if any([rv[ri] != ri_value for ri, ri_value in r_variable_values.items()]):
+            continue
+        if any([value <= 0 for value in v[:len(vs)]]):
             continue
         for pt in non_min:
             if all([a == b for (a, b) in zip(v, pt)]):
@@ -499,13 +582,19 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None):
     minimals = []
 
     for u in one_minus_t.roots(QQbar, multiplicities=False):
-        v = [(q/Pd).subs(u_=u) for q in Qs[0:-2]]
+        v = [(q/Pd).subs(u_=u) for q in Qs[:len(vs)]]
+        rv = {
+            ri: (q/Pd).subs(u_=u)
+            for (ri, q) in zip(r_variable_values, Qs[len(vs):-2])
+        }
+        if any([rv[r_var] != r_value for r_var, r_value in r_variable_values.items()]):
+            continue
         if all([a.abs() == b.abs() for (a, b) in zip(minCP, v)]):
             minimals.append(u)
 
     # Get minimal point coords, and make exact if possible
-    minimal_coords = [[(q/Pd).subs(u_=u) for q in Qs[0:-2]] for u in minimals]
+    minimal_coords = [[(q/Pd).subs(u_=u) for q in Qs[:len(vs)]] for u in minimals]
     [[a.exactify() for a in b] for b in minimal_coords]
 
     timer.checkpoint("Minimal Points")
-    return [[(q/Pd).subs(u_=u) for q in Qs[0:-2]] for u in minimals]
+    return [[(q/Pd).subs(u_=u) for q in Qs[:len(vs)]] for u in minimals]

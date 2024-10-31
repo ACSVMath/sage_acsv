@@ -1,7 +1,6 @@
 from enum import Enum
 
-from sage.all import QQ, Ideal, ceil, gcd, matrix, randint
-
+from sage.all import AA, QQ, Ideal, ceil, gcd, matrix, randint
 
 class OutputFormat(Enum):
     """Output options for displaying the asymptotic behavior determined
@@ -86,7 +85,8 @@ def GetHessian(H, variables, r, critical_point=None):
     * ``H`` -- A polynomial; the denominator of the rational generating function
       `F = G/H`.
     * ``vs`` -- A list of variables ``z_1, ..., z_d``
-    * ``r`` -- The direction. A vector of length `d` with positive integer coordinates.
+    * ``r`` -- The direction. A vector of length `d` with positive algebraic numbers
+      (usually integers) as coordinates.
     * ``critical_point`` -- An optional critical point where the Hessian should be evaluated at.
       If not specified, the symbolic Hessian is returned.
 
@@ -106,7 +106,11 @@ def GetHessian(H, variables, r, critical_point=None):
             ] for v1 in variables
         ]
     )
-    V = [QQ(r[k] / r[-1]) for k in range(d)]
+
+    try:
+        V = [QQ(r[k] / r[-1]) for k in range(d)]
+    except (ValueError, TypeError):    
+        V = [AA(r[k] / r[-1]) for k in range(d)]
 
     # Build (d-1) x (d-1) Matrix for Hessian
     hessian = [
