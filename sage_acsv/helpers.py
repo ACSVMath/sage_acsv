@@ -85,7 +85,8 @@ def GetHessian(H, variables, r, critical_point=None):
     * ``H`` -- A polynomial; the denominator of the rational generating function
       `F = G/H`.
     * ``vs`` -- A list of variables ``z_1, ..., z_d``
-    * ``r`` -- The direction. A vector of length `d` with positive integer coordinates.
+    * ``r`` -- The direction. A vector of length `d` with positive algebraic numbers
+      (usually integers) as coordinates.
     * ``critical_point`` -- An optional critical point where the Hessian should be evaluated at.
       If not specified, the symbolic Hessian is returned.
 

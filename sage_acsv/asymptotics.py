@@ -22,13 +22,14 @@ def diagonal_asy(
     output_format=None,
     as_symbolic=False
 ):
-    r"""Asymptotics in a given direction r of the multivariate rational function F.
+    r"""Asymptotics in a given direction `r` of the multivariate rational function `F`.
 
     INPUT:
 
     * ``F`` -- The rational function ``G/H`` in ``d`` variables. This function is
       assumed to have a combinatorial expansion.
-    * ``r`` -- A vector of length d of positive integers.
+    * ``r`` -- A vector of length d of positive algebraic numbers (generally integers).
+      Defaults to the appropriate vector of all 1's if not specified.
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions.
     * ``expansion_precision`` -- A positive integer value. This is the number of terms to
@@ -119,6 +120,28 @@ def diagonal_asy(
         sage: diagonal_asy(1/(1 - x - y), expansion_precision=3, output_format="asymptotic")
         1/sqrt(pi)*4^n*n^(-1/2) - 1/8/sqrt(pi)*4^n*n^(-3/2) + 1/128/sqrt(pi)*4^n*n^(-5/2)
         + O(4^n*n^(-7/2))
+
+    The direction of the diagonal, `r`, defaults to the standard diagonal (i.e., the
+    vector of all 1's) if not specified. It also supports passing non-integer values,
+    notably rational numbers::
+
+        sage: diagonal_asy(1/(1 - x - y), r=(1, 17/42), output_format="symbolic")
+        1.317305628032865?*2.324541507270374?^n/(sqrt(pi)*sqrt(n))
+    
+    and even algebraic numbers (note, however, that the performance for complicated
+    algebraic numbers is significantly degraded)::
+
+        sage: diagonal_asy(1/(1 - x - y), r=(sqrt(2), 1))
+        [(2.414213562373095?/0.5857864376269049?^1.414213562373095?,
+          1/sqrt(n),
+          1/sqrt(pi),
+          0.9238795325112868?)]
+
+    ::
+
+        sage: diagonal_asy(1/(1 - x - y*x^2), r=(1, 1/2 - 1/2*sqrt(1/5)), output_format="asymptotic")
+        1.710862642974252?/sqrt(pi)*1.618033988749895?^n*n^(-1/2)
+        + O(1.618033988749895?^n*n^(-3/2))
 
     The function times individual steps of the algorithm, timings can
     be displayed by increasing the printed verbosity level of our debug logger::
@@ -304,7 +327,8 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision):
 
     * ``G, H`` -- Coprime polynomials with `F = G/H`.
     * ``vs`` -- Tuple of variables occurring in `G` and `H`.
-    * ``r`` -- The direction. A length `d` vector of positive integers.
+    * ``r`` -- The direction. A length `d` vector of positive algebraic numbers (usually
+      integers).
     * ``cp`` -- A minimal critical point of `F` with coordinates specified in the
       same order as in ``vs``.
     * ``expansion_precision`` -- A positive integer value. This is the number of terms
@@ -410,12 +434,13 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None):
 
     INPUT:
 
-    * ``G, H`` -- Coprime polynomials with `F = G/H`
+    * ``G, H`` -- Coprime polynomials with `F = G/H`.
     * ``variables`` -- Tuple of variables of ``G`` and ``H``, followed
-      by ``lambda_, t, u_``
-    * ``r`` -- (Optional) Length `d` vector of positive integers
+      by ``lambda_, t, u_``.
+    * ``r`` -- (Optional) the direction, a vector of positive algebraic
+      numbers (usually integers).
     * ``linear_form`` -- (Optional) A linear combination of the input
-      variables that separates the critical point solutions
+      variables that separates the critical point solutions.
 
     OUTPUT:
 
