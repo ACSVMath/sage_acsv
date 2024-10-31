@@ -1,6 +1,7 @@
 """Functions for determining asymptotics of the coefficients
 of multivariate rational functions.
 """
+from copy import copy
 
 from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra
 from sage.all import gcd, prod, pi, matrix, exp, log, I, factorial, srange
@@ -475,38 +476,49 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None):
 
     # If direction r is not given, default to the diagonal
     if r is None:
-        r = [1 for i in range(len(vs))]
+        r = [1 for _ in vs]
 
     # Make copy of r so they don't get mutated outside of function
-    r = list(r)
+    r = copy(r)
 
     # Replace irrational r with variable ri, add min poly to system
-    ri_to_val = {}
-    rvars = []
-    for i, var in enumerate(r):
-        if (AA(var).minpoly().degree() > 1):
-            ri = SR.var('r%s'%i)
-            r[i] = ri
-            rvars.append(ri)
-            ri_to_val[ri] = AA(var)
+    r_variable_values = {}
+    r_subs = []
+    for idx, direction in enumerate(r):
+        r_i = direction
+        if AA(direction).minpoly().degree() > 1:
+            r_i = SR.var(f"r{idx}")
+            r_variable_values[r_i] = AA(direction)
+        r_subs.append(r_i)
+    
+    r = r_subs
 
-    expanded_R = PolynomialRing(QQ, len(vsT) + len(rvars) + 1, vs + rvars + [t, lambda_, u_])
+    # variables need to be ordered in this particular way
+    expanded_R_variables = vs + list(r_variable_values.keys()) + [t, lambda_, u_]
+    expanded_R = PolynomialRing(QQ, expanded_R_variables)
+
     vs = [expanded_R(v) for v in vs]
     t, lambda_, u_ = expanded_R(t), expanded_R(lambda_), expanded_R(u_)
     G, H = expanded_R(G), expanded_R(H)
 
-    rvars = [expanded_R(ri) for ri in rvars]
-    ri_to_val = {expanded_R(ri):val for (ri, val) in ri_to_val.items()}
+    r_variable_values = {
+        expanded_R(ri): val for (ri, val) in r_variable_values.items()
+    }
     r = [expanded_R(ri) for ri in r]
 
-    vsT = vs + rvars + [t, lambda_]
+    vsT = vs + list(r_variable_values.keys()) + [t, lambda_]
 
     # Create the critical point equations system
     vsH = H.variables()
     system = [
-        vsH[i]*H.derivative(vsH[i]) - expanded_R(r[i])*lambda_
-        for i in range(len(vsH))
-    ] + [H, H.subs({z: z*t for z in vsH})] + [ri_to_val[ri].minpoly().subs(ri) for ri in rvars]
+        H_var * H.derivative(H_var) - r_var * lambda_
+        for H_var, r_var in zip(H.variables(), r)
+    ]
+    system.extend([H, H.subs({z: z*t for z in vsH})])
+    system.extend([
+        direction_value.minpoly().subs(direction_var)
+        for direction_var, direction_value in r_variable_values.items()
+    ])
 
     # Compute the Kronecker representation of our system
     timer.checkpoint()
@@ -531,11 +543,14 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None):
     pos_minimals = []
     for u in one_minus_t.roots(AA, multiplicities=False):
         is_min = True
-        v = [(q/Pd).subs(u_=u) for q in Qs[0:-2]]
-        rv = {ri : (q/Pd).subs(u_=u) for (ri, q) in zip(rvars, Qs[len(vs):-2])}
-        if (any([rv[ri] != ri_to_val[ri] for ri in rvars])):
+        v = [(q/Pd).subs(u_=u) for q in Qs[:len(vs)]]
+        rv = {
+            ri: (q/Pd).subs(u_=u)
+            for (ri, q) in zip(r_variable_values, Qs[len(vs):-2])
+        }
+        if any([rv[ri] != ri_value for ri, ri_value in r_variable_values.items()]):
             continue
-        if any([k <= 0 for k in v[:len(vs)]]):
+        if any([value <= 0 for value in v[:len(vs)]]):
             continue
         for pt in non_min:
             if all([a == b for (a, b) in zip(v, pt)]):
@@ -567,16 +582,19 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None):
     minimals = []
 
     for u in one_minus_t.roots(QQbar, multiplicities=False):
-        v = [(q/Pd).subs(u_=u) for q in Qs[0:-2]]
-        rv = {ri : (q/Pd).subs(u_=u) for (ri, q) in zip(rvars, Qs[len(vs):-2])}
-        if (any([rv[ri] != ri_to_val[ri] for ri in rvars])):
+        v = [(q/Pd).subs(u_=u) for q in Qs[:len(vs)]]
+        rv = {
+            ri: (q/Pd).subs(u_=u)
+            for (ri, q) in zip(r_variable_values, Qs[len(vs):-2])
+        }
+        if any([rv[r_var] != r_value for r_var, r_value in r_variable_values.items()]):
             continue
         if all([a.abs() == b.abs() for (a, b) in zip(minCP, v)]):
             minimals.append(u)
 
     # Get minimal point coords, and make exact if possible
-    minimal_coords = [[(q/Pd).subs(u_=u) for q in Qs[0:-2-len(rvars)]] for u in minimals]
+    minimal_coords = [[(q/Pd).subs(u_=u) for q in Qs[:len(vs)]] for u in minimals]
     [[a.exactify() for a in b] for b in minimal_coords]
 
     timer.checkpoint("Minimal Points")
-    return [[(q/Pd).subs(u_=u) for q in Qs[0:-2-len(rvars)]] for u in minimals]
+    return [[(q/Pd).subs(u_=u) for q in Qs[:len(vs)]] for u in minimals]
