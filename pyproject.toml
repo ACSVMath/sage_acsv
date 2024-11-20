@@ -16,8 +16,14 @@ repository = "https://github.com/ACSVMath/sage_acsv"
 [tool.poetry.dependencies]
 python = "^3.8"
 
+passagemath-symbolics = { version = "^10.4", optional = true }
+passagemath-repl = { version = "^10.4", optional = true }
+
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
+
+[tool.poetry.extras]
+passagemath = ["passagemath-symbolics", "passagemath-repl"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
