@@ -3,8 +3,21 @@ of multivariate rational functions.
 """
 from copy import copy
 
-from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra
-from sage.all import gcd, prod, pi, matrix, exp, log, I, factorial, srange
+from sage.rings.qqbar import AA
+from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
+from sage.rings.rational_field import Q as QQ
+from sage.rings.qqbar import QQbar
+from sage.symbolic.ring import SR
+from sage.algebras.weyl_algebra import DifferentialWeylAlgebra
+from sage.arith.misc import GCD as gcd
+from sage.misc.misc_c import prod
+from sage.symbolic.constants import pi
+from sage.matrix.constructor import Matrix as matrix
+from sage.functions.log import exp
+from sage.misc.functional import log
+from sage.rings.imaginary_unit import I
+from sage.functions.other import factorial
+from sage.arith.srange import srange
 
 from sage_acsv.kronecker import _kronecker_representation
 from sage_acsv.helpers import ACSVException, NewtonSeries, RationalFunctionReduce, OutputFormat, GetHessian
@@ -299,7 +312,7 @@ def diagonal_asy(
             result = sum([a**n * b * c * d for (a, b, c, d) in result])
 
     elif output_format == OutputFormat.ASYMPTOTIC:
-        from sage.all import AsymptoticRing
+        from sage.rings.asymptotic.asymptotic_ring import AsymptoticRing
         SR_without_n = SR.subring(rejecting_variables=('n',))
         AR = AsymptoticRing('SR^n * n^QQ', SR_without_n)
         n = AR.gen()

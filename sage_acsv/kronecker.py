@@ -1,4 +1,6 @@
-from sage.all import PolynomialRing, QQ, gcd
+from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
+from sage.rings.rational_field import Q as QQ
+from sage.arith.misc import GCD as gcd
 from sage.rings.polynomial.multi_polynomial_ideal import MPolynomialIdeal
 
 from sage_acsv.helpers import ACSVException, GenerateLinearForm
