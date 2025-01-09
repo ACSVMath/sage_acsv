@@ -3,11 +3,11 @@ of multivariate rational functions.
 """
 from copy import copy
 
-from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra, RealIntervalField, RIF, Ideal, Polyhedron
-from sage.all import gcd, prod, pi, matrix, exp, log, add, I, factorial, srange, xgcd, lcm
+from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra, Ideal, Polyhedron
+from sage.all import gcd, prod, pi, matrix, exp, log, add, I, factorial, srange
 
 from sage_acsv.kronecker import _kronecker_representation, _msolve_kronecker_representation
-from sage_acsv.helpers import ACSVException, NewtonSeries, RationalFunctionReduce, DetHessianWithLog, OutputFormat, GetHessian
+from sage_acsv.helpers import ACSVException, NewtonSeries, RationalFunctionReduce, OutputFormat, GetHessian
 from sage_acsv.debug import Timer, acsv_logger
 from sage_acsv.whitney import WhitneyStrat, PrimaryDecomposition
 
@@ -603,7 +603,7 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None):
 
     return [[(q/Pd).subs(u_=u) for q in Qs[:len(vs)]] for u in minimals]
 
-def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=None, use_msolve=False, m2=None, whitney_strat=None):
+def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=None, m2=None, whitney_strat=None):
     r"""Compute minimal critical points of a combinatorial multivariate
     rational function F=G/H admitting a finite number of critical points.
 
@@ -617,8 +617,6 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
     * ``r`` -- (Optional) Length `d` vector of positive integers
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions
-    * ``use_msolve`` -- (Optional) Boolean value indicating if user wants to use msolve
-        to parametrize the critical point equations. Msolve must be installed by the user
     * ``m2`` -- (Optional) The option to pass in a SageMath Macaulay2 interface for
         computing primary decompositions. Macaulay2 must be installed by the user
     * ``whitney_strat`` -- (Optional) The user can pass in a Whitney Stratification of V(H)
@@ -637,70 +635,9 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
     This separation step can fail, but (assuming F has a finite number of critical points)
     the code can be rerun until a separating form is found.
 
-    Examples::
-
-        sage: from sage_acsv import MinimalCriticalCombinatorialNonSmooth
-        sage: var('x,y,lambda_,t,u_')
-        (x, y, lambda_, t, u_)
-        sage: pts = MinimalCriticalCombinatorialNonSmooth(
-        ....:     1,
-        ....:     (1-(2*x+y)/3)*(1-(3*x+y)/4),
-        ....:     ([x, y], lambda_, t, u_),
-        ....: )
-        sage: sorted(pts)
-        [[3/4, 3/2]]
-
-    Example where the critical point is on a lower dimensional stratum::
-
-        sage: from sage_acsv import MinimalCriticalCombinatorialNonSmooth
-        sage: var('x,y,lambda_,t,u_')
-        (x, y, lambda_, t, u_)
-        sage: pts = MinimalCriticalCombinatorialNonSmooth(
-        ....:     1,
-        ....:     (1-(2*x+y)/3)*(1-(3*x+y)/4),
-        ....:     ([x, y], lambda_, t, u_),
-        ....:     r=[17/24, 7/24],
-        ....: )
-        sage: sorted(pts)
-        [[1, 1]]
-
-    Non-generic critical point found::
-
-        sage: from sage_acsv import MinimalCriticalCombinatorialNonSmooth
-        sage: var('x,y,lambda_,t,u_')
-        (x, y, lambda_, t, u_)
-        sage: try:
-        ....:   MinimalCriticalCombinatorialNonSmooth(
-        ....:       1,
-        ....:       (1-(2*x+y)/3)*(1-(3*x+y)/4),
-        ....:       ([x, y], lambda_, t, u_),
-        ....:       r=[2,1],
-        ....:   )
-        ....: except Exception as e: 
-        ....:   print(e)
-        Non-generic critical point found - [1, 1] is contained in 0-dimensional stratum
-
-    Lattice path example::
-
-        sage: from sage_acsv import MinimalCriticalCombinatorialNonSmooth
-        sage: var('v,x,y,lambda_,t,u_')
-        (v, x, y, lambda_, t, u_)
-        sage: whitney_strat = [
-        ....:   [(1,)],
-        ....:   [(1-v*(1+x^2+x*y^2), 1-y), (1-y, 1+x^2), (1-v*(1+x^2+x*y^2), 1+x^2)],
-        ....:   [((1-v*(1+x^2+x*y^2))*(1-y)*(1+x^2),)]
-        ....: ]
-        sage: pts = MinimalCriticalCombinatorialNonSmooth(
-        ....:     1,
-        ....:     (1-v*(1+x^2+x*y^2))*(1-y)*(1+x^2),
-        ....:     ([x, y, v], lambda_, t, u_),
-        ....:     whitney_strat=whitney_strat
-        ....: )
-        sage: sorted(pts)
-        [[1, 1, 1/3]]
-
     """
 
+    #####
     timer = Timer()
 
     # Fetch the variables we need
@@ -709,35 +646,40 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
 
     # If direction r is not given, default to the diagonal
     if r is None:
-        r = [1 for i in range(len(vs))]
+        r = [1 for _ in range(len(vs))]
 
     # Make copies of r so they don't get mutated outside of function
-    r_copy = list(r)
-    r = list(r)
+    r_copy = copy(r)
 
     # Replace irrational r with variable ri, add min poly to system
-    ri_to_val = {}
-    rvars = []
-    for i, var in enumerate(r):
-        if (AA(var).minpoly().degree() > 1):
-            ri = SR.var('r%s'%i)
-            r[i] = ri
-            rvars.append(ri)
-            ri_to_val[ri] = AA(var)
+    r_variable_values = {}
+    r_subs = []
+    for idx, direction in enumerate(r):
+        r_i = direction
+        if AA(direction).minpoly().degree() > 1:
+            ri = SR.var(f"r{idx}")
+            r_variable_values[ri] = AA(direction)
+        r_subs.append(r_i)
 
-    expanded_R = PolynomialRing(QQ, len(vsT) + len(rvars) + 1, vs + rvars + [t, lambda_, u_])
+    r = r_subs
+
+    expanded_R_variables = vs + list(r_variable_values.keys()) + [t, lambda_, u_]
+    expanded_R = PolynomialRing(QQ, expanded_R_variables)
+
     vs = [expanded_R(v) for v in vs]
     t, lambda_, u_ = expanded_R(t), expanded_R(lambda_), expanded_R(u_)
     G, H = expanded_R(G), expanded_R(H)
 
-    rvars = [expanded_R(ri) for ri in rvars]
-    ri_to_val = {expanded_R(ri):val for (ri, val) in ri_to_val.items()}
+    r_variable_values = {
+        expanded_R(ri):val for (ri, val) in r_variable_values.items()
+    }
     r = [expanded_R(ri) for ri in r]
 
-    vsT = vs + rvars + [t, lambda_]
+    vsT = vs + list(r_variable_values.keys())+ [t, lambda_]
+    #####
 
     # Compute the critical point system for each stratum
-    pure_H = PolynomialRing(QQ, len(vs), vs)
+    pure_H = PolynomialRing(QQ, vs)
 
     if whitney_strat is None:
         whitney_strat = WhitneyStrat(Ideal(pure_H(H)), pure_H, m2)
@@ -768,8 +710,8 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
         for _, ideal in ideals:
             if ideal.dimension() < 0:
                 continue
-            P, Qs = _msolve_kronecker_representation(ideal.gens(), u_, vsT) if use_msolve else \
-                _kronecker_representation(ideal.gens(), u_, vsT, lambda_, linear_form)
+            ##### 
+            P, Qs = _kronecker_representation(ideal.gens(), u_, vsT, lambda_, linear_form)
 
             Qt = Qs[-2]  # Qs ordering is H.variables() + rvars + [t, lambda_]
             Pd = P.derivative()
@@ -777,37 +719,58 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
             # Solutions to Pt are solutions to the system where t is not 1
             one_minus_t = gcd(Pd - Qt, P)
             Pt, _ = P.quo_rem(one_minus_t)
-            Ptd = Pt.derivative()
-            _, invPtd, _ = xgcd(Pd, Pt)
-            Qts = [(Q*Ptd*invPtd).quo_rem(Pt)[1] for Q in Qs]
-            Qt = Qts[-2]
+            rts_t_zo = list(
+                filter(
+                    lambda k: (Qt/Pd).subs(u_=k) > 0 and (Qt/Pd).subs(u_=k) < 1,
+                    Pt.roots(AA, multiplicities=False)
+                )
+            )
+            non_min = [[(q/Pd).subs(u_=u) for q in Qs[0:-2]] for u in rts_t_zo]
 
-            rts_t_zo = list()
-            for k in Pt.roots(AA, multiplicities=False):
-                num = Qt.subs(u_=k); RIF(num)
-                denom = Ptd.subs(u_=k); RIF(denom)
-                vt = num/denom
-                if vt > 0 and vt < 1:
-                    rts_t_zo.append(k)
+            # Filter the real roots for minimal points with positive coords
+            pos_minimals = []
+            for u in one_minus_t.roots(AA, multiplicities=False):
+                is_min = True
+                v = [(q/Pd).subs(u_=u) for q in Qs[:len(vs)]]
+                rv = {
+                    ri: (q/Pd).subs(u_=u)
+                    for (ri, q) in zip(r_variable_values, Qs[len(vs):-2])
+                }
+                if any([rv[ri] != ri_value for ri, ri_value in r_variable_values.items()]):
+                    continue
+                if any([value <= 0 for value in v[:len(vs)]]):
+                    continue
+                for pt in non_min:
+                    if all([a == b for (a, b) in zip(v, pt)]):
+                        is_min = False
+                        break
+                if is_min:
+                    pos_minimals.append(u)
 
-            non_min = [[(q/Ptd).subs(u_=u) for q in Qts[0:-2]] for u in rts_t_zo]
+            # Remove non-smooth points and points with zero coordinates (where lambda=0)
+            for i in range(len(pos_minimals)):
+                x = (Qs[-1]/Pd).subs(u_=pos_minimals[i])
+                if x == 0:
+                    acsv_logger.warning(
+                        f"Removing critical point {pos_minimals[i]} because it either "
+                        "has a zero coordinate or is not smooth."
+                    )
+                    pos_minimals.pop(i)
+            #####
 
-            # Change the equations to only deal with t=1 solutions
-            newP = one_minus_t
-            newPd = one_minus_t.derivative()
-            _, invPd, _ = xgcd(Pd, newP)
-            Qs = [(Q*newPd*invPd).quo_rem(newP)[1] for Q in Qs]
-            P = newP
-            Pd = newPd
+            pos_minimals_by_stratum[d].extend(
+                [[QQbar((q/Pd).subs(u_=u)) for q in Qs[:len(vs)]] for u in pos_minimals]
+            )
 
-            pos_minimals_by_stratum[d] += FilterMinimalPoints(rvars, vs, P, Qs, non_min, ri_to_val)
-
-            for u in P.roots(QQbar, multiplicities=False):
-                rv = {ri : (q/Pd).subs(u_=u) for (ri, q) in zip(rvars, Qs[len(vs):-2])}
-                if (any([rv[ri] != ri_to_val[ri] for ri in rvars])):
+            for u in one_minus_t.roots(QQbar, multiplicities=False):
+                rv = {
+                    ri : (q/Pd).subs(u_=u) 
+                    for (ri, q) in zip(r_variable_values, Qs[len(vs):-2])
+                }
+                if (any([rv[r_var] != r_value for r_var, r_value in r_variable_values.items()])):
                     continue
 
-                w = [QQbar((q/Pd).subs(u_=u)) for q in Qs[0:len(vs)]]
+                w = [QQbar((q/Pd).subs(u_=u)) for q in Qs[:len(vs)]]
                 critical_points_by_stratum[d].append(w)
 
     contributing_pos_minimals = []
@@ -818,8 +781,8 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
         if len(contributing_pos_minimals) > 0:
             break
 
-        for pos_min in pos_minimals:
-            critical_subs = {v:point for v, point in zip(vs, pos_min)}
+        for x in pos_minimals:
+            critical_subs = {v:point for v, point in zip(vs, x)}
             # Compute irreducible components of H that contain the point
             components = list(
                 P for P in all_components
@@ -849,14 +812,16 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
             polytope = Polyhedron(rays=normals)
 
             if r in polytope:
-                contributing_pos_minimals.append(pos_min)
+                contributing_pos_minimals.append(x)
                 for i in range(d):
                     stratum = whitney_strat[i]
-                    if stratum.subs({pure_H(wi):val for wi, val in zip(vs, pos_min)}) == Ideal(pure_H(0)):
+                    if stratum.subs({pure_H(wi):val for wi, val in zip(vs, x)}) == Ideal(pure_H(0)):
                         raise ACSVException(
-                            "Non-generic critical point found - {w} is contained in {dim}-dimensional stratum".format(w = str(pos_min), dim = i)
+                            "Non-generic critical point found - {w} is contained in {dim}-dimensional stratum".format(w = str(x), dim = i)
                         )
 
+    if len(contributing_pos_minimals) == 0:
+        raise ACSVException("No smooth minimal critical points found.")
     if len(contributing_pos_minimals) > 1:
         print(contributing_pos_minimals)
         raise ACSVException(
@@ -868,9 +833,9 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
     for d in reversed(range(len(critical_point_ideals))):
         for w in critical_points_by_stratum[d]:
             if all([abs(w_i)==abs(min_i) for w_i, min_i in zip(w, minimal)]):
-                for i in range(d):
-                    stratum = whitney_strat[i]
-                    if stratum.subs({pure_H(wi):val for wi, val in zip(vs, w)}) == Ideal(pure_H(0)):
+                if d>0:
+                    sub_stratum = whitney_strat[d-1]
+                    if sub_stratum.subs({pure_H(wi):val for wi, val in zip(vs, w)}) == Ideal(pure_H(0)):
                         raise ACSVException(
                             "Non-generic critical point found - {w} is contained in {dim}-dimensional stratum".format(w = str(w[:len(vs)]), dim = i)
                         )
@@ -879,56 +844,3 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
 
     return contributing_points
 
-def FilterMinimalPoints(rvars, vs, P, Qs, non_min, ri_to_val):
-    Pd = P.derivative()
-    pos_minimals = list(
-        filter(
-            lambda v: all([k > 0 for k in v[:-2]]) and \
-                      all([rval == ri_to_val[ri] for (ri, rval) in zip(rvars, v[len(vs):-2])]),
-            list([AA((q/Pd).subs(u_=u)) for q in Qs] for u in P.roots(AA, multiplicities=False))
-        )
-    )
-
-    # Filter the real roots for minimal points with positive coords
-    prec_bound = 3 * P.degree()**3 * max([max([abs(x) for x in F.coefficients()]) for F in [P, Pd] + Qs])
-    PrecisionField = RIF
-    prec = PrecisionField.precision()
-    non_min_idx = set()
-    for pt in non_min:
-        if any([v<0 for v in pt]):
-            continue
-        idx = range(len(pos_minimals))
-        while len(idx) > 1:
-            if (prec > prec_bound):
-                raise ACSVException(
-                    "Non-minimal point associated with multiple minimal candidates. This should never happen. " + \
-                    "If you are seeing this error, something has gone horribly wrong."
-                )
-
-            idx = list(
-                filter(
-                    lambda i: all(
-                        [(PrecisionField(v) - PrecisionField(w)).contains_zero() for (v, w) in zip(pos_minimals[i], pt)]
-                    ),
-                    idx
-                )
-            )
-            prec *= 2
-            PrecisionField = RealIntervalField(prec)
-
-        if len(idx) > 0:
-            non_min_idx.add(idx[0])
-
-    pos_minimals = [pos_minimals[i] for i in range(len(pos_minimals)) if i not in non_min_idx]
-
-    # Remove non-smooth points and points with zero coordinates (where lambda=0)
-    for i in range(len(pos_minimals)):
-        x = pos_minimals[i][-1]
-        if x == 0:
-            acsv_logger.warning(
-                f"Removing critical point {pos_minimals[i]} because it either "
-                "has a zero coordinate or is not smooth."
-            )
-            pos_minimals.pop(i)
-
-    return pos_minimals
