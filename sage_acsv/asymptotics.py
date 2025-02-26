@@ -698,6 +698,7 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
                 ] + [r]
             )
             cpid = P_ext + Ideal([expanded_R(0)] + M.minors(c+1)) + H.subs({v:v*t for v in vs}) + (prod(vs)*lambda_ - 1)
+            # TODO - saturate cpid by singular ideal (vanishing of c by c minors of Jac(gens(P)))
             critical_point_ideals[-1].append((P, cpid))
 
     critical_points_by_stratum = {}
