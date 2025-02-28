@@ -21,7 +21,8 @@ def diagonal_asy(
     expansion_precision=1,
     return_points=False,
     output_format=None,
-    as_symbolic=False
+    as_symbolic=False,
+    as_radical_expression=False
 ):
     r"""Asymptotics in a given direction `r` of the multivariate rational function `F`.
 
@@ -49,6 +50,8 @@ def diagonal_asy(
         ``AsymptoticRing`` in the variable ``n``.
     * ``as_symbolic`` -- deprecated in favor of the equivalent
       ``output_format="symbolic"``. Will be removed in a future release.
+    * ``as_radical_expression`` -- if ``True``, will try to return algebraic values
+      in their radical representation whenenever possible
 
     OUTPUT:
 
@@ -256,7 +259,7 @@ def diagonal_asy(
             expansion = sum([
                 term / (rd * n)**(term_order)
                 for term_order, term in enumerate(
-                    GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision)
+                    GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision, as_radical_expression=as_radical_expression)
                 )
             ])
         B = B.subs(subs_dict)
@@ -270,6 +273,15 @@ def diagonal_asy(
 
     n = SR.var('n')
     asm_vals = [(c, QQ(1 - d)/2, b.sqrt(), a) for (a, b, c) in asm_quantities]
+    if as_radical_expression:
+        asm_vals = [
+            (
+                base.radical_expression(),
+                exponent,
+                constant.radical_expression(),
+                expansion
+            ) for base, exponent, constant, expansion in asm_vals
+        ]
     timer.checkpoint("Final Asymptotics")
 
     if as_symbolic:
@@ -316,7 +328,7 @@ def diagonal_asy(
 
     return result
 
-def GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision):
+def GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision, as_radical_expression=False):
     r"""
     Compute coefficients of general (not necessarily leading) terms of
     the asymptotic expansion for a given critical
@@ -420,6 +432,8 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision):
     # Function to compute constants appearing in asymptotic expansion
     def constants_clj(ell, j):
         extra_contrib = (-1)**j / (2**(ell + j) * factorial(ell) * factorial(ell + j))
+        if as_radical_expression:
+            return extra_contrib * SR(eval_op(EE[ell + j], PP[ell]).radical_expression())
         return extra_contrib * SR(eval_op(EE[ell + j], PP[ell]))
 
     return [
