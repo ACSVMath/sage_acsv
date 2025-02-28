@@ -4,7 +4,7 @@ of multivariate rational functions.
 from copy import copy
 
 from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra, Ideal, Polyhedron
-from sage.all import gcd, prod, pi, matrix, exp, log, add, I, factorial, srange
+from sage.all import gcd, prod, pi, matrix, exp, log, add, I, factorial, srange, sample, vector
 
 from sage_acsv.kronecker import _kronecker_representation, _msolve_kronecker_representation
 from sage_acsv.helpers import ACSVException, NewtonSeries, RationalFunctionReduce, OutputFormat, GetHessian
@@ -311,6 +311,181 @@ def diagonal_asy(
 
     else:
         raise NotImplementedError(f"Missing implementation for {output_format}")
+    
+    if return_points:
+        return result, min_crit_pts
+
+    return result
+
+def diagonal_asy_non_smooth(
+    F,
+    r=None,
+    linear_form=None,
+    expansion_precision=1,
+    return_points=False,
+    output_format=None,
+    as_symbolic=False,
+    whitney_strat=None
+):
+    r"""Asymptotics in a given direction `r` of the multivariate rational function `F`.
+
+    INPUT:
+
+    * ``F`` -- The rational function ``G/H`` in ``d`` variables. This function is
+      assumed to have a combinatorial expansion.
+    * ``r`` -- A vector of length d of positive algebraic numbers (generally integers).
+      Defaults to the appropriate vector of all 1's if not specified.
+    * ``linear_form`` -- (Optional) A linear combination of the input
+      variables that separates the critical point solutions.
+    * ``expansion_precision`` -- A positive integer value. This is the number of terms to
+      compute in the asymptotic expansion. Defaults to 1, which only computes the leading
+      term.
+    * ``return_points`` -- If ``True``, also returns the coordinates of
+      minimal critical points. By default ``False``.
+    * ``output_format`` -- (Optional) A string or :class:`.OutputFormat` specifying
+      the way the asymptotic growth is returned. Allowed values currently are:
+      - ``"tuple"`` or ``None``, the default: the growth is returned as a list of
+        tuples of the form ``(a, n^b, pi^c, d)`` such that the `r`-diagonal of `F`
+        is the sum of ``a^n n^b pi^c d + O(a^n n^{b-1})`` over these tuples.
+      - ``"symbolic"``: the growth is returned as an expression from the symbolic
+        ring ``SR`` in the variable ``n``.
+      - ``"asymptotic"``: the growth is returned as an expression from an appropriate
+        ``AsymptoticRing`` in the variable ``n``.
+    * ``as_symbolic`` -- deprecated in favor of the equivalent
+      ``output_format="symbolic"``. Will be removed in a future release.
+
+    OUTPUT:
+
+    A representation of the asymptotic main term, either as a list of tuples,
+    or as a symbolic expression.
+
+    NOTE:
+
+    The code randomly generates a linear form, which for generic rational functions
+    separates the solutions of an intermediate polynomial system with high probability.
+    This separation step can fail, but (assuming `F` has a finite number of critical
+    points) the code can be rerun until a separating form is found.
+
+    Examples::
+
+    """
+    G, H = F.numerator(), F.denominator()
+    if r is None:
+        n = len(H.variables())
+        r = [1 for _ in range(n)]
+
+    try:
+        r = [QQ(ri) for ri in r]
+    except (ValueError, TypeError):
+        r = [AA(ri) for ri in r]
+
+    # Initialize variables
+    vs = list(H.variables())
+
+    RR, (t, lambda_, u_) = PolynomialRing(QQ, 't, lambda_, u_').objgens()
+    expanded_R, _ = PolynomialRing(QQ, len(vs)+3, vs + [t, lambda_, u_]).objgens()
+
+    vs = [expanded_R(v) for v in vs]
+    t, lambda_, u_ = expanded_R(t), expanded_R(lambda_), expanded_R(u_)
+    vsT = vs + [t, lambda_]
+
+    all_variables = (vs, lambda_, t, u_)
+    d = len(vs)
+    rd = r[-1]
+    vd = vs[-1]
+
+    # Make sure G and H are coprime, and that H does not vanish at 0
+    G, H = RationalFunctionReduce(G, H)
+    G, H = expanded_R(G), expanded_R(H)
+    if H.subs({v: 0 for v in H.variables()}) == 0:
+        raise ValueError("Denominator vanishes at 0.")
+
+    # In case form doesn't separate, we want to try again
+    for _ in range(MAX_MIN_CRIT_RETRIES):
+        try:
+            # Find minimal critical points in Kronecker Representation
+            min_crit_pts = MinimalCriticalCombinatorialNonSmooth(
+                G, H, all_variables,
+                r=r,
+                linear_form=linear_form,
+                whitney_strat=whitney_strat
+            )
+            break
+        except Exception as e:
+            if isinstance(e, ACSVException) and e.retry:
+                acsv_logger.warning(
+                    "Randomly generated linear form was not suitable, "
+                    f"encountered error: {e}\nRetrying..."
+                )
+                continue
+            else:
+                raise e
+    else:
+        return
+
+    timer = Timer()
+
+    asm_quantities = []
+    print(min_crit_pts)
+    for pt in min_crit_pts:
+        # Step 1: Determine if pt is a multiple point of H, and compute the factorization
+        # for now, we'll just try to factor it in the polynomial ring
+        R = PolynomialRing(QQbar, len(vs), vs)
+        G = R(SR(G))
+        H = R(SR(H))
+        vs = [R(SR(v)) for v in vs]
+        subs_dict = {vs[i]:pt[i] for i in range(d)}
+        poly_factors = H.factor()
+        unit = poly_factors.unit()
+        factors = []
+        for factor in poly_factors:
+            if factor[0].subs(subs_dict) != 0:
+                unit *= factor[0].subs(subs_dict)
+                continue
+            if factor[1] > 1:
+                raise ACSVException("H is not square-free")
+            factors.append(factor[0])
+        s = len(factors)
+
+        # Step 2: Find the locally parametrizing coordinates of the point pt
+        # Since we have d variables and s factors, there should be d-s of these parametrizing coordinates
+        vps = []
+        while d != s:
+            vps = sample(vs, d-s)
+            Jac = matrix(
+                [
+                    [
+                        ((v * Q.derivative(v))).subs(subs_dict) for v in vps
+                    ] for Q in factors
+                ]
+            )
+            if Jac.determinant() != 0:
+                break
+
+        # Step 3: Compute the gamma matrix as defined in 9.10
+        Gamma = matrix(
+            [
+                [
+                    (v * Q.derivative(v)).subs(subs_dict) for v in vs
+                ] for Q in factors
+            ] + [
+                [v.subs(subs_dict) if vs.index(v) == i else 0 for i in range(d)]
+                for v in vps
+            ]
+        )
+
+        # Step 4: Compute the parametrized Hessian matrix (only for non-complete intersections)
+        # TODO
+        Qw = matrix([[0]])
+        
+        T = prod(SR(vs[i].subs(subs_dict))**r[i] for i in range(d))
+
+        A = SR(G.subs(subs_dict)/unit)
+        B = SR(1/Gamma.determinant())
+        C = SR(1/T)
+        asm_quantities.append([A,B,C])
+
+    result = asm_quantities
     
     if return_points:
         return result, min_crit_pts
