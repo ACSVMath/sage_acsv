@@ -233,7 +233,6 @@ def diagonal_asy(
     # Find exponential growth
     T = prod([SR(vs[i])**r[i] for i in range(d)])
 
-
     # Find constants appearing in asymptotics in terms of original variables
     A = SR(-G / vd / H.derivative(vd))
     B = SR(1 / Det / rd**(d-1) / 2**(d-1))
@@ -259,14 +258,14 @@ def diagonal_asy(
                     GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision)
                 )
             ])
-        B = B.subs(subs_dict)
-        C = C.subs(subs_dict)
+        B_sub = B.subs(subs_dict)
+        C_sub = C.subs(subs_dict)
         try:
-            B = QQbar(B)
-            C = QQbar(C)
+            B_sub = QQbar(B_sub)
+            C_sub = QQbar(C_sub)
         except (ValueError, TypeError):
             pass
-        asm_quantities.append([expansion, B, C])
+        asm_quantities.append([expansion, B_sub, C_sub])
 
     n = SR.var('n')
     asm_vals = [(c, QQ(1 - d)/2, b.sqrt(), a) for (a, b, c) in asm_quantities]
