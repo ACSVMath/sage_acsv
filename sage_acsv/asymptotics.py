@@ -4,10 +4,10 @@ of multivariate rational functions.
 from copy import copy
 
 from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra, Ideal, Polyhedron
-from sage.all import gcd, prod, pi, matrix, exp, log, add, I, factorial, srange, sample, vector
+from sage.all import gcd, prod, pi, matrix, exp, log, add, I, factorial, srange, shuffle, vector
 
 from sage_acsv.kronecker import _kronecker_representation, _msolve_kronecker_representation
-from sage_acsv.helpers import ACSVException, NewtonSeries, RationalFunctionReduce, OutputFormat, GetHessian
+from sage_acsv.helpers import ACSVException, NewtonSeries, RationalFunctionReduce, OutputFormat, GetHessian, ImplicitHessian
 from sage_acsv.debug import Timer, acsv_logger
 from sage_acsv.whitney import WhitneyStrat, PrimaryDecomposition
 
@@ -321,10 +321,8 @@ def diagonal_asy_non_smooth(
     F,
     r=None,
     linear_form=None,
-    expansion_precision=1,
     return_points=False,
     output_format=None,
-    as_symbolic=False,
     whitney_strat=None
 ):
     r"""Asymptotics in a given direction `r` of the multivariate rational function `F`.
@@ -387,12 +385,9 @@ def diagonal_asy_non_smooth(
 
     vs = [expanded_R(v) for v in vs]
     t, lambda_, u_ = expanded_R(t), expanded_R(lambda_), expanded_R(u_)
-    vsT = vs + [t, lambda_]
 
     all_variables = (vs, lambda_, t, u_)
     d = len(vs)
-    rd = r[-1]
-    vd = vs[-1]
 
     # Make sure G and H are coprime, and that H does not vanish at 0
     G, H = RationalFunctionReduce(G, H)
@@ -426,9 +421,9 @@ def diagonal_asy_non_smooth(
     timer = Timer()
 
     asm_quantities = []
-    print(min_crit_pts)
+    #print(min_crit_pts)
     for pt in min_crit_pts:
-        # Step 1: Determine if pt is a multiple point of H, and compute the factorization
+        # Step 1: Determine if pt is a transverse multiple point of H, and compute the factorization
         # for now, we'll just try to factor it in the polynomial ring
         R = PolynomialRing(QQbar, len(vs), vs)
         G = R(SR(G))
@@ -439,28 +434,48 @@ def diagonal_asy_non_smooth(
         unit = poly_factors.unit()
         factors = []
         for factor in poly_factors:
+            #print(factor)
             if factor[0].subs(subs_dict) != 0:
                 unit *= factor[0].subs(subs_dict)
                 continue
+            if factor[0].degree() > 1:
+                print("Does not factor completely over polynomials. Cannot handle this case.")
             if factor[1] > 1:
+                # we should be able to handle this case, TODO
                 raise ACSVException("H is not square-free")
             factors.append(factor[0])
         s = len(factors)
+        normals = matrix(
+            [
+                [
+                    f.derivative(v).subs(subs_dict) for v in vs
+                ] for f in factors
+            ]
+        )
+        if normals.rank() < s:
+            raise ACSVException("Not a transverse intersection.")
+
+        #print("factors:", factors)
+        #print("unit:", unit)
 
         # Step 2: Find the locally parametrizing coordinates of the point pt
         # Since we have d variables and s factors, there should be d-s of these parametrizing coordinates
-        vps = []
-        while d != s:
-            vps = sample(vs, d-s)
+        # We will try to parametrize with the first d-s coordinates, shuffling the vs and r if it doesn't work
+        while True:
             Jac = matrix(
                 [
                     [
-                        ((v * Q.derivative(v))).subs(subs_dict) for v in vps
+                        ((v * Q.derivative(v))).subs(subs_dict) for v in vs[d-s:]
                     ] for Q in factors
                 ]
             )
             if Jac.determinant() != 0:
                 break
+
+            print("Variables do not parametrize, shuffling")
+            vsr = list(zip(vs,r))
+            shuffle(vsr) # shuffle mutates the list
+            vs, r = zip(*vsr)
 
         # Step 3: Compute the gamma matrix as defined in 9.10
         Gamma = matrix(
@@ -470,22 +485,60 @@ def diagonal_asy_non_smooth(
                 ] for Q in factors
             ] + [
                 [v.subs(subs_dict) if vs.index(v) == i else 0 for i in range(d)]
-                for v in vps
+                for v in vs[:d-s]
             ]
         )
 
-        # Step 4: Compute the parametrized Hessian matrix (only for non-complete intersections)
-        # TODO
-        Qw = matrix([[0]])
+        # Compute the parametrized Hessian matrix (only for non-complete intersections)
+        if s != d:
+            #print("Non-complete intersection")
+            Qw = ImplicitHessian(factors, vs, r, s, subs=subs_dict)
+            #print("Qw:", Qw)
+            A = SR((2)**((s-d)/2) * G.subs(subs_dict)/abs(unit))
+            #print("G:", G)
+            #print("unit:", unit)
+            B = SR(prod([v for v in vs[:d-s]]).subs(subs_dict)/((r[-1] * Qw).determinant().sqrt() * abs(Gamma.determinant())))
+            #print("Gamma:", abs(Gamma.determinant()))
+            #print("A,B:", A, B)
+        else:
+            A = SR(G.subs(subs_dict)/unit)
+            B = SR(1/abs(Gamma.determinant()))
         
         T = prod(SR(vs[i].subs(subs_dict))**r[i] for i in range(d))
-
-        A = SR(G.subs(subs_dict)/unit)
-        B = SR(1/Gamma.determinant())
         C = SR(1/T)
-        asm_quantities.append([A,B,C])
+        try:
+            B = QQbar(B)
+            C = QQbar(C)
+        except (ValueError, TypeError):
+            pass
+        asm_quantities.append([A,B,C,s])
 
-    result = asm_quantities
+    asm_vals = [(C, (s-d)/2, A*B) for A,B,C,s in asm_quantities]
+    
+    if output_format is None:
+        output_format = OutputFormat.TUPLE
+    else:
+        output_format = OutputFormat(output_format)
+
+    if output_format in (OutputFormat.TUPLE, OutputFormat.SYMBOLIC):
+        n = SR.var('n')
+        result = [
+            (base, n**exponent, (pi)**exponent, constant)
+            for (base, exponent, constant) in asm_vals
+        ]
+        if output_format == OutputFormat.SYMBOLIC:
+            result = sum([a**n * b * c * d for (a, b, c, d) in result])
+
+    elif output_format == OutputFormat.ASYMPTOTIC:
+        from sage.all import AsymptoticRing
+        n = SR.var('n')
+        result = sum([
+            constant * pi**exponent * base**n * n**exponent
+            for (base, exponent, constant) in asm_vals
+        ])
+
+    else:
+        raise NotImplementedError(f"Missing implementation for {output_format}")
     
     if return_points:
         return result, min_crit_pts

@@ -1,6 +1,6 @@
 from enum import Enum
 
-from sage.all import AA, QQ, Ideal, ceil, gcd, matrix, randint
+from sage.all import AA, QQ, SR, Ideal, ceil, gcd, matrix, randint, vector
 
 class OutputFormat(Enum):
     """Output options for displaying the asymptotic behavior determined
@@ -178,6 +178,89 @@ def NewtonSeries(phi, variables, series_precision):
         return ModX(F, N), ModX(G, ceil(N/2))
     
     return NewtonRecur(Mod(phi, series_precision), series_precision)[0]
+
+def ImplicitHessian(Hs, vs, r, s, subs):
+    d = len(vs)
+    Hs, vs = [SR(H) for H in Hs], [SR(v) for v in vs]
+    #print("H:", Hs)
+    if subs:
+        subs = {SR(v):val for v, val in subs.items()}
+    dHdg = matrix(
+        [
+            [
+                H.derivative(v) for v in vs[d-s:]
+            ] for H in Hs
+        ]
+    )
+    #print("dHdg:", dHdg)
+    dHdv = matrix(
+        [
+            [
+                H.derivative(v) for v in vs[:d-s]
+            ] for H in Hs
+        ]
+    )
+    #print("dHdv:", dHdv)
+    dgdv = -dHdg.inverse() * dHdv
+    #print("dgdv:", dgdv)
+
+    d2gdv2 = [
+        [ -dHdg.inverse() * (
+            vector([H.derivative(vs[i]).derivative(vs[j]) for H in Hs]) + \
+                matrix(
+                    [
+                        [
+                            H.derivative(vs[i]).derivative(g) for g in vs[d-s:]
+                        ] for H in Hs
+                    ]
+                ) * dgdv.column(j)+ \
+                matrix(
+                    [
+                        [
+                            H.derivative(g).derivative(vs[j]) for g in vs[d-s:]
+                        ] for H in Hs
+                    ]
+                ) * dgdv.column(i) + \
+                vector(
+                    [
+                        matrix(
+                            [
+                                [
+                                    H.derivative(g1).derivative(g2) for g1 in vs[d-s:]
+                                ]
+                                for g2 in vs[d-s:]
+                            ]
+                        ) * dgdv.column(i) * dgdv.column(j)
+                     for H in Hs
+                    ]
+                )
+            ) for i in range(d-s)
+        ] for j in range(d-s)
+    ]
+    #print("d2gdv2:", d2gdv2)
+    #print("subs:", d2gdv2.subs(subs))
+
+    def _delta(l, k):
+        return 1 if l == k else 0
+
+    Hess = matrix(
+        [
+            [
+                sum(
+                    [
+                        r[k] * (
+                            -vs[i] * vs[j] * d2gdv2[i][j][k-(d-s)]*vs[k] - _delta(i,j)*dgdv[k-(d-s),j]*vs[k]*vs[i] \
+                                + vs[i]*vs[j]*dgdv[k-(d-s),i]*dgdv[k-(d-s),j]
+                        )/vs[k]**2 for k in range(d-s, d)
+                    ]
+                ) for i in range(d-s)
+            ] for j in range(d-s)
+        ] 
+    )
+    if subs:
+        return Hess.subs(subs)
+
+    return Hess
 
 class ACSVException(Exception):
     def __init__(self, message, retry=False):
