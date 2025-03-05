@@ -433,17 +433,17 @@ def diagonal_asy_non_smooth(
         poly_factors = H.factor()
         unit = poly_factors.unit()
         factors = []
-        for factor in poly_factors:
+        for factor, multiplicity in poly_factors:
             #print(factor)
-            if factor[0].subs(subs_dict) != 0:
-                unit *= factor[0].subs(subs_dict)
+            if factor.subs(subs_dict) != 0:
+                unit *= factor.subs(subs_dict)
                 continue
-            if factor[0].degree() > 1:
-                print("Does not factor completely over polynomials. Cannot handle this case.")
-            if factor[1] > 1:
+            if multiplicity > 1:
                 # we should be able to handle this case, TODO
                 raise ACSVException("H is not square-free")
-            factors.append(factor[0])
+            const = factor.coefficients()[0]
+            factors.append(factor/const)
+            unit *= const
         s = len(factors)
         normals = matrix(
             [
@@ -461,7 +461,7 @@ def diagonal_asy_non_smooth(
         # Step 2: Find the locally parametrizing coordinates of the point pt
         # Since we have d variables and s factors, there should be d-s of these parametrizing coordinates
         # We will try to parametrize with the first d-s coordinates, shuffling the vs and r if it doesn't work
-        while True:
+        for _ in range(s**2):
             Jac = matrix(
                 [
                     [
@@ -476,6 +476,8 @@ def diagonal_asy_non_smooth(
             vsr = list(zip(vs,r))
             shuffle(vsr) # shuffle mutates the list
             vs, r = zip(*vsr)
+        else:
+            raise ACSVException("Cannot find parametrizing set.")
 
         # Step 3: Compute the gamma matrix as defined in 9.10
         Gamma = matrix(
@@ -494,11 +496,11 @@ def diagonal_asy_non_smooth(
             #print("Non-complete intersection")
             Qw = ImplicitHessian(factors, vs, r, s, subs=subs_dict)
             #print("Qw:", Qw)
-            A = SR((2)**((s-d)/2) * G.subs(subs_dict)/abs(unit))
+            A = SR((2)**((s-d)/2) * G.subs(subs_dict)/unit)
             #print("G:", G)
             #print("unit:", unit)
             B = SR(prod([v for v in vs[:d-s]]).subs(subs_dict)/((r[-1] * Qw).determinant().sqrt() * abs(Gamma.determinant())))
-            #print("Gamma:", abs(Gamma.determinant()))
+            #print("Gamma:", Gamma, abs(Gamma.determinant()))
             #print("A,B:", A, B)
         else:
             A = SR(G.subs(subs_dict)/unit)
@@ -530,7 +532,6 @@ def diagonal_asy_non_smooth(
             result = sum([a**n * b * c * d for (a, b, c, d) in result])
 
     elif output_format == OutputFormat.ASYMPTOTIC:
-        from sage.all import AsymptoticRing
         n = SR.var('n')
         result = sum([
             constant * pi**exponent * base**n * n**exponent
@@ -1026,7 +1027,7 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
                         vkjs.append(v)
                         break
                 else:
-                    raise ACSVException("Point vanishes at all partials")
+                    raise ACSVException("Point {p} vanishes at all partials of component {comp}".format(p=x, comp=gens))
     
             normals = matrix(
                 list(
