@@ -1,5 +1,5 @@
 from sage.all import Ideal, PolynomialRing, ProjectiveSpace, QQ
-from sage.all import  matrix
+from sage.all import matrix
 
 def PrimaryDecompositionM2(Id, m2):
     """
@@ -87,8 +87,6 @@ def WhitneyStratProjective(X, P, m2=None):
     Xs[-1] = X
     X_sing = X.intersection(P.subscheme(X.Jacobian()))
     mu = X_sing.dimension()
-    if (k == mu):
-        print("mu same dim as X")
     
     for IZ in PrimaryDecomposition(X_sing.defining_ideal(), m2):
         Z = P.subscheme(IZ)

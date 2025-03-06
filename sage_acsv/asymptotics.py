@@ -351,6 +351,8 @@ def diagonal_asy_non_smooth(
         ``AsymptoticRing`` in the variable ``n``.
     * ``as_symbolic`` -- deprecated in favor of the equivalent
       ``output_format="symbolic"``. Will be removed in a future release.
+    * ``whitney_strat`` -- (Optional) The user can pass in a Whitney Stratification of V(H)
+        to save computation time. The program will not check if this stratification is correct.
 
     OUTPUT:
 
@@ -913,6 +915,7 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
     if whitney_strat is None:
         whitney_strat = WhitneyStrat(Ideal(pure_H(H)), pure_H, m2)
     else:
+        # Cast symbolic generators for provided stratification into the correct ring
         whitney_strat = [prod([Ideal([pure_H(f) for f in comp]) for comp in stratum]) for stratum in whitney_strat]
 
     critical_point_ideals = []
@@ -926,10 +929,12 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
                     [v * f.derivative(v) for v in vs] for f in P_ext.gens()
                 ] + [r]
             )
+            # Create ideal of expanded_R containing extended critical point equations
             cpid = P_ext + Ideal([expanded_R(0)] + M.minors(c+1)) + H.subs({v:v*t for v in vs}) + (prod(vs)*lambda_ - 1)
             # TODO - saturate cpid by singular ideal (vanishing of c by c minors of Jac(gens(P)))
             critical_point_ideals[-1].append((P, cpid))
 
+    # Final minimal critical points with positive coordinates on each stratum
     critical_points_by_stratum = {}
     pos_minimals_by_stratum = {}
     for d in reversed(range(len(critical_point_ideals))):
@@ -977,21 +982,11 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
                 if is_min:
                     pos_minimals.append(u)
 
-            # Remove non-smooth points and points with zero coordinates (where lambda=0)
-            for i in range(len(pos_minimals)):
-                x = (Qs[-1]/Pd).subs(u_=pos_minimals[i])
-                if x == 0:
-                    acsv_logger.warning(
-                        f"Removing critical point {pos_minimals[i]} because it either "
-                        "has a zero coordinate or is not smooth."
-                    )
-                    pos_minimals.pop(i)
-            #####
-
             pos_minimals_by_stratum[d].extend(
                 [[QQbar((q/Pd).subs(u_=u)) for q in Qs[:len(vs)]] for u in pos_minimals]
             )
 
+            # Characterize all complex critical points in each stratum
             for u in one_minus_t.roots(QQbar, multiplicities=False):
                 rv = {
                     ri : (q/Pd).subs(u_=u) 
@@ -1003,13 +998,14 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
                 w = [QQbar((q/Pd).subs(u_=u)) for q in Qs[:len(vs)]]
                 critical_points_by_stratum[d].append(w)
 
+    # Refine positive minimal critical points to those that are contributing
     contributing_pos_minimals = []
     all_components = list(PrimaryDecomposition(Ideal(H)))
     r = r_copy
     for d in reversed(range(len(critical_point_ideals))):
         pos_minimals = pos_minimals_by_stratum[d]
         if len(contributing_pos_minimals) > 0:
-            break
+            break 
 
         for x in pos_minimals:
             critical_subs = {v:point for v, point in zip(vs, x)}
@@ -1027,7 +1023,7 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
                         vkjs.append(v)
                         break
                 else:
-                    raise ACSVException("Point {p} vanishes at all partials of component {comp}".format(p=x, comp=gens))
+                    raise ACSVException("All partials of component {comp} vanish at point {p}".format(comp=gens, p=x))
     
             normals = matrix(
                 list(
