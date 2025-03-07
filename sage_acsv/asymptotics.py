@@ -186,7 +186,7 @@ def diagonal_asy_smooth(
     # Initialize variables
     vs = list(H.variables())
 
-    RR, (t, lambda_, u_) = PolynomialRing(QQ, 't, lambda_, u_').objgens()
+    _, (t, lambda_, u_) = PolynomialRing(QQ, 't, lambda_, u_').objgens()
     expanded_R, _ = PolynomialRing(QQ, len(vs)+3, vs + [t, lambda_, u_]).objgens()
 
     vs = [expanded_R(v) for v in vs]
@@ -260,14 +260,14 @@ def diagonal_asy_smooth(
                     GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision)
                 )
             ])
-        B = B.subs(subs_dict)
-        C = C.subs(subs_dict)
+        B_sub = B.subs(subs_dict)
+        C_sub = C.subs(subs_dict)
         try:
-            B = QQbar(B)
-            C = QQbar(C)
+            B_sub = QQbar(B_sub)
+            C_sub = QQbar(C_sub)
         except (ValueError, TypeError):
             pass
-        asm_quantities.append([expansion, B, C])
+        asm_quantities.append([expansion, B_sub, C_sub])
 
     n = SR.var('n')
     asm_vals = [(c, QQ(1 - d)/2, b.sqrt(), a) for (a, b, c) in asm_quantities]
@@ -321,9 +321,11 @@ def diagonal_asy(
     F,
     r=None,
     linear_form=None,
+    expansion_precision=1,
     return_points=False,
     output_format=None,
-    whitney_strat=None
+    whitney_strat=None,
+    as_symbolic=False
 ):
     r"""Asymptotics in a given direction `r` of the multivariate rational function `F`.
 
@@ -372,16 +374,20 @@ def diagonal_asy(
     G, H = F.numerator(), F.denominator()
     # Initialize variables
     vs = list(H.variables())
-    R = PolynomialRing(QQ, vs)
+    R = PolynomialRing(QQ, vs, len(vs))
     H_sing = Ideal([R(H)] + [R(H.derivative(v)) for v in vs])
     if H_sing.dimension() < 0:
         return diagonal_asy_smooth(
             F,
             r = r,
             linear_form = linear_form,
+            expansion_precision=expansion_precision,
             return_points = return_points,
-            output_format = output_format
+            output_format = output_format,
+            as_symbolic=as_symbolic
         )
+    elif expansion_precision > 1:
+        acsv_logger.warn("Higher order expansions are not supported in the non-smooth case. Defaulting to expansion_precision 1.")
 
     if r is None:
         n = len(H.variables())
@@ -392,7 +398,7 @@ def diagonal_asy(
     except (ValueError, TypeError):
         r = [AA(ri) for ri in r]
 
-    RR, (t, lambda_, u_) = PolynomialRing(QQ, 't, lambda_, u_').objgens()
+    _, (t, lambda_, u_) = PolynomialRing(QQ, 't, lambda_, u_').objgens()
     expanded_R, _ = PolynomialRing(QQ, len(vs)+3, vs + [t, lambda_, u_]).objgens()
 
     vs = [expanded_R(v) for v in vs]
@@ -530,6 +536,11 @@ def diagonal_asy(
         asm_quantities.append([A,B,C,s])
 
     asm_vals = [(C, (s-d)/2, A*B) for A,B,C,s in asm_quantities]
+
+    if as_symbolic:
+        acsv_logger.warn(
+            "The as_symbolic argument has been deprecated in favor of output_format='symbolic' "
+        )
     
     if output_format is None:
         output_format = OutputFormat.TUPLE
