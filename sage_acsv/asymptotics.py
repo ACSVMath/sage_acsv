@@ -7,7 +7,7 @@ from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra,
 from sage.all import gcd, prod, pi, matrix, exp, log, add, I, factorial, srange, shuffle, vector
 
 from sage_acsv.kronecker import _kronecker_representation, _msolve_kronecker_representation
-from sage_acsv.helpers import ACSVException, NewtonSeries, RationalFunctionReduce, OutputFormat, GetHessian, ImplicitHessian
+from sage_acsv.helpers import ACSVException, IsContributing, NewtonSeries, RationalFunctionReduce, OutputFormat, GetHessian, ImplicitHessian
 from sage_acsv.debug import Timer, acsv_logger
 from sage_acsv.whitney import WhitneyStrat, PrimaryDecomposition
 
@@ -15,7 +15,7 @@ from sage_acsv.whitney import WhitneyStrat, PrimaryDecomposition
 MAX_MIN_CRIT_RETRIES = 3
 
 
-def diagonal_asy(
+def diagonal_asy_smooth(
     F,
     r=None,
     linear_form=None,
@@ -208,7 +208,7 @@ def diagonal_asy(
     for _ in range(MAX_MIN_CRIT_RETRIES):
         try:
             # Find minimal critical points in Kronecker Representation
-            min_crit_pts = MinimalCriticalCombinatorial(
+            min_crit_pts = MinimalCriticalCombinatorialSmooth(
                 G, H, all_variables,
                 r=r,
                 linear_form=linear_form
@@ -317,7 +317,7 @@ def diagonal_asy(
 
     return result
 
-def diagonal_asy_non_smooth(
+def diagonal_asy(
     F,
     r=None,
     linear_form=None,
@@ -370,6 +370,19 @@ def diagonal_asy_non_smooth(
 
     """
     G, H = F.numerator(), F.denominator()
+    # Initialize variables
+    vs = list(H.variables())
+    R = PolynomialRing(QQ, vs)
+    H_sing = Ideal([R(H)] + [R(H.derivative(v)) for v in vs])
+    if H_sing.dimension() < 0:
+        return diagonal_asy_smooth(
+            F,
+            r = r,
+            linear_form = linear_form,
+            return_points = return_points,
+            output_format = output_format
+        )
+
     if r is None:
         n = len(H.variables())
         r = [1 for _ in range(n)]
@@ -378,9 +391,6 @@ def diagonal_asy_non_smooth(
         r = [QQ(ri) for ri in r]
     except (ValueError, TypeError):
         r = [AA(ri) for ri in r]
-
-    # Initialize variables
-    vs = list(H.variables())
 
     RR, (t, lambda_, u_) = PolynomialRing(QQ, 't, lambda_, u_').objgens()
     expanded_R, _ = PolynomialRing(QQ, len(vs)+3, vs + [t, lambda_, u_]).objgens()
@@ -396,12 +406,14 @@ def diagonal_asy_non_smooth(
     G, H = expanded_R(G), expanded_R(H)
     if H.subs({v: 0 for v in H.variables()}) == 0:
         raise ValueError("Denominator vanishes at 0.")
+    
+
 
     # In case form doesn't separate, we want to try again
     for _ in range(MAX_MIN_CRIT_RETRIES):
         try:
             # Find minimal critical points in Kronecker Representation
-            min_crit_pts = MinimalCriticalCombinatorialNonSmooth(
+            min_crit_pts = MinimalCriticalCombinatorial(
                 G, H, all_variables,
                 r=r,
                 linear_form=linear_form,
@@ -659,7 +671,7 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision):
         for j in srange(expansion_precision)
     ]
 
-def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None):
+def MinimalCriticalCombinatorialSmooth(G, H, variables, r=None, linear_form=None):
     r"""Compute minimal critical points of a combinatorial multivariate
     rational function F=G/H admitting a finite number of critical points.
 
@@ -834,7 +846,7 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None):
 
     return [[(q/Pd).subs(u_=u) for q in Qs[:len(vs)]] for u in minimals]
 
-def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=None, m2=None, whitney_strat=None):
+def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=None, whitney_strat=None):
     r"""Compute minimal critical points of a combinatorial multivariate
     rational function F=G/H admitting a finite number of critical points.
 
@@ -919,10 +931,10 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
         whitney_strat = [prod([Ideal([pure_H(f) for f in comp]) for comp in stratum]) for stratum in whitney_strat]
 
     critical_point_ideals = []
-    for stratum in whitney_strat:
+    for d, stratum in enumerate(whitney_strat):
         critical_point_ideals.append([])
         for P in PrimaryDecomposition(stratum, m2):
-            c = len(vs) - P.dimension()
+            c = len(vs) - d
             P_ext = P.change_ring(expanded_R)
             M = matrix(
                 [
@@ -930,8 +942,10 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
                 ] + [r]
             )
             # Create ideal of expanded_R containing extended critical point equations
-            cpid = P_ext + Ideal([expanded_R(0)] + M.minors(c+1)) + H.subs({v:v*t for v in vs}) + (prod(vs)*lambda_ - 1)
-            # TODO - saturate cpid by singular ideal (vanishing of c by c minors of Jac(gens(P)))
+            cpid = P_ext + Ideal(M.minors(c+1) + [H.subs({v:v*t for v in vs}), (prod(vs)*lambda_ - 1)])
+            # Saturate cpid by lower dimension stratum, if d > 0
+            if d > 0:
+                cpid = cpid.saturation(whitney_strat[d-1].change_ring(expanded_R))[0]
             critical_point_ideals[-1].append((P, cpid))
 
     # Final minimal critical points with positive coordinates on each stratum
@@ -945,7 +959,6 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
         for _, ideal in ideals:
             if ideal.dimension() < 0:
                 continue
-            ##### 
             P, Qs = _kronecker_representation(ideal.gens(), u_, vsT, lambda_, linear_form)
 
             Qt = Qs[-2]  # Qs ordering is H.variables() + rvars + [t, lambda_]
@@ -1000,7 +1013,7 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
 
     # Refine positive minimal critical points to those that are contributing
     contributing_pos_minimals = []
-    all_components = list(PrimaryDecomposition(Ideal(H)))
+    all_factors = list(factor[0] for factor in H.factor())
     r = r_copy
     for d in reversed(range(len(critical_point_ideals))):
         pos_minimals = pos_minimals_by_stratum[d]
@@ -1008,36 +1021,7 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
             break 
 
         for x in pos_minimals:
-            critical_subs = {v:point for v, point in zip(vs, x)}
-            # Compute irreducible components of H that contain the point
-            components = list(
-                P for P in all_components
-                if P.subs(critical_subs) == Ideal(P.parent()(0))
-            )
-            
-            gens = [f for P in components for f in P.gens()]
-            vkjs = []
-            for f in gens:
-                for v in vs:
-                    if f.derivative(v).subs(critical_subs)!=0:
-                        vkjs.append(v)
-                        break
-                else:
-                    raise ACSVException("All partials of component {comp} vanish at point {p}".format(comp=gens, p=x))
-    
-            normals = matrix(
-                list(
-                    [AA(
-                        f.derivative(v).subs(critical_subs) * critical_subs[v] / (
-                            critical_subs[vkj] * f.derivative(vkj).subs(critical_subs)
-                        )
-                    ) for v in vs] for vkj, f in zip(vkjs, gens)
-                )
-            )
-            
-            polytope = Polyhedron(rays=normals)
-
-            if r in polytope:
+            if IsContributing(vs, x, r, all_factors):
                 contributing_pos_minimals.append(x)
                 for i in range(d):
                     stratum = whitney_strat[i]
@@ -1058,15 +1042,8 @@ def MinimalCriticalCombinatorialNonSmooth(G, H, variables, r=None, linear_form=N
     contributing_points = []
     for d in reversed(range(len(critical_point_ideals))):
         for w in critical_points_by_stratum[d]:
-            if all([abs(w_i)==abs(min_i) for w_i, min_i in zip(w, minimal)]):
-                if d>0:
-                    sub_stratum = whitney_strat[d-1]
-                    if sub_stratum.subs({pure_H(wi):val for wi, val in zip(vs, w)}) == Ideal(pure_H(0)):
-                        raise ACSVException(
-                            "Non-generic critical point found - {w} is contained in {dim}-dimensional stratum".format(w = str(w[:len(vs)]), dim = i)
-                        )
+            if all([abs(w_i)==abs(min_i) for w_i, min_i in zip(w, minimal)]) and IsContributing(vs, w, r, all_factors):
                 contributing_points.append(w)
-
 
     return contributing_points
 

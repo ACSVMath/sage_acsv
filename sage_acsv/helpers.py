@@ -1,6 +1,6 @@
 from enum import Enum
 
-from sage.all import AA, QQ, SR, Ideal, ceil, gcd, matrix, randint, vector
+from sage.all import AA, QQ, SR, Ideal, Polyhedron, ceil, gcd, matrix, randint, vector
 
 class OutputFormat(Enum):
     """Output options for displaying the asymptotic behavior determined
@@ -261,6 +261,40 @@ def ImplicitHessian(Hs, vs, r, s, subs):
         return Hess.subs(subs)
 
     return Hess
+
+def IsContributing(vs, pt, r, factors):
+    critical_subs = {v:point for v, point in zip(vs, pt)}
+    # Compute irreducible components of H that contain the point
+    vanishing_factors = list(
+        f for f in factors
+        if f.subs(critical_subs) == 0
+    )
+    for f in vanishing_factors:
+        if all([f.derivative(v).subs(critical_subs)==0 for v in vs]):
+            raise ACSVException("Critical point {p} lies in non-smooth part of component {f}".format(p=pt, f=f))
+
+    vkjs = []
+    for f in vanishing_factors:
+        for v in vs:
+            if f.derivative(v).subs(critical_subs)!=0:
+                vkjs.append(v)
+                break
+        else:
+            # In theory this shouldn't ever happen, now that we check the condition before
+            raise ACSVException("All partials of component {comp} vanish at point {p}".format(comp=vanishing_factors, p=pt))
+
+    normals = matrix(
+        list(
+            [AA(
+                f.derivative(v).subs(critical_subs) * critical_subs[v] / (
+                    critical_subs[vkj] * f.derivative(vkj).subs(critical_subs)
+                )
+            ) for v in vs] for vkj, f in zip(vkjs, vanishing_factors)
+        )
+    )
+    
+    polytope = Polyhedron(rays=normals)
+    return r in polytope
 
 class ACSVException(Exception):
     def __init__(self, message, retry=False):
