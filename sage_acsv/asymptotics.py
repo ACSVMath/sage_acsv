@@ -488,9 +488,6 @@ def diagonal_asy(
         if normals.rank() < s:
             raise ACSVException("Not a transverse intersection.")
 
-        #print("factors:", factors)
-        #print("unit:", unit)
-
         # Step 2: Find the locally parametrizing coordinates of the point pt
         # Since we have d variables and s factors, there should be d-s of these parametrizing coordinates
         # We will try to parametrize with the first d-s coordinates, shuffling the vs and r if it doesn't work
@@ -527,14 +524,9 @@ def diagonal_asy(
         # Compute the parametrized Hessian matrix (only for non-complete intersections)
         if s != d:
             #print("Non-complete intersection")
-            Qw = ImplicitHessian(factors, vs, r, s, subs=subs_dict)
-            #print("Qw:", Qw)
+            Qw = ImplicitHessian(factors, vs, r, subs=subs_dict)
             A = SR((2)**((s-d)/2) * G.subs(subs_dict)/unit)
-            #print("G:", G)
-            #print("unit:", unit)
             B = SR(prod([v for v in vs[:d-s]]).subs(subs_dict)/((r[-1] * Qw).determinant().sqrt() * abs(Gamma.determinant())))
-            #print("Gamma:", Gamma, abs(Gamma.determinant()))
-            #print("A,B:", A, B)
         else:
             A = SR(G.subs(subs_dict)/unit)
             B = SR(1/abs(Gamma.determinant()))
@@ -1063,7 +1055,7 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=N
             break 
 
         for x in pos_minimals:
-            if IsContributing(vs, x, r, all_factors):
+            if IsContributing(vs, x, r, all_factors, len(vs)-d):
                 contributing_pos_minimals.append(x)
                 for i in range(d):
                     stratum = whitney_strat[i]
@@ -1081,10 +1073,11 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=N
         )
     minimal = contributing_pos_minimals[0]
 
+    # Characterize all complex contributing points
     contributing_points = []
     for d in reversed(range(len(critical_point_ideals))):
         for w in critical_points_by_stratum[d]:
-            if all([abs(w_i)==abs(min_i) for w_i, min_i in zip(w, minimal)]) and IsContributing(vs, w, r, all_factors):
+            if all([abs(w_i)==abs(min_i) for w_i, min_i in zip(w, minimal)]) and IsContributing(vs, w, r, all_factors, len(vs)-d):
                 contributing_points.append(w)
 
     return contributing_points

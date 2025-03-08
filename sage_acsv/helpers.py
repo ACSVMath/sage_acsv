@@ -179,10 +179,33 @@ def NewtonSeries(phi, variables, series_precision):
     
     return NewtonRecur(Mod(phi, series_precision), series_precision)[0]
 
-def ImplicitHessian(Hs, vs, r, s, subs):
+def ImplicitHessian(Hs, vs, r, subs):
+    r"""Given a transverse point `w` in `H_1(w),...,H_s(w)=0`, we can parametrize `V(H_1,...,H_s)`
+    near `w` by writing `z_{d-s+j} = g_j(z_1,...,z_{d-s})`. 
+    
+    Let `h(\theta_1,...,\theta_{d-s}) = \sum_{j=1}^s r_{d-s+j}\log g_j({w_1 exp(i\theta_1)...w_{d-s} exp(i\theta_{d-s})}).
+    This function returns Hess(h).
+    
+    INPUT:
+
+    * ``Hs`` -- A list of polynomials `H`
+    * ``vs`` -- A list of variables in the equation
+    * ``r`` -- A direction vector
+    * ``subs`` -- a dic `{v_i:w_i}` for point w
+
+    OUTPUT:
+
+    `Hess(h)` where `h` is defined as above.
+
+    EXAMPLES::
+
+        sage: from sage_acsv.helpers import ImplicitHessian
+
+    """
+
     d = len(vs)
+    s = len(Hs)
     Hs, vs = [SR(H) for H in Hs], [SR(v) for v in vs]
-    #print("H:", Hs)
     if subs:
         subs = {SR(v):val for v, val in subs.items()}
     dHdg = matrix(
@@ -192,7 +215,6 @@ def ImplicitHessian(Hs, vs, r, s, subs):
             ] for H in Hs
         ]
     )
-    #print("dHdg:", dHdg)
     dHdv = matrix(
         [
             [
@@ -200,9 +222,7 @@ def ImplicitHessian(Hs, vs, r, s, subs):
             ] for H in Hs
         ]
     )
-    #print("dHdv:", dHdv)
     dgdv = -dHdg.inverse() * dHdv
-    #print("dgdv:", dgdv)
 
     d2gdv2 = [
         [ -dHdg.inverse() * (
@@ -237,8 +257,6 @@ def ImplicitHessian(Hs, vs, r, s, subs):
             ) for i in range(d-s)
         ] for j in range(d-s)
     ]
-    #print("d2gdv2:", d2gdv2)
-    #print("subs:", d2gdv2.subs(subs))
 
     def _delta(l, k):
         return 1 if l == k else 0
@@ -262,7 +280,25 @@ def ImplicitHessian(Hs, vs, r, s, subs):
 
     return Hess
 
-def IsContributing(vs, pt, r, factors):
+def IsContributing(vs, pt, r, factors, c):
+    r"""Determines if critical point `pt` is contributing; that is, `r` is in the interior
+    of the scaled log-normal cone of `factors` at `pt`
+    
+    INPUT:
+
+    * ``vs`` -- A list of variables
+    * ``pt`` -- A point
+    * ``r`` -- A direction vector
+    * ``factors`` -- A list of factors of `H` for which `pt` vanishes
+    * ``c`` -- The co-dimension of the intersection of factors
+
+    OUTPUT:
+
+    If vs is contributing
+
+    EXAMPLES::
+
+    """
     critical_subs = {v:point for v, point in zip(vs, pt)}
     # Compute irreducible components of H that contain the point
     vanishing_factors = list(
@@ -294,7 +330,14 @@ def IsContributing(vs, pt, r, factors):
     )
     
     polytope = Polyhedron(rays=normals)
-    return r in polytope
+    if r not in polytope:
+        return False
+    elif any([r in f for f in polytope.faces(c-1)]):
+        # If r is in the boundary of the log normal cone, point is non-generic
+        raise ACSVException(
+            "Non-generic critical point found - {w} is contained in {dim}-dimensional stratum".format(w = str(pt), dim = len(vs)-c)
+        )
+    return True
 
 class ACSVException(Exception):
     def __init__(self, message, retry=False):
