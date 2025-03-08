@@ -25,6 +25,7 @@ def diagonal_asy_smooth(
     as_symbolic=False
 ):
     r"""Asymptotics in a given direction `r` of the multivariate rational function `F`.
+        Assumes the singular variety of F is smooth.
 
     INPUT:
 
