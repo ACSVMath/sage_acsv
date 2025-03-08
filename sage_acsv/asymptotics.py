@@ -65,20 +65,20 @@ def diagonal_asy_smooth(
 
     Examples::
 
-        sage: from sage_acsv import diagonal_asy
+        sage: from sage_acsv import diagonal_asy_smooth
         sage: var('x,y,z,w')
         (x, y, z, w)
-        sage: diagonal_asy(1/(1-x-y))
+        sage: diagonal_asy_smooth(1/(1-x-y))
         [(4, 1/sqrt(n), 1/sqrt(pi), 1)]
-        sage: diagonal_asy(1/(1-(1+x)*y), r = [1,2], return_points=True)
+        sage: diagonal_asy_smooth(1/(1-(1+x)*y), r = [1,2], return_points=True)
         ([(4, 1/sqrt(n), 1/sqrt(pi), 1)], [[1, 1/2]])
-        sage: diagonal_asy(1/(1-(x+y+z)+(3/4)*x*y*z), output_format="symbolic")
+        sage: diagonal_asy_smooth(1/(1-(x+y+z)+(3/4)*x*y*z), output_format="symbolic")
         0.840484893481498?*24.68093482214177?^n/(pi*n)
-        sage: diagonal_asy(1/(1-(x+y+z)+(3/4)*x*y*z))
+        sage: diagonal_asy_smooth(1/(1-(x+y+z)+(3/4)*x*y*z))
         [(24.68093482214177?, 1/n, 1/pi, 0.840484893481498?)]
         sage: var('n')
         n
-        sage: asy = diagonal_asy(
+        sage: asy = diagonal_asy_smooth(
         ....:     1/(1 - w*(1 + x)*(1 + y)*(1 + z)*(x*y*z + y*z + y + z + 1))
         ....: )
         sage: sum([
@@ -90,18 +90,18 @@ def diagonal_asy_smooth(
     Not specifying any ``output_format`` falls back to the default tuple
     representation::
 
-        sage: from sage_acsv import diagonal_asy, OutputFormat
+        sage: from sage_acsv import diagonal_asy_smooth, OutputFormat
         sage: var('x')
         x
-        sage: diagonal_asy(1/(1 - 2*x))
+        sage: diagonal_asy_smooth(1/(1 - 2*x))
         [(2, 1, 1, 1)]
-        sage: diagonal_asy(1/(1 - 2*x), output_format="tuple")
+        sage: diagonal_asy_smooth(1/(1 - 2*x), output_format="tuple")
         [(2, 1, 1, 1)]
 
     Passing ``"symbolic"`` lets the function return an element of the
     symbolic ring in the variable ``n`` that describes the asymptotic growth::
 
-        sage: growth = diagonal_asy(1/(1 - 2*x), output_format="symbolic"); growth
+        sage: growth = diagonal_asy_smooth(1/(1 - 2*x), output_format="symbolic"); growth
         2^n
         sage: growth.parent()
         Symbolic Ring
@@ -119,7 +119,7 @@ def diagonal_asy_smooth(
     Increasing the precision of the expansion returns an expansion with more terms
     (works for all available output formats)::
 
-        sage: diagonal_asy(1/(1 - x - y), expansion_precision=3, output_format="asymptotic")
+        sage: diagonal_asy_smooth(1/(1 - x - y), expansion_precision=3, output_format="asymptotic")
         1/sqrt(pi)*4^n*n^(-1/2) - 1/8/sqrt(pi)*4^n*n^(-3/2) + 1/128/sqrt(pi)*4^n*n^(-5/2)
         + O(4^n*n^(-7/2))
 
@@ -127,13 +127,13 @@ def diagonal_asy_smooth(
     vector of all 1's) if not specified. It also supports passing non-integer values,
     notably rational numbers::
 
-        sage: diagonal_asy(1/(1 - x - y), r=(1, 17/42), output_format="symbolic")
+        sage: diagonal_asy_smooth(1/(1 - x - y), r=(1, 17/42), output_format="symbolic")
         1.317305628032865?*2.324541507270374?^n/(sqrt(pi)*sqrt(n))
     
     and even algebraic numbers (note, however, that the performance for complicated
     algebraic numbers is significantly degraded)::
 
-        sage: diagonal_asy(1/(1 - x - y), r=(sqrt(2), 1))
+        sage: diagonal_asy_smooth(1/(1 - x - y), r=(sqrt(2), 1))
         [(2.414213562373095?/0.5857864376269049?^1.414213562373095?,
           1/sqrt(n),
           1/sqrt(pi),
@@ -141,7 +141,7 @@ def diagonal_asy_smooth(
 
     ::
 
-        sage: diagonal_asy(1/(1 - x - y*x^2), r=(1, 1/2 - 1/2*sqrt(1/5)), output_format="asymptotic")
+        sage: diagonal_asy_smooth(1/(1 - x - y*x^2), r=(1, 1/2 - 1/2*sqrt(1/5)), output_format="asymptotic")
         1.710862642974252?/sqrt(pi)*1.618033988749895?^n*n^(-1/2)
         + O(1.618033988749895?^n*n^(-3/2))
 
@@ -151,7 +151,7 @@ def diagonal_asy_smooth(
         sage: import logging
         sage: from sage_acsv.debug import acsv_logger
         sage: acsv_logger.setLevel(logging.INFO)
-        sage: diagonal_asy(1/(1 - x - y))
+        sage: diagonal_asy_smooth(1/(1 - x - y))
         INFO:sage_acsv:... Executed Kronecker in ... seconds.
         INFO:sage_acsv:... Executed Minimal Points in ... seconds.
         INFO:sage_acsv:... Executed Final Asymptotics in ... seconds.
@@ -163,11 +163,11 @@ def diagonal_asy_smooth(
 
     Check that passing a non-supported ``output_format`` errors out::
 
-        sage: diagonal_asy(1/(1 - x - y), output_format='hello world')
+        sage: diagonal_asy_smooth(1/(1 - x - y), output_format='hello world')
         Traceback (most recent call last):
         ...
         ValueError: 'hello world' is not a valid OutputFormat
-        sage: diagonal_asy(1/(1 - x - y), output_format=42)
+        sage: diagonal_asy_smooth(1/(1 - x - y), output_format=42)
         Traceback (most recent call last):
         ...
         ValueError: 42 is not a valid OutputFormat
@@ -245,21 +245,12 @@ def diagonal_asy_smooth(
     asm_quantities = []
     for cp in min_crit_pts:
         subs_dict = {SR(v): V for (v, V) in zip(vs, cp)}
-        if expansion_precision == 1: 
-            # TODO: GeneralTermAsymptotics should return the expansion
-            # when passing a precision of 1
-            expansion = A.subs(subs_dict)
-            try:
-                expansion = QQbar(expansion)
-            except (ValueError, TypeError):
-                pass
-        else:
-            expansion = sum([
-                term / (rd * n)**(term_order)
-                for term_order, term in enumerate(
-                    GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision)
-                )
-            ])
+        expansion = sum([
+            term / (rd * n)**(term_order)
+            for term_order, term in enumerate(
+                GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision)
+            )
+        ])
         B_sub = B.subs(subs_dict)
         C_sub = C.subs(subs_dict)
         try:
@@ -355,6 +346,8 @@ def diagonal_asy(
       ``output_format="symbolic"``. Will be removed in a future release.
     * ``whitney_strat`` -- (Optional) The user can pass in a Whitney Stratification of V(H)
         to save computation time. The program will not check if this stratification is correct.
+        The whitney_strat should be an array of length ``d``, with the ``k``-th entry a list of
+        tuples of ideal generators representing a component of the ``k``-dimensional stratum
 
     OUTPUT:
 
@@ -369,6 +362,25 @@ def diagonal_asy(
     points) the code can be rerun until a separating form is found.
 
     Examples::
+
+    sage: from sage_acsv import diagonal_asy
+    sage: var('x,y')
+    (x, y)
+    sage: diagonal_asy(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)), r = [17/24, 7/24], output_format = 'asymptotic')
+    12
+
+    sage: from sage_acsv import diagonal_asy
+    sage: var('x,y,z')
+    (x, y, z)
+    sage: G = (1+x)*(1-x*y^2+x^2)
+    sage: H = (1-z*(1+x^2+x*y^2))*(1-y)*(1+x^2)
+    sage: strat = [
+            [(1-z*(1+x^2+x*y^2), 1-y, 1+x^2)],
+            [(1-z*(1+x^2+x*y^2), 1-y),(1-z*(1+x^2+x*y^2), 1+x^2),(1-y,1+x^2)],
+            [(H,)]
+        ]
+    sage: diagonal_asy(G/H, r = [1,1,1], output_format = 'asymptotic', whitney_strat = strat)
+    0.8660254037844386*3^n/(sqrt(pi)*sqrt(n))
 
     """
     G, H = F.numerator(), F.denominator()
@@ -603,6 +615,11 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision):
         sage: GeneralTermAsymptotics(1, 1 - x - y - z, [1, 1, 1], [x, y, z], [1/3, 1/3, 1/3], 4)
         [3, -2/3, 2/27, 14/729]
     """
+
+    if expansion_precision == 1:
+        A = SR(-G / vs[-1] / H.derivative(vs[-1]))
+        subs_dict = {SR(v): V for (v, V) in zip(vs, cp)}
+        return [A.subs(subs_dict)]
     
     # Convert everything to field of algebraic numbers
     d = len(vs)
@@ -685,8 +702,9 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision):
 def MinimalCriticalCombinatorialSmooth(G, H, variables, r=None, linear_form=None):
     r"""Compute minimal critical points of a combinatorial multivariate
     rational function F=G/H admitting a finite number of critical points.
+    Assumes the singular variety of F is smooth.
 
-    Typically, this function is called as a subroutine of :func:`.diagonal_asy`.
+    Typically, this function is called as a subroutine of :func:`.diagonal_asy_smooth`.
 
     INPUT:
 
@@ -712,9 +730,9 @@ def MinimalCriticalCombinatorialSmooth(G, H, variables, r=None, linear_form=None
 
     Examples::
 
-        sage: from sage_acsv import MinimalCriticalCombinatorial
+        sage: from sage_acsv import MinimalCriticalCombinatorialSmooth
         sage: R.<x, y, w, lambda_, t, u_> = QQ[]
-        sage: pts = MinimalCriticalCombinatorial(
+        sage: pts = MinimalCriticalCombinatorialSmooth(
         ....:     1,
         ....:     1 - w*(y + x + x^2*y + x*y^2),
         ....:     ([w, x, y], lambda_, t, u_)
@@ -865,22 +883,22 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=N
 
     INPUT:
 
-    * ``G, H`` -- Coprime polynomials with `F = G/H`
+    * ``G, H`` -- Coprime polynomials with ``F = G/H``
     * ``variables`` -- Tuple of variables of ``G`` and ``H``, followed
       by ``lambda_, t, u_``
-    * ``r`` -- (Optional) Length `d` vector of positive integers
+    * ``r`` -- (Optional) Length ``d`` vector of positive integers
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions
     * ``m2`` -- (Optional) The option to pass in a SageMath Macaulay2 interface for
         computing primary decompositions. Macaulay2 must be installed by the user
     * ``whitney_strat`` -- (Optional) The user can pass in a Whitney Stratification of V(H)
         to save computation time. The program will not check if this stratification is correct.
+        The whitney_strat should be an array of length ``d``, with the ``k``-th entry a list of
+        tuples of ideal generators representing a component of the ``k``-dimensional stratum
 
     OUTPUT:
 
-    A tuple whose first elemenent is a list of minimal critical points of `F` in the direction `r`,
-    as a list of tuples of algebraic numbers. The second element is a boolean value indicating
-    if the points were determined to be contributing.
+    A list of minimal contributing points of `F` in the direction `r`,
 
     NOTE:
 
@@ -888,6 +906,18 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=N
     separates the solutions of an intermediate polynomial system with high probability.
     This separation step can fail, but (assuming F has a finite number of critical points)
     the code can be rerun until a separating form is found.
+
+    Examples::
+
+        sage: from sage_acsv import MinimalCriticalCombinatorial
+        sage: R.<x, y, lambda_, t, u_> = QQ[]
+        sage: pts = MinimalCriticalCombinatorial(
+        ....:     1,
+        ....:     (1-(2*x+y)/3)*(1-(3*x+y)/4),
+        ....:     ([x, y], lambda_, t, u_)
+        ....: )
+        sage: sorted(pts)
+        [[3/4, 2/3]]
 
     """
 
