@@ -1,5 +1,5 @@
 from sage.all import Ideal, PolynomialRing, ProjectiveSpace, QQ
-from sage.all import matrix
+from sage.all import combinations, matrix
 
 def PrimaryDecompositionM2(Id, m2):
     """
@@ -120,6 +120,30 @@ def WhitneyStrat(IX, R, m2=None):
     `IX_j` reprensents the `j`-dimensional stratum.
     """
     vs = R.gens()
+    d = len(vs)
+    # Check if IX = V(H) and H factors smoothly - 
+    # if so, the whitney strat is just the intersection of subsets of the components
+    if len(IX.gens()) == 1:
+        factors = [fm[0] for fm in IX.gens()[0].factor()]
+        if all([
+            Ideal([fs]+matrix([[f.derivative(v) for v in vs] for f in fs]).minors(len(fs))).dimension() < 0 
+            for fs in combinations(factors)
+        ]):
+            strat = [Ideal(R(0)) for _ in range(d)]
+            strat[-1] = Ideal(IX.gens())
+            for k in reversed(range(1,d)):
+                Jac = matrix(
+                    [
+                        [
+                            f.derivative(v) for v in vs
+                        ] for f in strat[k].gens()
+                    ]
+                )
+                sing = Ideal(Jac.minors(d-k) + strat[k].gens()).radical()
+                for i in range(sing.dimension(), k):
+                    strat[i] = (sing + strat[i]).radical()
+            return strat
+
     P, vsP = ProjectiveSpace(QQ, len(vs), list(vs)+['z0']).objgens()
     
     z0 = vsP[-1]
