@@ -237,7 +237,6 @@ def diagonal_asy_smooth(
 
 
     # Find constants appearing in asymptotics in terms of original variables
-    A = SR(-G / vd / H.derivative(vd))
     B = SR(1 / Det / rd**(d-1) / 2**(d-1))
     C = SR(1 / T)
 
@@ -518,29 +517,34 @@ def diagonal_asy(
             ]
         )
 
+        mult_fac = prod([factorial(m-1) for m in multiplicities])
+        r_gamma_inv = prod([x**(multiplicities[i]-1) for i,x in  enumerate(list(vector(r)*Gamma.inverse())[:s])])
+
         # Compute the parametrized Hessian matrix (only for non-complete intersections)
         if s != d:
             Qw = ImplicitHessian(factors, vs, r, subs=subs_dict)
-            A = SR((2*pi)**((s-d)/2) * G.subs(subs_dict)/unit)
+            A = SR(G.subs(subs_dict)/unit)
             B = SR(prod([v for v in vs[:d-s]]).subs(subs_dict)/((r[-1] * Qw).determinant().sqrt() * abs(Gamma.determinant())))
         else:
             A = SR(G.subs(subs_dict)/unit)
             B = SR(1/abs(Gamma.determinant()))
 
-        A /= prod([factorial(m-1) for m in multiplicities])
-        B *= prod([x**(multiplicities[i]-1) for i,x in  enumerate(list(vector(r)*Gamma.inverse())[:s])])
+        A /= (-1)**sum([m-1 for m in multiplicities]) * mult_fac
+        B *= r_gamma_inv
 
         T = prod(SR(vs[i].subs(subs_dict))**r[i] for i in range(d))
         C = SR(1/T)
+        D = QQ((s-d)/2 + sum(multiplicities) - s)
         try:
+            A = QQbar(A)
             B = QQbar(B)
             C = QQbar(C)
         except (ValueError, TypeError):
             pass
-        D = (s-d)/2 + sum(multiplicities) - s
-        asm_quantities.append([A,B,C,D])
+        
+        asm_quantities.append([A,B,C,D, s])
 
-    asm_vals = [(C, D, A*B) for A,B,C,D in asm_quantities]
+    asm_vals = [(C, D, A*B, s) for A,B,C,D,s in asm_quantities]
 
     if as_symbolic:
         acsv_logger.warn(
@@ -555,17 +559,17 @@ def diagonal_asy(
     if output_format in (OutputFormat.TUPLE, OutputFormat.SYMBOLIC):
         n = SR.var('n')
         result = [
-            (base, n**exponent, constant)
-            for (base, exponent, constant) in asm_vals
+            (base, n**exponent, (2*pi)**((s-d)/2), constant)
+            for (base, exponent, constant, s) in asm_vals
         ]
         if output_format == OutputFormat.SYMBOLIC:
-            result = sum([a**n * b * c for (a, b, c) in result])
+            result = sum([a**n * b * c * d for (a, b, c, d) in result])
 
     elif output_format == OutputFormat.ASYMPTOTIC:
         n = SR.var('n')
         result = sum([
-            constant * base**n * n**exponent
-            for (base, exponent, constant) in asm_vals
+            constant * base**n * (2*pi)**((s-d)/2) * n**exponent
+            for (base, exponent, constant, s) in asm_vals
         ])
 
     else:
