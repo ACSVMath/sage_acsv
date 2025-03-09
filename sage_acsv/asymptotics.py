@@ -425,8 +425,6 @@ def diagonal_asy(
     G, H = expanded_R(G), expanded_R(H)
     if H.subs({v: 0 for v in H.variables()}) == 0:
         raise ValueError("Denominator vanishes at 0.")
-    
-
 
     # In case form doesn't separate, we want to try again
     for _ in range(MAX_MIN_CRIT_RETRIES):
@@ -466,17 +464,16 @@ def diagonal_asy(
         poly_factors = H.factor()
         unit = poly_factors.unit()
         factors = []
+        multiplicities = []
         for factor, multiplicity in poly_factors:
-            #print(factor)
+            const = factor.coefficients()[-1]
+            unit *= const ** multiplicity
+            factor /= const
             if factor.subs(subs_dict) != 0:
                 unit *= factor.subs(subs_dict)
                 continue
-            if multiplicity > 1:
-                # we should be able to handle this case, TODO
-                raise ACSVException("H is not square-free")
-            const = factor.coefficients()[0]
-            factors.append(factor/const)
-            unit *= const
+            factors.append(factor)
+            multiplicities.append(multiplicity)
         s = len(factors)
         normals = matrix(
             [
@@ -486,7 +483,7 @@ def diagonal_asy(
             ]
         )
         if normals.rank() < s:
-            raise ACSVException("Not a transverse intersection.")
+            raise ACSVException("Not a transverse intersection. Cannot deal with this case.")
 
         # Step 2: Find the locally parametrizing coordinates of the point pt
         # Since we have d variables and s factors, there should be d-s of these parametrizing coordinates
@@ -523,14 +520,16 @@ def diagonal_asy(
 
         # Compute the parametrized Hessian matrix (only for non-complete intersections)
         if s != d:
-            #print("Non-complete intersection")
             Qw = ImplicitHessian(factors, vs, r, subs=subs_dict)
             A = SR((2*pi)**((s-d)/2) * G.subs(subs_dict)/unit)
             B = SR(prod([v for v in vs[:d-s]]).subs(subs_dict)/((r[-1] * Qw).determinant().sqrt() * abs(Gamma.determinant())))
         else:
             A = SR(G.subs(subs_dict)/unit)
             B = SR(1/abs(Gamma.determinant()))
-        
+
+        A /= prod([factorial(m-1) for m in multiplicities])
+        B *= prod([x**(multiplicities[i]-1) for i,x in  enumerate(list(vector(r)*Gamma.inverse())[:s])])
+
         T = prod(SR(vs[i].subs(subs_dict))**r[i] for i in range(d))
         C = SR(1/T)
         try:
@@ -538,9 +537,10 @@ def diagonal_asy(
             C = QQbar(C)
         except (ValueError, TypeError):
             pass
-        asm_quantities.append([A,B,C,s])
+        D = (s-d)/2 + sum(multiplicities) - s
+        asm_quantities.append([A,B,C,D])
 
-    asm_vals = [(C, (s-d)/2, A*B) for A,B,C,s in asm_quantities]
+    asm_vals = [(C, D, A*B) for A,B,C,D in asm_quantities]
 
     if as_symbolic:
         acsv_logger.warn(
