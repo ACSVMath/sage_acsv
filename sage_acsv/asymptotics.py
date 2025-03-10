@@ -994,16 +994,17 @@ def ContributingCombinatorial(G, H, variables, r=None, linear_form=None, m2=None
                     [v * f.derivative(v) for v in vs] for f in P_ext.gens()
                 ] + [r]
             )
+            # Add in min polys for the direction variables
+            r_polys = [
+                direction_value.minpoly().subs(direction_var) 
+                for direction_var, direction_value in r_variable_values.items()
+            ]
             # Create ideal of expanded_R containing extended critical point equations
-            cpid = P_ext + Ideal(M.minors(c+1) + [H.subs({v:v*t for v in vs}), (prod(vs)*lambda_ - 1)])
+            cpid = P_ext + Ideal(M.minors(c+1) + [H.subs({v:v*t for v in vs}), (prod(vs)*lambda_ - 1)] + r_polys)
             # Saturate cpid by lower dimension stratum, if d > 0
             if d > 0:
                 cpid = cpid.saturation(whitney_strat[d-1].change_ring(expanded_R))[0]
-            # Add in min polys for the direction variables
-            cpid += Ideal([
-                direction_value.minpoly().subs(direction_var) 
-                for direction_var, direction_value in r_variable_values.items()
-            ])
+            
             critical_point_ideals[-1].append((P, cpid))
 
     # Final minimal critical points with positive coordinates on each stratum
@@ -1162,8 +1163,8 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=N
     for idx, direction in enumerate(r):
         r_i = direction
         if AA(direction).minpoly().degree() > 1:
-            ri = SR.var(f"r{idx}")
-            r_variable_values[ri] = AA(direction)
+            r_i = SR.var(f"r{idx}")
+            r_variable_values[r_i] = AA(direction)
         r_subs.append(r_i)
 
     r = r_subs
@@ -1192,6 +1193,8 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=N
         whitney_strat = [prod([Ideal([pure_H(f) for f in comp]) for comp in stratum]) for stratum in whitney_strat]
 
     critical_point_ideals = []
+    critical_points = []
+    pos_minimals = []
     for d, stratum in enumerate(whitney_strat):
         critical_point_ideals.append([])
         for P in PrimaryDecomposition(stratum, m2):
@@ -1202,20 +1205,17 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=N
                     [v * f.derivative(v) for v in vs] for f in P_ext.gens()
                 ] + [r]
             )
+            # Add in min polys for the direction variables
+            r_polys = [
+                direction_value.minpoly().subs(direction_var) 
+                for direction_var, direction_value in r_variable_values.items()
+            ]
             # Create ideal of expanded_R containing extended critical point equations
-            cpid = P_ext + Ideal(M.minors(c+1) + [H.subs({v:v*t for v in vs}), (prod(vs)*lambda_ - 1)])
+            ideal = P_ext + Ideal(M.minors(c+1) + [H.subs({v:v*t for v in vs}), (prod(vs)*lambda_ - 1)] + r_polys)
             # Saturate cpid by lower dimension stratum, if d > 0
             if d > 0:
-                cpid = cpid.saturation(whitney_strat[d-1].change_ring(expanded_R))[0]
-            critical_point_ideals[-1].append((P, cpid))
-
-    # Final minimal critical points with positive coordinates on each stratum
-    critical_points = []
-    pos_minimals = []
-    for d in reversed(range(len(critical_point_ideals))):
-        ideals = critical_point_ideals[d]
+                ideal = ideal.saturation(whitney_strat[d-1].change_ring(expanded_R))[0]
         
-        for _, ideal in ideals:
             if ideal.dimension() < 0:
                 continue
             P, Qs = _kronecker_representation(ideal.gens(), u_, vsT, lambda_, linear_form)
@@ -1264,7 +1264,7 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=N
                     continue
 
                 w = [QQbar((q/Pd).subs(u_=u)) for q in Qs[:len(vs)]]
-                critical_points.extend(w)
+                critical_points.append(w)
 
     if len(pos_minimals) == 0:
         raise ACSVException("No critical points found.")
