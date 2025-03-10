@@ -347,7 +347,7 @@ def diagonal_asy(
     * ``whitney_strat`` -- (Optional) The user can pass in a Whitney Stratification of V(H)
         to save computation time. The program will not check if this stratification is correct.
         The whitney_strat should be an array of length ``d``, with the ``k``-th entry a list of
-        tuples of ideal generators representing a component of the ``k``-dimensional stratum
+        tuples of ideal generators representing a component of the ``k``-dimensional stratum.
 
     OUTPUT:
 
@@ -363,24 +363,24 @@ def diagonal_asy(
 
     Examples::
 
-    sage: from sage_acsv import diagonal_asy
-    sage: var('x,y')
-    (x, y)
-    sage: diagonal_asy(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)), r = [17/24, 7/24], output_format = 'asymptotic')
-    12
+        sage: from sage_acsv import diagonal_asy
+        sage: var('x,y')
+        (x, y)
+        sage: diagonal_asy(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)), r = [17/24, 7/24], output_format = 'asymptotic')
+        12
 
-    sage: from sage_acsv import diagonal_asy
-    sage: var('x,y,z')
-    (x, y, z)
-    sage: G = (1+x)*(1-x*y^2+x^2)
-    sage: H = (1-z*(1+x^2+x*y^2))*(1-y)*(1+x^2)
-    sage: strat = [
-            [(1-z*(1+x^2+x*y^2), 1-y, 1+x^2)],
-            [(1-z*(1+x^2+x*y^2), 1-y),(1-z*(1+x^2+x*y^2), 1+x^2),(1-y,1+x^2)],
-            [(H,)]
-        ]
-    sage: diagonal_asy(G/H, r = [1,1,1], output_format = 'asymptotic', whitney_strat = strat)
-    0.8660254037844386*3^n/(sqrt(pi)*sqrt(n))
+        sage: from sage_acsv import diagonal_asy
+        sage: var('x,y,z')
+        (x, y, z)
+        sage: G = (1+x)*(1-x*y^2+x^2)
+        sage: H = (1-z*(1+x^2+x*y^2))*(1-y)*(1+x^2)
+        sage: strat = [
+                [(1-z*(1+x^2+x*y^2), 1-y, 1+x^2)],
+                [(1-z*(1+x^2+x*y^2), 1-y),(1-z*(1+x^2+x*y^2), 1+x^2),(1-y,1+x^2)],
+                [(H,)]
+            ]
+        sage: diagonal_asy(G/H, r = [1,1,1], output_format = 'asymptotic', whitney_strat = strat)
+        0.8660254037844386*3^n/(sqrt(pi)*sqrt(n))
 
     """
     G, H = F.numerator(), F.denominator()
@@ -914,7 +914,7 @@ def ContributingCombinatorial(G, H, variables, r=None, linear_form=None, m2=None
     * ``whitney_strat`` -- (Optional) The user can pass in a Whitney Stratification of V(H)
         to save computation time. The program will not check if this stratification is correct.
         The whitney_strat should be an array of length ``d``, with the ``k``-th entry a list of
-        tuples of ideal generators representing a component of the ``k``-dimensional stratum
+        tuples of ideal generators representing a component of the ``k``-dimensional stratum.
 
     OUTPUT:
 
@@ -1134,7 +1134,7 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=N
     * ``whitney_strat`` -- (Optional) The user can pass in a Whitney Stratification of V(H)
         to save computation time. The program will not check if this stratification is correct.
         The whitney_strat should be an array of length ``d``, with the ``k``-th entry a list of
-        tuples of ideal generators representing a component of the ``k``-dimensional stratum
+        tuples of ideal generators representing a component of the ``k``-dimensional stratum.
 
     OUTPUT:
 
@@ -1297,7 +1297,7 @@ def CriticalPoints(G, H, variables, r=None, linear_form=None, m2=None, whitney_s
     * ``whitney_strat`` -- (Optional) The user can pass in a Whitney Stratification of V(H)
         to save computation time. The program will not check if this stratification is correct.
         The whitney_strat should be an array of length ``d``, with the ``k``-th entry a list of
-        tuples of ideal generators representing a component of the ``k``-dimensional stratum
+        tuples of ideal generators representing a component of the ``k``-dimensional stratum.
 
     OUTPUT:
 

@@ -68,7 +68,7 @@ def _kronecker_representation(system, u_, vs, lambda_=None, linear_form=None):
         raise ACSVException("Trouble computing Groebner basis. System may be too large.")
     
     if ideal.dimension() != 0:
-        raise ACSVException("Ideal is not 0-dimensional - cannot compute kronecker representation.")
+        raise ACSVException(f"Ideal {ideal} is not 0-dimensional. Cannot compute Kronecker representation.")
 
     ideal = ideal.radical()
     gb = ideal.transformed_basis('fglm')
