@@ -1,5 +1,5 @@
 from sage.all import Ideal, PolynomialRing, ProjectiveSpace, QQ
-from sage.all import combinations, matrix
+from sage.all import Combinations, matrix
 
 def PrimaryDecompositionM2(Id, m2):
     """
@@ -126,8 +126,8 @@ def WhitneyStrat(IX, R, m2=None):
     if len(IX.gens()) == 1:
         factors = [fm[0] for fm in IX.gens()[0].factor()]
         if all([
-            Ideal([fs]+matrix([[f.derivative(v) for v in vs] for f in fs]).minors(len(fs))).dimension() < 0 
-            for fs in combinations(factors)
+            Ideal(fs+matrix([[f.derivative(v) for v in vs] for f in fs]).minors(len(fs))).dimension() < 0 
+            for fs in Combinations(factors) if len(fs) > 1
         ]):
             strat = [Ideal(R(0)) for _ in range(d)]
             strat[-1] = Ideal(IX.gens())
