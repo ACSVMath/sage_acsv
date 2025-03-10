@@ -73,17 +73,18 @@ def diagonal_asy_smooth(
         sage: var('x,y,z,w')
         (x, y, z, w)
         sage: diagonal_asy_smooth(1/(1-x-y))
-        [(4, 1/sqrt(n), 1/sqrt(pi), 1)]
+        4^n/(sqrt(pi)*sqrt(n))
         sage: diagonal_asy_smooth(1/(1-(1+x)*y), r = [1,2], return_points=True)
-        ([(4, 1/sqrt(n), 1/sqrt(pi), 1)], [[1, 1/2]])
-        sage: diagonal_asy_smooth(1/(1-(x+y+z)+(3/4)*x*y*z), output_format="symbolic")
-        0.840484893481498?*24.68093482214177?^n/(pi*n)
+        (4^n/(sqrt(pi)*sqrt(n)), [[1, 1/2]])
         sage: diagonal_asy_smooth(1/(1-(x+y+z)+(3/4)*x*y*z))
+        0.840484893481498?*24.68093482214177?^n/(pi*n)
+        sage: diagonal_asy_smooth(1/(1-(x+y+z)+(3/4)*x*y*z), output_format="tuple")
         [(24.68093482214177?, 1/n, 1/pi, 0.840484893481498?)]
         sage: var('n')
         n
         sage: asy = diagonal_asy_smooth(
-        ....:     1/(1 - w*(1 + x)*(1 + y)*(1 + z)*(x*y*z + y*z + y + z + 1))
+        ....:     1/(1 - w*(1 + x)*(1 + y)*(1 + z)*(x*y*z + y*z + y + z + 1)),
+        ....:     output_format="tuple",
         ....: )
         sage: sum([
         ....:      a.radical_expression()^n * b * c * d.radical_expression()
@@ -94,11 +95,11 @@ def diagonal_asy_smooth(
     Not specifying any ``output_format`` falls back to the default tuple
     representation::
 
-        sage: from sage_acsv import diagonal_asy_smooth, OutputFormat
+        sage: from sage_acsv import diagonal_asy_smooth
         sage: var('x')
         x
         sage: diagonal_asy_smooth(1/(1 - 2*x))
-        [(2, 1, 1, 1)]
+        2^n
         sage: diagonal_asy_smooth(1/(1 - 2*x), output_format="tuple")
         [(2, 1, 1, 1)]
 
@@ -115,7 +116,7 @@ def diagonal_asy_smooth(
     appropriate error term::
 
         sage: assume(SR.an_element() > 0)  # required to make coercions involving SR work properly
-        sage: growth = diagonal_asy(1/(1 - x - y), output_format="asymptotic"); growth
+        sage: growth = diagonal_asy_smooth(1/(1 - x - y), output_format="asymptotic"); growth
         1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2))
         sage: growth.parent()
         Asymptotic Ring <SR^n * n^QQ * Arg_SR^n> over Symbolic Ring
@@ -137,7 +138,7 @@ def diagonal_asy_smooth(
     and even algebraic numbers (note, however, that the performance for complicated
     algebraic numbers is significantly degraded)::
 
-        sage: diagonal_asy_smooth(1/(1 - x - y), r=(sqrt(2), 1))
+        sage: diagonal_asy_smooth(1/(1 - x - y), r=(sqrt(2), 1), output_format="tuple")
         [(2.414213562373095?/0.5857864376269049?^1.414213562373095?,
           1/sqrt(n),
           1/sqrt(pi),
@@ -159,7 +160,7 @@ def diagonal_asy_smooth(
         INFO:sage_acsv:... Executed Kronecker in ... seconds.
         INFO:sage_acsv:... Executed Minimal Points in ... seconds.
         INFO:sage_acsv:... Executed Final Asymptotics in ... seconds.
-        [(4, 1/sqrt(n), 1/sqrt(pi), 1)]
+        4^n/(sqrt(pi)*sqrt(n))
         sage: acsv_logger.setLevel(logging.WARNING)
 
 
@@ -368,25 +369,24 @@ def diagonal_asy(
 
     Examples::
 
-    sage: from sage_acsv import diagonal_asy
-    sage: var('x,y')
-    (x, y)
-    sage: diagonal_asy(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)), r = [17/24, 7/24], output_format = 'asymptotic')
-    12
+        sage: from sage_acsv import diagonal_asy
+        sage: var('x,y')
+        (x, y)
+        sage: diagonal_asy(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)), r = [17/24, 7/24], output_format = 'asymptotic')
+        12 + O(n^(-1))
 
-    sage: from sage_acsv import diagonal_asy
-    sage: var('x,y,z')
-    (x, y, z)
-    sage: G = (1+x)*(1-x*y^2+x^2)
-    sage: H = (1-z*(1+x^2+x*y^2))*(1-y)*(1+x^2)
-    sage: strat = [
-            [(1-z*(1+x^2+x*y^2), 1-y, 1+x^2)],
-            [(1-z*(1+x^2+x*y^2), 1-y),(1-z*(1+x^2+x*y^2), 1+x^2),(1-y,1+x^2)],
-            [(H,)]
-        ]
-    sage: diagonal_asy(G/H, r = [1,1,1], output_format = 'asymptotic', whitney_strat = strat)
-    0.8660254037844386*3^n/(sqrt(pi)*sqrt(n))
-
+        sage: from sage_acsv import diagonal_asy
+        sage: var('x,y,z')
+        (x, y, z)
+        sage: G = (1+x)*(1-x*y^2+x^2)
+        sage: H = (1-z*(1+x^2+x*y^2))*(1-y)*(1+x^2)
+        sage: strat = [
+        ....:     [(1-z*(1+x^2+x*y^2), 1-y, 1+x^2)],
+        ....:     [(1-z*(1+x^2+x*y^2), 1-y),(1-z*(1+x^2+x*y^2), 1+x^2),(1-y,1+x^2)],
+        ....:     [(H,)]
+        ....: ]
+        sage: diagonal_asy(G/H, r = [1,1,1], output_format = 'asymptotic', whitney_strat = strat)
+        0.866025403784439?/sqrt(pi)*3^n*n^(-1/2) + O(3^n*n^(-3/2))
     """
     G, H = F.numerator(), F.denominator()
     # Initialize variables
@@ -567,9 +567,10 @@ def diagonal_asy(
         acsv_logger.warn(
             "The as_symbolic argument has been deprecated in favor of output_format='symbolic' "
         )
+        output_format = OutputFormat.SYMBOLIC
     
     if output_format is None:
-        output_format = OutputFormat.ASYMPTOTIC
+        output_format = OutputFormat.get_default()
     else:
         output_format = OutputFormat(output_format)
 
@@ -942,7 +943,7 @@ def ContributingCombinatorial(G, H, variables, r=None, linear_form=None, m2=None
         ....:     ([x, y], lambda_, t, u_)
         ....: )
         sage: sorted(pts)
-        [[3/4, 2/3]]
+        [[3/4, 3/2]]
 
     """
 
