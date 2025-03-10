@@ -1375,7 +1375,7 @@ def CriticalPoints(G, H, variables, r=None, linear_form=None, m2=None, whitney_s
                 for direction_var, direction_value in r_variable_values.items()
             ]
             # Create ideal of expanded_R containing extended critical point equations
-            ideal = P_ext + Ideal(M.minors(c+1) + [expanded_R(0)] + r_polys)
+            ideal = P_ext + Ideal(M.minors(c+1) + [(prod(vs)*lambda_ - 1)] + r_polys)
             # Saturate cpid by lower dimension stratum, if d > 0
             if d > 0:
                 ideal = ideal.saturation(whitney_strat[d-1].change_ring(expanded_R))[0]
