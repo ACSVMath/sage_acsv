@@ -42,13 +42,16 @@ def diagonal_asy_smooth(
       minimal critical points. By default ``False``.
     * ``output_format`` -- (Optional) A string or :class:`.OutputFormat` specifying
       the way the asymptotic growth is returned. Allowed values currently are:
-      - ``"tuple"`` or ``None``, the default: the growth is returned as a list of
+      - ``"tuple"``: the growth is returned as a list of
         tuples of the form ``(a, n^b, pi^c, d)`` such that the `r`-diagonal of `F`
         is the sum of ``a^n n^b pi^c d + O(a^n n^{b-1})`` over these tuples.
       - ``"symbolic"``: the growth is returned as an expression from the symbolic
         ring ``SR`` in the variable ``n``.
       - ``"asymptotic"``: the growth is returned as an expression from an appropriate
         ``AsymptoticRing`` in the variable ``n``.
+      - ``None``: the default, which uses the default set for :class:`.OutputFormat`
+        itself via :meth:`.OutputFormat.set_default`. The default behavior
+        is symbolic output.
     * ``as_symbolic`` -- deprecated in favor of the equivalent
       ``output_format="symbolic"``. Will be removed in a future release.
 
@@ -273,11 +276,10 @@ def diagonal_asy_smooth(
             DeprecationWarning,
             stacklevel=2,
         )
-        if output_format is None:
-            output_format = OutputFormat.SYMBOLIC
+        output_format = OutputFormat.SYMBOLIC
 
     if output_format is None:
-        output_format = OutputFormat.ASYMPTOTIC
+        output_format = OutputFormat.get_default()
     else:
         output_format = OutputFormat(output_format)
 
@@ -335,13 +337,16 @@ def diagonal_asy(
       minimal critical points. By default ``False``.
     * ``output_format`` -- (Optional) A string or :class:`.OutputFormat` specifying
       the way the asymptotic growth is returned. Allowed values currently are:
-      - ``"tuple"`` or ``None``, the default: the growth is returned as a list of
+      - ``"tuple"``: the growth is returned as a list of
         tuples of the form ``(a, n^b, pi^c, d)`` such that the `r`-diagonal of `F`
         is the sum of ``a^n n^b pi^c d + O(a^n n^{b-1})`` over these tuples.
       - ``"symbolic"``: the growth is returned as an expression from the symbolic
         ring ``SR`` in the variable ``n``.
       - ``"asymptotic"``: the growth is returned as an expression from an appropriate
         ``AsymptoticRing`` in the variable ``n``.
+      - ``None``: the default, which uses the default set for :class:`.OutputFormat`
+        itself via :meth:`.OutputFormat.set_default`. The default behavior
+        is symbolic output.
     * ``as_symbolic`` -- deprecated in favor of the equivalent
       ``output_format="symbolic"``. Will be removed in a future release.
     * ``whitney_strat`` -- (Optional) The user can pass in a Whitney Stratification of V(H)
