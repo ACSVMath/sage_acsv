@@ -706,10 +706,18 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision):
         extra_contrib = (-1)**j / (2**(ell + j) * factorial(ell) * factorial(ell + j))
         return extra_contrib * SR(eval_op(EE[ell + j], PP[ell]))
 
-    return [
+    res = [
         sum([constants_clj(ell, j) for ell in srange(2*j + 1)])
         for j in srange(expansion_precision)
     ]
+    try:
+        for i in range(len(res)):
+            if res[i].imag() == 0:
+                res[i] = SR(AA(res[i]))
+    except:
+        pass
+
+    return res
 
 def ContributingCombinatorialSmooth(G, H, variables, r=None, linear_form=None):
     r"""Compute contributing points of a combinatorial multivariate
@@ -1108,7 +1116,7 @@ def ContributingCombinatorial(G, H, variables, r=None, linear_form=None, m2=None
     return contributing_points
 
 def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=None, whitney_strat=None):
-    r"""Compute minimal critical points of a combinatorial multivariate
+    r"""Compute nonzero minimal critical points of a combinatorial multivariate
     rational function F=G/H admitting a finite number of critical points.
 
     Typically, this function is called as a subroutine of :func:`.diagonal_asy`.
@@ -1144,8 +1152,6 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=N
     """
 
     #####
-    timer = Timer()
-
     # Fetch the variables we need
     vs, lambda_, t, u_ = variables
     vsT = vs + [t, lambda_]
@@ -1153,9 +1159,6 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=N
     # If direction r is not given, default to the diagonal
     if r is None:
         r = [1 for _ in range(len(vs))]
-
-    # Make copies of r so they don't get mutated outside of function
-    r_copy = copy(r)
 
     # Replace irrational r with variable ri, add min poly to system
     r_variable_values = {}
@@ -1192,14 +1195,12 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=N
         # Cast symbolic generators for provided stratification into the correct ring
         whitney_strat = [prod([Ideal([pure_H(f) for f in comp]) for comp in stratum]) for stratum in whitney_strat]
 
-    critical_point_ideals = []
     critical_points = []
     pos_minimals = []
     for d, stratum in enumerate(whitney_strat):
-        critical_point_ideals.append([])
-        for P in PrimaryDecomposition(stratum, m2):
+        for P_comp in PrimaryDecomposition(stratum, m2):
             c = len(vs) - d
-            P_ext = P.change_ring(expanded_R)
+            P_ext = P_comp.change_ring(expanded_R)
             M = matrix(
                 [
                     [v * f.derivative(v) for v in vs] for f in P_ext.gens()
@@ -1276,3 +1277,126 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=N
             minimal_criticals.append(w)
 
     return minimal_criticals
+
+def CriticalPoints(G, H, variables, r=None, linear_form=None, m2=None, whitney_strat=None):
+    r"""Compute critical points of a multivariate
+    rational function F=G/H admitting a finite number of critical points.
+
+    Typically, this function is called as a subroutine of :func:`.diagonal_asy`.
+
+    INPUT:
+
+    * ``G, H`` -- Coprime polynomials with ``F = G/H``
+    * ``variables`` -- Tuple of variables of ``G`` and ``H``, followed
+      by ``t`` and ``u_``
+    * ``r`` -- (Optional) Length ``d`` vector of positive integers
+    * ``linear_form`` -- (Optional) A linear combination of the input
+      variables that separates the critical point solutions
+    * ``m2`` -- (Optional) The option to pass in a SageMath Macaulay2 interface for
+        computing primary decompositions. Macaulay2 must be installed by the user
+    * ``whitney_strat`` -- (Optional) The user can pass in a Whitney Stratification of V(H)
+        to save computation time. The program will not check if this stratification is correct.
+        The whitney_strat should be an array of length ``d``, with the ``k``-th entry a list of
+        tuples of ideal generators representing a component of the ``k``-dimensional stratum
+
+    OUTPUT:
+
+    A list of minimal contributing points of `F` in the direction `r`,
+
+    NOTE:
+
+    The code randomly generates a linear form, which for generic rational functions
+    separates the solutions of an intermediate polynomial system with high probability.
+    This separation step can fail, but (assuming F has a finite number of critical points)
+    the code can be rerun until a separating form is found.
+
+    Examples::
+
+    """
+
+    #####
+
+    # Fetch the variables we need
+    vs, lambda_, u_ = variables
+    vsT = vs + [lambda_]
+
+    # If direction r is not given, default to the diagonal
+    if r is None:
+        r = [1 for _ in range(len(vs))]
+
+    # Replace irrational r with variable ri, add min poly to system
+    r_variable_values = {}
+    r_subs = []
+    for idx, direction in enumerate(r):
+        r_i = direction
+        if AA(direction).minpoly().degree() > 1:
+            r_i = SR.var(f"r{idx}")
+            r_variable_values[r_i] = AA(direction)
+        r_subs.append(r_i)
+
+    r = r_subs
+
+    expanded_R_variables = vs + list(r_variable_values.keys()) + [lambda_, u_]
+    expanded_R = PolynomialRing(QQ, expanded_R_variables)
+
+    vs = [expanded_R(v) for v in vs]
+    lambda_, u_ = expanded_R(lambda_), expanded_R(u_)
+    G, H = expanded_R(G), expanded_R(H)
+
+    r_variable_values = {
+        expanded_R(ri):val for (ri, val) in r_variable_values.items()
+    }
+    r = [expanded_R(ri) for ri in r]
+
+    vsT = vs + list(r_variable_values.keys())+ [lambda_]
+
+    # Compute the critical point system for each stratum
+    pure_H = PolynomialRing(QQ, vs)
+
+    if whitney_strat is None:
+        whitney_strat = WhitneyStrat(Ideal(pure_H(H)), pure_H, m2)
+    else:
+        # Cast symbolic generators for provided stratification into the correct ring
+        whitney_strat = [prod([Ideal([pure_H(f) for f in comp]) for comp in stratum]) for stratum in whitney_strat]
+
+    critical_points = []
+    for d, stratum in enumerate(whitney_strat):
+        for P_comp in PrimaryDecomposition(stratum, m2):
+            c = len(vs) - d
+            P_ext = P_comp.change_ring(expanded_R)
+            M = matrix(
+                [
+                    [v * f.derivative(v) for v in vs] for f in P_ext.gens()
+                ] + [r]
+            )
+            # Add in min polys for the direction variables
+            r_polys = [
+                direction_value.minpoly().subs(direction_var) 
+                for direction_var, direction_value in r_variable_values.items()
+            ]
+            # Create ideal of expanded_R containing extended critical point equations
+            ideal = P_ext + Ideal(M.minors(c+1) + [expanded_R(0)] + r_polys)
+            # Saturate cpid by lower dimension stratum, if d > 0
+            if d > 0:
+                ideal = ideal.saturation(whitney_strat[d-1].change_ring(expanded_R))[0]
+        
+            if ideal.dimension() < 0:
+                continue
+            P, Qs = _kronecker_representation(ideal.gens(), u_, vsT, lambda_, linear_form)
+
+            Qt = Qs[-2]  # Qs ordering is H.variables() + rvars + [t, lambda_]
+            Pd = P.derivative()
+
+            # Characterize all complex critical points in each stratum
+            for u in P.roots(QQbar, multiplicities=False):
+                rv = {
+                    ri : (q/Pd).subs(u_=u) 
+                    for (ri, q) in zip(r_variable_values, Qs[len(vs):-2])
+                }
+                if (any([rv[r_var] != r_value for r_var, r_value in r_variable_values.items()])):
+                    continue
+
+                w = [QQbar((q/Pd).subs(u_=u)) for q in Qs[:len(vs)]]
+                critical_points.append(w)
+
+    return critical_points
