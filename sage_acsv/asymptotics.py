@@ -523,7 +523,7 @@ def diagonal_asy(
         # Compute the parametrized Hessian matrix (only for non-complete intersections)
         if s != d:
             Qw = ImplicitHessian(factors, vs, r, subs=subs_dict)
-            A = SR(G.subs(subs_dict)/unit)
+            A = SR(2**QQ((s-d)/2) * G.subs(subs_dict)/unit)
             B = SR(prod([v for v in vs[:d-s]]).subs(subs_dict)/((r[-1] * Qw).determinant().sqrt() * abs(Gamma.determinant())))
         else:
             A = SR(G.subs(subs_dict)/unit)
@@ -559,7 +559,7 @@ def diagonal_asy(
     if output_format in (OutputFormat.TUPLE, OutputFormat.SYMBOLIC):
         n = SR.var('n')
         result = [
-            (base, n**exponent, (2*pi)**((s-d)/2), constant)
+            (base, n**exponent, (pi)**((s-d)/2), constant)
             for (base, exponent, constant, s) in asm_vals
         ]
         if output_format == OutputFormat.SYMBOLIC:
@@ -568,7 +568,7 @@ def diagonal_asy(
     elif output_format == OutputFormat.ASYMPTOTIC:
         n = SR.var('n')
         result = sum([
-            constant * base**n * (2*pi)**((s-d)/2) * n**exponent
+            constant * base**n * (pi)**((s-d)/2) * n**exponent
             for (base, exponent, constant, s) in asm_vals
         ])
 
