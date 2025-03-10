@@ -249,9 +249,9 @@ def ImplicitHessian(Hs, vs, r, subs):
         sage: from sage_acsv.helpers import ImplicitHessian
         sage: R.<x,y,z,w> = PolynomialRing(QQ,4)
         sage: Hs = [
-                z^2+z*w+x*y-4,
-                w^3+z*x-y
-            ]
+        ....:     z^2+z*w+x*y-4,
+        ....:     w^3+z*x-y
+        ....: ]
         sage: ImplicitHessian(Hs, [x,y,z,w], [1,1,1,1], {x:1,y:1,z:1,w:1})
         [21/32     0]
         [    0   7/8]
