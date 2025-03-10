@@ -277,7 +277,7 @@ def diagonal_asy_smooth(
             output_format = OutputFormat.SYMBOLIC
 
     if output_format is None:
-        output_format = OutputFormat.TUPLE
+        output_format = OutputFormat.TUPLE # TODO default to asymptotic?
     else:
         output_format = OutputFormat(output_format)
 
@@ -296,7 +296,7 @@ def diagonal_asy_smooth(
         AR = AsymptoticRing('SR^n * n^QQ', SR_without_n)
         n = AR.gen()
         result = sum([
-            constant * pi**exponent * base**n * n**exponent * (AR(expansion) + (n**(-expansion_precision)).O())
+            constant * pi**exponent * SR(base)**n * n**exponent * (AR(expansion) + (n**(-expansion_precision)).O())
             for (base, exponent, constant, expansion) in asm_vals
         ])
 
@@ -398,8 +398,6 @@ def diagonal_asy(
             output_format = output_format,
             as_symbolic=as_symbolic
         )
-    elif expansion_precision > 1:
-        acsv_logger.warn("Higher order expansions are not supported in the non-smooth case. Defaulting to expansion_precision 1.")
 
     if r is None:
         n = len(H.variables())
@@ -425,12 +423,13 @@ def diagonal_asy(
     if H.subs({v: 0 for v in H.variables()}) == 0:
         raise ValueError("Denominator vanishes at 0.")
 
+    H_sf = prod([f for f,_ in H.factor()])
     # In case form doesn't separate, we want to try again
     for _ in range(MAX_MIN_CRIT_RETRIES):
         try:
             # Find minimal critical points in Kronecker Representation
             min_crit_pts = MinimalCriticalCombinatorial(
-                G, H, all_variables,
+                G, H_sf, all_variables,
                 r=r,
                 linear_form=linear_form,
                 whitney_strat=whitney_strat
@@ -452,14 +451,14 @@ def diagonal_asy(
 
     asm_quantities = []
     #print(min_crit_pts)
-    for pt in min_crit_pts:
+    for cp in min_crit_pts:
         # Step 1: Determine if pt is a transverse multiple point of H, and compute the factorization
         # for now, we'll just try to factor it in the polynomial ring
         R = PolynomialRing(QQbar, len(vs), vs)
         G = R(SR(G))
         H = R(SR(H))
         vs = [R(SR(v)) for v in vs]
-        subs_dict = {vs[i]:pt[i] for i in range(d)}
+        subs_dict = {vs[i]:cp[i] for i in range(d)}
         poly_factors = H.factor()
         unit = poly_factors.unit()
         factors = []
@@ -499,9 +498,9 @@ def diagonal_asy(
                 break
 
             print("Variables do not parametrize, shuffling")
-            vsr = list(zip(vs,r))
-            shuffle(vsr) # shuffle mutates the list
-            vs, r = zip(*vsr)
+            vs_r_cp = list(zip(vs,r, cp))
+            shuffle(vs_r_cp) # shuffle mutates the list
+            vs, r, cp = zip(*vs_r_cp)
         else:
             raise ACSVException("Cannot find parametrizing set.")
 
@@ -517,34 +516,47 @@ def diagonal_asy(
             ]
         )
 
+        # Some constants appearing for higher order singularities
         mult_fac = prod([factorial(m-1) for m in multiplicities])
         r_gamma_inv = prod([x**(multiplicities[i]-1) for i,x in  enumerate(list(vector(r)*Gamma.inverse())[:s])])
-
-        # Compute the parametrized Hessian matrix (only for non-complete intersections)
-        if s != d:
-            Qw = ImplicitHessian(factors, vs, r, subs=subs_dict)
-            A = SR(2**QQ((s-d)/2) * G.subs(subs_dict)/unit)
-            B = SR(prod([v for v in vs[:d-s]]).subs(subs_dict)/((r[-1] * Qw).determinant().sqrt() * abs(Gamma.determinant())))
+        # If cp lies on a single smooth component, we can compute asymptotics like in the smooth case
+        if s == 1 and sum(multiplicities) == 1:
+            n = SR.var('n')
+            expansion = sum([
+                term / (r[-1] * n)**(term_order)
+                for term_order, term in enumerate(
+                    GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision)
+                )
+            ])
+            Det = GetHessian(H, vs, r).determinant()
+            B = SR(1 / Det.subs(subs_dict) / r[-1]**(d-1) / 2**(d-1))
         else:
-            A = SR(G.subs(subs_dict)/unit)
-            B = SR(1/abs(Gamma.determinant()))
+            # Higher order expansions not currently supported for non-smooth critical points
+            if expansion_precision > 1:
+                acsv_logger.warn("Higher order expansions are not supported in the non-smooth case. Defaulting to expansion_precision 1.")
+            # For non-complete intersections, we must compute the parametrized Hessian matrix
+            if s != d:
+                Qw = ImplicitHessian(factors, vs, r, subs=subs_dict)
+                expansion = SR(G.subs(subs_dict)/abs(Gamma.determinant())/unit)
+                B = SR(prod([v for v in vs[:d-s]]).subs(subs_dict)/(r[-1] * Qw).determinant()/2**(d-s))
+            else:
+                expansion = SR(G.subs(subs_dict)/unit/abs(Gamma.determinant()))
+                B = 1
 
-        A /= (-1)**sum([m-1 for m in multiplicities]) * mult_fac
-        B *= r_gamma_inv
+        expansion *= (-1)**sum([m-1 for m in multiplicities]) * r_gamma_inv / mult_fac
 
         T = prod(SR(vs[i].subs(subs_dict))**r[i] for i in range(d))
         C = SR(1/T)
         D = QQ((s-d)/2 + sum(multiplicities) - s)
         try:
-            A = QQbar(A)
             B = QQbar(B)
             C = QQbar(C)
         except (ValueError, TypeError):
             pass
         
-        asm_quantities.append([A,B,C,D, s])
+        asm_quantities.append([expansion,B,C,D,s])
 
-    asm_vals = [(C, D, A*B, s) for A,B,C,D,s in asm_quantities]
+    asm_vals = [(c, d, b.sqrt(), a, s) for a,b,c,d,s in asm_quantities]
 
     if as_symbolic:
         acsv_logger.warn(
@@ -552,24 +564,27 @@ def diagonal_asy(
         )
     
     if output_format is None:
-        output_format = OutputFormat.TUPLE
+        output_format = OutputFormat.TUPLE # TODO default to asymptotic?
     else:
         output_format = OutputFormat(output_format)
 
     if output_format in (OutputFormat.TUPLE, OutputFormat.SYMBOLIC):
         n = SR.var('n')
         result = [
-            (base, n**exponent, (pi)**((s-d)/2), constant)
-            for (base, exponent, constant, s) in asm_vals
+            (base, n**exponent, (pi**(s-d)).sqrt(), constant, expansion)
+            for (base, exponent, constant, expansion, s) in asm_vals
         ]
         if output_format == OutputFormat.SYMBOLIC:
-            result = sum([a**n * b * c * d for (a, b, c, d) in result])
+            result = sum([a**n * b * c * d * e for (a, b, c, d, e) in result])
 
     elif output_format == OutputFormat.ASYMPTOTIC:
-        n = SR.var('n')
+        from sage.all import AsymptoticRing
+        SR_without_n = SR.subring(rejecting_variables=('n',))
+        AR = AsymptoticRing('SR^n * n^QQ', SR_without_n)
+        n = AR.gen()
         result = sum([
-            constant * base**n * (pi)**((s-d)/2) * n**exponent
-            for (base, exponent, constant, s) in asm_vals
+            constant * (pi**(s-d)).sqrt() * SR(base)**n * n**exponent * (AR(expansion) + (n**(-expansion_precision)).O())
+            for (base, exponent, constant, expansion, s) in asm_vals
         ])
 
     else:
