@@ -118,6 +118,15 @@ def WhitneyStrat(IX, R, m2=None):
 
     A list `[IX_0, IX_1, ..., IX_k]` of polynomial ideals representing the Whitney stratification of `X`.
     `IX_j` reprensents the `j`-dimensional stratum.
+
+    EXAMPLES::
+
+        sage: from sage_acsv.whitney import WhitneyStrat
+        sage: R.<x,y,z> = PolynomialRing(QQ, 3)
+        sage: WhitneyStrat(Ideal(y^2+x^3-y^2*z^2), R)
+        [Ideal (z^2 - 1, y^2, x^2) of Multivariate Polynomial Ring in x, y, z over Rational Field,
+        Ideal (y, x^2) of Multivariate Polynomial Ring in x, y, z over Rational Field,
+        Ideal (y^2*z^2 - x^3 - y^2) of Multivariate Polynomial Ring in x, y, z over Rational Field]
     """
     vs = R.gens()
     d = len(vs)

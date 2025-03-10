@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from sage.all import AA, QQ, SR, Ideal, Polyhedron, ceil, gcd, matrix, randint, vector
+from sage.all import AA, QQ, SR, Ideal, Polyhedron, ceil, gcd, matrix, randint, vector, kronecker_delta
 
 class OutputFormat(Enum):
     """Output options for displaying the asymptotic behavior determined
@@ -225,11 +225,13 @@ def NewtonSeries(phi, variables, series_precision):
     return NewtonRecur(Mod(phi, series_precision), series_precision)[0]
 
 def ImplicitHessian(Hs, vs, r, subs):
-    r"""Given a transverse point `w` in `H_1(w),...,H_s(w)=0`, we can parametrize `V(H_1,...,H_s)`
-    near `w` by writing `z_{d-s+j} = g_j(z_1,...,z_{d-s})`. 
+    r"""Compute the Hessian of an implicitly defined function.
     
-    Let `h(\theta_1,...,\theta_{d-s}) = \sum_{j=1}^s r_{d-s+j}\log g_j({w_1 exp(i\theta_1)...w_{d-s} exp(i\theta_{d-s})}).
-    This function returns Hess(h).
+    Given a transverse intersection point `w` in `H_1(w),\dots,H_s(w)=0`, we can parametrize `V(H_1,\dots,H_s)`
+    near `w` by writing `z_{d-s+j} = g_j(z_1,\dots,z_{d-s})`. 
+    
+    Let `h(\theta_1,\dots,\theta_{d-s}) = \sum_{j=1}^s r_{d-s+j}\log g_j({w_1 exp(i\theta_1) \dots w_{d-s} exp(i\theta_{d-s})})`.
+    This function returns the Hessian of h.
     
     INPUT:
 
@@ -240,12 +242,19 @@ def ImplicitHessian(Hs, vs, r, subs):
 
     OUTPUT:
 
-    `Hess(h)` where `h` is defined as above.
+    The Hessian of the implicitly defined function `h` defined above.
 
     EXAMPLES::
 
         sage: from sage_acsv.helpers import ImplicitHessian
-
+        sage: R.<x,y,z,w> = PolynomialRing(QQ,4)
+        sage: Hs = [
+                z^2+z*w+x*y-4,
+                w^3+z*x-y
+            ]
+        sage: ImplicitHessian(Hs, [x,y,z,w], [1,1,1,1], {x:1,y:1,z:1,w:1})
+        [21/32     0]
+        [    0   7/8]
     """
 
     d = len(vs)
@@ -303,16 +312,13 @@ def ImplicitHessian(Hs, vs, r, subs):
         ] for j in range(d-s)
     ]
 
-    def _delta(l, k):
-        return 1 if l == k else 0
-
     Hess = matrix(
         [
             [
                 sum(
                     [
                         r[k] * (
-                            -vs[i] * vs[j] * d2gdv2[i][j][k-(d-s)]*vs[k] - _delta(i,j)*dgdv[k-(d-s),j]*vs[k]*vs[i] \
+                            -vs[i] * vs[j] * d2gdv2[i][j][k-(d-s)]*vs[k] - kronecker_delta(i,j)*dgdv[k-(d-s),j]*vs[k]*vs[i] \
                                 + vs[i]*vs[j]*dgdv[k-(d-s),i]*dgdv[k-(d-s),j]
                         )/vs[k]**2 for k in range(d-s, d)
                     ]
@@ -343,6 +349,13 @@ def IsContributing(vs, pt, r, factors, c):
 
     EXAMPLES::
 
+        sage: from sage_acsv.helpers import IsContributing
+        sage: R.<x,y> = PolynomialRing(QQ, 2)
+        sage: IsContributing([x,y], [1,1], [17/24, 7/24], [1-(2*x+y)/3,1-(3*x+y)/4], 2)
+        True
+        sage: IsContributing([x,y], [1,1], [1, 1], [1-(2*x+y)/3,1-(3*x+y)/4], 2)
+        False
+
     """
     critical_subs = {v:point for v, point in zip(vs, pt)}
     # Compute irreducible components of H that contain the point
@@ -352,7 +365,7 @@ def IsContributing(vs, pt, r, factors, c):
     )
     for f in vanishing_factors:
         if all([f.derivative(v).subs(critical_subs)==0 for v in vs]):
-            raise ACSVException("Critical point {p} lies in non-smooth part of component {f}".format(p=pt, f=f))
+            raise ACSVException(f"Critical point {pt} lies in non-smooth part of component {f}")
 
     vkjs = []
     for f in vanishing_factors:
@@ -362,7 +375,7 @@ def IsContributing(vs, pt, r, factors, c):
                 break
         else:
             # In theory this shouldn't ever happen, now that we check the condition before
-            raise ACSVException("All partials of component {comp} vanish at point {p}".format(comp=vanishing_factors, p=pt))
+            raise ACSVException(f"All partials of component {vanishing_factors} vanish at point {pt}")
 
     normals = matrix(
         list(
@@ -380,7 +393,7 @@ def IsContributing(vs, pt, r, factors, c):
     elif any([r in f for f in polytope.faces(c-1)]):
         # If r is in the boundary of the log normal cone, point is non-generic
         raise ACSVException(
-            "Non-generic critical point found - {w} is contained in {dim}-dimensional stratum".format(w = str(pt), dim = len(vs)-c)
+            f"Non-generic critical point found - {pt} is contained in {len(vs)-c}-dimensional stratum"
         )
     return True
 
