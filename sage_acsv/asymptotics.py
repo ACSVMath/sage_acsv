@@ -575,7 +575,7 @@ def diagonal_asy(
             for (base, exponent, constant, expansion, s) in asm_vals
         ]
         if output_format == OutputFormat.SYMBOLIC:
-            result = sum([a**n * b * c * d * e for (a, b, c, d) in result])
+            result = sum([a**n * b * c * d for (a, b, c, d) in result])
 
     elif output_format == OutputFormat.ASYMPTOTIC:
         from sage.all import AsymptoticRing
