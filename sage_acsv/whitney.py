@@ -127,9 +127,9 @@ def WhitneyStrat(IX, R, m2=None):
         factors = [fm[0] for fm in IX.gens()[0].factor()]
         if all([
             Ideal(fs+matrix([[f.derivative(v) for v in vs] for f in fs]).minors(len(fs))).dimension() < 0 
-            for fs in Combinations(factors) if len(fs) > 1
+            for fs in Combinations(factors) if len(fs) >= 1
         ]):
-            strat = [Ideal(R(0)) for _ in range(d)]
+            strat = [Ideal(R(1)) for _ in range(d)]
             strat[-1] = Ideal(IX.gens())
             for k in reversed(range(1,d)):
                 Jac = matrix(
@@ -140,8 +140,8 @@ def WhitneyStrat(IX, R, m2=None):
                     ]
                 )
                 sing = Ideal(Jac.minors(d-k) + strat[k].gens()).radical()
-                for i in range(sing.dimension(), k):
-                    strat[i] = (sing + strat[i]).radical()
+                for i in range(max(sing.dimension(),0), k):
+                    strat[i] = (sing.intersection(strat[i])).radical()
             return strat
 
     P, vsP = ProjectiveSpace(QQ, len(vs), list(vs)+['z0']).objgens()
