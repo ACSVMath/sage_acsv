@@ -164,6 +164,7 @@ def WhitneyStrat(IX, R, m2=None):
     for stratum in proj_strat:
         for Id in PrimaryDecomposition(stratum.defining_ideal(), m2):
             newId = Id.subs({z0:1}).change_ring(R)
-            strat[newId.dimension()] = strat[newId.dimension()].intersection(newId)
+            for k in range(newId.dimension(), len(strat)):
+                strat[k] = strat[k].intersection(newId)
             
     return strat
