@@ -1236,7 +1236,6 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=N
             non_min = [[(q/Pd).subs(u_=u) for q in Qs[0:-2]] for u in rts_t_zo]
 
             # Filter the real roots for minimal points with positive coords
-            pos_minimals = []
             for u in one_minus_t.roots(AA, multiplicities=False):
                 is_min = True
                 v = [(q/Pd).subs(u_=u) for q in Qs[:len(vs)]]
