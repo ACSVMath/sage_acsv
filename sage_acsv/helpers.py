@@ -1,6 +1,6 @@
 from enum import Enum
 
-from sage.all import AA, QQ, SR, Ideal, Polyhedron, ceil, gcd, matrix, randint, vector, kronecker_delta
+from sage.all import AA, QQ, SR, Ideal, Polyhedron, ceil, gcd, matrix, randint, vector, kronecker_delta, prod
 
 class OutputFormat(Enum):
     """Output options for displaying the asymptotic behavior determined
@@ -351,6 +351,74 @@ def IsContributing(vs, pt, r, factors, c):
             f"Non-generic critical point found - {pt} is contained in {len(vs)-c}-dimensional stratum"
         )
     return True
+
+def get_coefficients(expr):
+    r"""Determines coefficients for each n^k that appears in the asymptotic expression.
+    
+    INPUT:
+
+    * ``expr`` -- An asymptotic expression, symbolic expression, ACSV tuple, or list of ACSV tuples
+
+    OUTPUT:
+
+    A dictionary `{d: [(c, e)]}` where `c*e*n^d` is a term appearing in the fully expanded expr,
+    `c` is a constant, and `e` an exponential in `n`
+
+    EXAMPLES::
+
+        sage: from sage_acsv import diagonal_asy
+        sage: var('x,y')
+        (x, y)
+        sage: res = diagonal_asy(F1, r=[1,1], expansion_precision = 2, as_symbolic=True)
+        sage: from sage_acsv.helpers import get_coefficients
+        sage: get_coefficients(res)
+        {-1/2: [(1/sqrt(pi), 4^n)], -3/2: [(-1/8/sqrt(pi), 4^n)]}
+
+    """
+    from sage.all import AsymptoticRing
+    terms_by_degree = {}
+    if isinstance(expr, tuple):
+        expr = prod(expr)
+    elif isinstance(expr, list):
+        expr = sum([prod(tup) for tup in expr])
+    elif isinstance(expr.parent(), AsymptoticRing):
+        expr = SR(expr.exact_part())
+    elif not isinstance(expr.parent(), SR.parent()):
+        raise ACSVException(f"Cannot deal with expression of type {expr.parent()}")
+    
+    if len(expr.args()) > 1:
+        raise ACSVException("Cannot compute multivariate symbolic expansion.")
+    n = expr.args()[0]
+
+    # If expression is the sum of a bunch of terms, handle each one separately
+    from sage.symbolic.operators import add_vararg
+    expr = expr.expand()
+    terms = [expr]
+    if expr.operator() == add_vararg:
+        terms = expr.operands()
+
+    for term in terms:
+        deg = 0
+        const = 1
+        exponent = 1
+        for v in term.operands():
+            v = SR(v)
+            if n in v.args():
+                if v.degree(n) != 0:
+                    deg += v.degree(n)
+                else:
+                    exponent *= v
+            else:
+                const *= v
+        if deg not in terms_by_degree:
+            terms_by_degree[deg] = []
+        
+        terms_by_degree[deg].append((const, exponent))
+
+    return terms_by_degree
+
+
+
 
 class ACSVException(Exception):
     def __init__(self, message, retry=False):
