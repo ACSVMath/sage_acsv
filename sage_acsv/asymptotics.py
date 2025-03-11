@@ -292,11 +292,11 @@ def diagonal_asy_smooth(
 
     elif output_format == OutputFormat.ASYMPTOTIC:
         from sage.all import AsymptoticRing
-        SR_without_n = SR.subring(rejecting_variables=('n',))
-        AR = AsymptoticRing('SR^n * n^QQ', SR_without_n)
+        AR = AsymptoticRing('QQbar^n * n^QQ', QQbar)
         n = AR.gen()
         result = sum([
-            constant * pi**exponent * SR(base)**n * n**exponent * (AR(expansion) + (n**(-expansion_precision)).O())
+            constant * pi**exponent * base**n * n**exponent * AR(expansion) 
+            + (abs(base)**n * n**(-expansion_precision)).O()
             for (base, exponent, constant, expansion) in asm_vals
         ])
 
@@ -579,11 +579,11 @@ def diagonal_asy(
 
     elif output_format == OutputFormat.ASYMPTOTIC:
         from sage.all import AsymptoticRing
-        SR_without_n = SR.subring(rejecting_variables=('n',))
-        AR = AsymptoticRing('SR^n * n^QQ', SR_without_n)
+        AR = AsymptoticRing('QQbar^n * n^QQ', QQbar)
         n = AR.gen()
         result = sum([
-            constant * (pi**(s-d)).sqrt() * SR(base)**n * n**exponent * (AR(expansion) + (n**(-expansion_precision)).O())
+            constant * (pi**(s-d)).sqrt() * base**n * n**exponent * AR(expansion)
+            + (abs(base)**n * n**(-expansion_precision)).O()
             for (base, exponent, constant, expansion, s) in asm_vals
         ])
 
