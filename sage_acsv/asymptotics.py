@@ -296,7 +296,7 @@ def diagonal_asy_smooth(
         n = AR.gen()
         result = sum([
             constant * pi**exponent * base**n * n**exponent * AR(expansion) 
-            + (abs(base)**n * n**(-expansion_precision)).O()
+            + (abs(base)**n * n**(exponent - expansion_precision)).O()
             for (base, exponent, constant, expansion) in asm_vals
         ])
 
@@ -583,7 +583,7 @@ def diagonal_asy(
         n = AR.gen()
         result = sum([
             constant * (pi**(s-d)).sqrt() * base**n * n**exponent * AR(expansion)
-            + (abs(base)**n * n**(-expansion_precision)).O()
+            + (abs(base)**n * n**(exponent - expansion_precision)).O()
             for (base, exponent, constant, expansion, s) in asm_vals
         ])
 
