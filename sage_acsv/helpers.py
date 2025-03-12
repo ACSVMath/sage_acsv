@@ -388,13 +388,13 @@ def get_coefficients(expr):
 
         sage: res = diagonal_asy(1/(1 - x^7))
         sage: get_coefficients(res)
-        {0: [(1/7, (e^(I*pi - I*arctan(4.381286267534823?)))^n),
-          (1/7, (e^(I*pi - I*arctan(0.4815746188075287?)))^n),
-          (1/7, (e^(-I*pi + I*arctan(4.381286267534823?)))^n),
-          (1/7, (e^(-I*pi + I*arctan(0.4815746188075287?)))^n),
-          (1/7, (e^(I*arctan(1.253960337662704?)))^n),
-          (1/7, (e^(-I*arctan(1.253960337662704?)))^n),
-          (1, 1)]}
+        [Term(degree=0, constant=1/7, base=e^(I*pi - I*arctan(4.381286267534823?)), pi_exp=0),
+         Term(degree=0, constant=1/7, base=e^(I*pi - I*arctan(0.4815746188075287?)), pi_exp=0),
+         Term(degree=0, constant=1/7, base=e^(-I*pi + I*arctan(4.381286267534823?)), pi_exp=0),
+         Term(degree=0, constant=1/7, base=e^(-I*pi + I*arctan(0.4815746188075287?)), pi_exp=0),
+         Term(degree=0, constant=1/7, base=e^(I*arctan(1.253960337662704?)), pi_exp=0),
+         Term(degree=0, constant=1/7, base=e^(-I*arctan(1.253960337662704?)), pi_exp=0),
+         Term(degree=0, constant=1, base=1, pi_exp=0)]
     """
     n = SR.var('n')
     if isinstance(expr, tuple):
