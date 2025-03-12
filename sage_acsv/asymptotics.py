@@ -310,8 +310,10 @@ def diagonal_asy_smooth(
         from sage.all import AsymptoticRing
         AR = AsymptoticRing('QQbar^n * n^QQ', QQbar)
         n = AR.gen()
-        result = sum([
-            constant * pi**exponent * base**n * n**exponent * AR(expansion) 
+        result = sum([ # bug in AsymptoticRing requires splitting out modulus manually
+            constant * pi**exponent 
+            * abs(base)**n * (base/abs(base))**n
+            * n**exponent * AR(expansion) 
             + (abs(base)**n * n**(exponent - expansion_precision)).O()
             for (base, exponent, constant, expansion) in asm_vals
         ])
@@ -397,6 +399,14 @@ def diagonal_asy(
         ....: ]
         sage: diagonal_asy(G/H, r = [1,1,1], output_format = 'asymptotic', whitney_strat = strat)
         0.866025403784439?/sqrt(pi)*3^n*n^(-1/2) + O(3^n*n^(-3/2))
+
+    TESTS:
+
+    Check that the workaround for the AsymptoticRing swallowing
+    the modulus works as intended::
+
+        sage: diagonal_asy(1/(1 - x^4 - y^4))
+        1/2/sqrt(pi)*1.414213562373095?^n*n^(-1/2) + 1/2/sqrt(pi)*1.414213562373095?^n*n^(-1/2)*(e^(I*arg(-1)))^n + 1/2/sqrt(pi)*1.414213562373095?^n*n^(-1/2)*(e^(I*arg(0.?e-36 + 1.000000000000000?*I)))^n + 1/2/sqrt(pi)*1.414213562373095?^n*n^(-1/2)*(e^(I*arg(0.?e-36 - 1.000000000000000?*I)))^n + O(1.414213562373095?^n*n^(-3/2))
 
     """
     G, H = F.numerator(), F.denominator()
@@ -596,8 +606,10 @@ def diagonal_asy(
         from sage.all import AsymptoticRing
         AR = AsymptoticRing('QQbar^n * n^QQ', QQbar)
         n = AR.gen()
-        result = sum([
-            constant * (pi**(s-d)).sqrt() * base**n * n**exponent * AR(expansion)
+        result = sum([ # bug in AsymptoticRing requires splitting out modulus manually
+            constant * (pi**(s-d)).sqrt()
+            * abs(base)**n * (base / abs(base))**n
+            * n**exponent * AR(expansion)
             + (abs(base)**n * n**(exponent - expansion_precision)).O()
             for (base, exponent, constant, expansion, s) in asm_vals
         ])
