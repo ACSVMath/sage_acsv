@@ -382,27 +382,31 @@ def get_coefficients(expr):
     elif isinstance(expr, list):
         expr = sum([prod(tup) for tup in expr])
     elif isinstance(expr.parent(), AsymptoticRing):
-        expr = SR(expr.exact_part())
+        expr = expr.exact_part()
     elif not isinstance(expr.parent(), SR.parent()):
         raise ACSVException(f"Cannot deal with expression of type {expr.parent()}")
     
+    expr = SR(expr)
     if len(expr.args()) > 1:
         raise ACSVException("Cannot compute multivariate symbolic expansion.")
     n = expr.args()[0]
 
     # If expression is the sum of a bunch of terms, handle each one separately
     from sage.symbolic.operators import add_vararg
-    expr = expr.expand()
-    terms = [expr]
-    if expr.operator() == add_vararg:
-        terms = expr.operands()
+    terms = [expr.expand()]
+    idx=0
+    while idx < len(terms):
+        if terms[idx].operator() == add_vararg:
+            term = terms.pop(idx)
+            terms.extend(term.operands())
+        else:
+            idx += 1
 
     for term in terms:
         deg = 0
         const = 1
         exponent = 1
         for v in term.operands():
-            v = SR(v)
             if n in v.args():
                 if v.degree(n) != 0:
                     deg += v.degree(n)
