@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from enum import Enum
-
 from sage.all import AA, QQ, SR, Ideal, Polyhedron, ceil, gcd, matrix, randint, vector, kronecker_delta
 
 
