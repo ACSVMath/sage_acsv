@@ -7,8 +7,9 @@ from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra,
 from sage.all import gcd, prod, pi, matrix, exp, log, add, I, factorial, srange, shuffle, vector
 
 from sage_acsv.kronecker import _kronecker_representation, _msolve_kronecker_representation
-from sage_acsv.helpers import ACSVException, IsContributing, NewtonSeries, RationalFunctionReduce, OutputFormat, GetHessian, ImplicitHessian
+from sage_acsv.helpers import ACSVException, IsContributing, NewtonSeries, RationalFunctionReduce, GetHessian, ImplicitHessian
 from sage_acsv.debug import Timer, acsv_logger
+from sage_acsv.settings import OutputFormat
 from sage_acsv.whitney import WhitneyStrat, PrimaryDecomposition
 
 
