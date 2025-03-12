@@ -374,13 +374,14 @@ def get_coefficients(expr):
         (x, y)
         sage: res = diagonal_asy(1/(1 - x - y), r=[1,1], expansion_precision=2)
         sage: coefs = get_coefficients(res) 
-        sage: sorted(coefs.items())
-        [(-3/2, [(-1/8/sqrt(pi), 4^n)]), (-1/2, [(1/sqrt(pi), 4^n)])]
+        sage: sorted(coefs)
+        [Term(degree=-3/2, constant=-1/8/sqrt(pi), base=4),
+         Term(degree=-1/2, constant=1/sqrt(pi), base=4)]
         sage: res = diagonal_asy(1/(1 - x - y), r=[1,1], expansion_precision=2, output_format="tuple")
-        sage: get_coefficients(res) == coefs
+        sage: sorted(get_coefficients(res)) == coefs
         True
         sage: res = diagonal_asy(1/(1 - x - y), r=[1,1], expansion_precision=2, output_format="symbolic")
-        sage: get_coefficients(res) == coefs
+        sage: sorted(get_coefficients(res)) == coefs
         True
 
     ::
@@ -394,12 +395,12 @@ def get_coefficients(expr):
           (1/7, (e^(I*arctan(1.253960337662704?)))^n),
           (1/7, (e^(-I*arctan(1.253960337662704?)))^n),
           (1, 1)]}
-
     """
+    n = SR.var('n')
     if isinstance(expr, tuple):
-        expr = SR(prod(expr))
+        expr = SR(expr[0]**n * prod(expr[1:]))
     elif isinstance(expr, list):
-        expr = SR(sum([prod(tup) for tup in expr]))
+        expr =SR(sum([tup[0]**n * prod(tup[1:]) for tup in expr]))
     elif isinstance(expr.parent(), AsymptoticRing):
         expr = SR(expr.exact_part())
 
@@ -416,28 +417,27 @@ def get_coefficients(expr):
     if expr.operator() == add_vararg:
         terms = expr.operands()
 
-    terms_by_degree = {}
+    from collections import namedtuple
+    DecomposedTerm = namedtuple('Term', ['degree', 'constant', 'base'])
+    decomposed_terms = []
     for term in terms:
         deg = 0
         const = 1
-        exponent = 1
+        base = 1
         for v in term.operands():
             if n in v.args():
                 if v.degree(n) != 0:
                     deg += v.degree(n)
                 else:
-                    exponent *= v
+                    base *= v.operands()[0]
             else:
                 const *= v
-        if deg not in terms_by_degree:
-            terms_by_degree[deg] = []
         
-        terms_by_degree[deg].append((const, exponent))
+        decomposed_terms.append(
+            DecomposedTerm(degree=deg, constant=const, base=base)
+        )
 
-    return terms_by_degree
-
-
-
+    return decomposed_terms
 
 class ACSVException(Exception):
     def __init__(self, message, retry=False):
