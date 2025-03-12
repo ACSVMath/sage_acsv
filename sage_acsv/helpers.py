@@ -3,7 +3,7 @@ from enum import Enum
 from sage.rings.asymptotic.asymptotic_ring import AsymptoticRing
 from sage.symbolic.operators import add_vararg
 
-from sage.all import AA, QQ, SR, Ideal, Polyhedron, ceil, gcd, matrix, randint, vector, kronecker_delta, prod
+from sage.all import AA, QQ, SR, Ideal, Polyhedron, ceil, gcd, matrix, randint, vector, kronecker_delta, prod, pi
 
 class OutputFormat(Enum):
     """Output options for displaying the asymptotic behavior determined
@@ -418,23 +418,28 @@ def get_coefficients(expr):
         terms = expr.operands()
 
     from collections import namedtuple
-    DecomposedTerm = namedtuple('Term', ['degree', 'constant', 'base'])
+    DecomposedTerm = namedtuple('Term', ['degree', 'constant', 'base', 'pi_exp'])
     decomposed_terms = []
     for term in terms:
         deg = 0
         const = 1
         base = 1
+        pi_exp = 0
         for v in term.operands():
             if n in v.args():
                 if v.degree(n) != 0:
                     deg += v.degree(n)
                 else:
                     base *= v.operands()[0]
+            elif v.degree(pi) != 0:
+                pi_deg = v.degree(pi)
+                pi_exp += pi_deg
+                const *= v.coefficient(pi**pi_deg)
             else:
                 const *= v
         
         decomposed_terms.append(
-            DecomposedTerm(degree=deg, constant=const, base=base)
+            DecomposedTerm(degree=deg, constant=const, base=base, pi_exp=pi_exp)
         )
 
     return decomposed_terms
