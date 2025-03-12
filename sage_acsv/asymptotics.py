@@ -14,6 +14,24 @@ from sage_acsv.whitney import WhitneyStrat, PrimaryDecomposition
 
 MAX_MIN_CRIT_RETRIES = 3
 
+# we need to monkeypatch a function from the asymptotics module such that creating
+# asymptotic expansions over QQbar is possible. this should be removed once the
+# upstream issue is resolved.
+
+import sage.rings.asymptotic.misc as asy_misc
+
+from sage.rings.integer_ring import ZZ
+
+strip_symbolic_original = asy_misc.strip_symbolic
+def strip_symbolic(expression):
+    expression = strip_symbolic_original(expression)
+    if expression in ZZ:
+        expression = ZZ(expression)
+    return expression
+
+asy_misc.strip_symbolic = strip_symbolic
+
+
 
 def diagonal_asy_smooth(
     F,
