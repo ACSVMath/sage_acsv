@@ -14,6 +14,24 @@ from sage_acsv.whitney import WhitneyStrat, PrimaryDecomposition
 
 MAX_MIN_CRIT_RETRIES = 3
 
+# we need to monkeypatch a function from the asymptotics module such that creating
+# asymptotic expansions over QQbar is possible. this should be removed once the
+# upstream issue is resolved.
+
+import sage.rings.asymptotic.misc as asy_misc
+
+from sage.rings.integer_ring import ZZ
+
+strip_symbolic_original = asy_misc.strip_symbolic
+def strip_symbolic(expression):
+    expression = strip_symbolic_original(expression)
+    if expression in ZZ:
+        expression = ZZ(expression)
+    return expression
+
+asy_misc.strip_symbolic = strip_symbolic
+
+
 
 def diagonal_asy_smooth(
     F,
@@ -70,20 +88,21 @@ def diagonal_asy_smooth(
         sage: var('x,y,z,w')
         (x, y, z, w)
         sage: diagonal_asy_smooth(1/(1-x-y))
-        [(4, 1/sqrt(n), 1/sqrt(pi), 1)]
+        1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2))
         sage: diagonal_asy_smooth(1/(1-(1+x)*y), r = [1,2], return_points=True)
-        ([(4, 1/sqrt(n), 1/sqrt(pi), 1)], [[1, 1/2]])
+        (1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2)), [[1, 1/2]])
         sage: diagonal_asy_smooth(1/(1-(x+y+z)+(3/4)*x*y*z), output_format="symbolic")
         0.840484893481498?*24.68093482214177?^n/(pi*n)
         sage: diagonal_asy_smooth(1/(1-(x+y+z)+(3/4)*x*y*z))
-        [(24.68093482214177?, 1/n, 1/pi, 0.840484893481498?)]
+        0.840484893481498?/pi*24.68093482214177?^n*n^(-1) + O(24.68093482214177?^n*n^(-2))
         sage: var('n')
         n
         sage: asy = diagonal_asy_smooth(
-        ....:     1/(1 - w*(1 + x)*(1 + y)*(1 + z)*(x*y*z + y*z + y + z + 1))
+        ....:     1/(1 - w*(1 + x)*(1 + y)*(1 + z)*(x*y*z + y*z + y + z + 1)),
+        ....:     output_format="tuple",
         ....: )
         sage: sum([
-        ....:      a.radical_expression()^n * b * c * d.radical_expression()
+        ....:      a.radical_expression()^n * b * c * QQbar(d).radical_expression()
         ....:      for (a, b, c, d) in asy
         ....: ])
         1/4*(12*sqrt(2) + 17)^n*sqrt(17/2*sqrt(2) + 12)/(pi^(3/2)*n^(3/2))
@@ -95,7 +114,7 @@ def diagonal_asy_smooth(
         sage: var('x')
         x
         sage: diagonal_asy_smooth(1/(1 - 2*x))
-        [(2, 1, 1, 1)]
+        2^n + O(2^n*n^(-1))
         sage: diagonal_asy_smooth(1/(1 - 2*x), output_format="tuple")
         [(2, 1, 1, 1)]
 
@@ -112,10 +131,10 @@ def diagonal_asy_smooth(
     appropriate error term::
 
         sage: assume(SR.an_element() > 0)  # required to make coercions involving SR work properly
-        sage: growth = diagonal_asy(1/(1 - x - y), output_format="asymptotic"); growth
+        sage: growth = diagonal_asy_smooth(1/(1 - x - y), output_format="asymptotic"); growth
         1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2))
         sage: growth.parent()
-        Asymptotic Ring <SR^n * n^QQ * Arg_SR^n> over Symbolic Ring
+        Asymptotic Ring <(Algebraic Real Field)^n * n^QQ * (Arg_(Algebraic Field))^n> over Symbolic Ring
 
     Increasing the precision of the expansion returns an expansion with more terms
     (works for all available output formats)::
@@ -135,10 +154,7 @@ def diagonal_asy_smooth(
     algebraic numbers is significantly degraded)::
 
         sage: diagonal_asy_smooth(1/(1 - x - y), r=(sqrt(2), 1))
-        [(2.414213562373095?/0.5857864376269049?^1.414213562373095?,
-          1/sqrt(n),
-          1/sqrt(pi),
-          0.9238795325112868?)]
+        0.9238795325112868?/sqrt(pi)*(2.414213562373095?/0.5857864376269049?^1.414213562373095?)^n*n^(-1/2) + O((2.414213562373095?/0.5857864376269049?^1.414213562373095?)^n*n^(-3/2))
 
     ::
 
@@ -156,7 +172,7 @@ def diagonal_asy_smooth(
         INFO:sage_acsv:... Executed Kronecker in ... seconds.
         INFO:sage_acsv:... Executed Minimal Points in ... seconds.
         INFO:sage_acsv:... Executed Final Asymptotics in ... seconds.
-        [(4, 1/sqrt(n), 1/sqrt(pi), 1)]
+        1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2))
         sage: acsv_logger.setLevel(logging.WARNING)
 
 
@@ -187,8 +203,8 @@ def diagonal_asy_smooth(
     # Initialize variables
     vs = list(H.variables())
 
-    _, (t, lambda_, u_) = PolynomialRing(QQ, 't, lambda_, u_').objgens()
-    expanded_R, _ = PolynomialRing(QQ, len(vs)+3, vs + [t, lambda_, u_]).objgens()
+    t, lambda_, u_ = PolynomialRing(QQ, 't, lambda_, u_').gens()
+    expanded_R = PolynomialRing(QQ, len(vs)+3, vs + [t, lambda_, u_])
 
     vs = [expanded_R(v) for v in vs]
     t, lambda_, u_ = expanded_R(t), expanded_R(lambda_), expanded_R(u_)
@@ -292,11 +308,11 @@ def diagonal_asy_smooth(
 
     elif output_format == OutputFormat.ASYMPTOTIC:
         from sage.all import AsymptoticRing
-        SR_without_n = SR.subring(rejecting_variables=('n',))
-        AR = AsymptoticRing('SR^n * n^QQ', SR_without_n)
+        AR = AsymptoticRing('QQbar^n * n^QQ', QQbar)
         n = AR.gen()
         result = sum([
-            constant * pi**exponent * SR(base)**n * n**exponent * (AR(expansion) + (n**(-expansion_precision)).O())
+            constant * pi**exponent * base**n * n**exponent * AR(expansion) 
+            + (abs(base)**n * n**(exponent - expansion_precision)).O()
             for (base, exponent, constant, expansion) in asm_vals
         ])
 
@@ -367,7 +383,7 @@ def diagonal_asy(
         sage: var('x,y')
         (x, y)
         sage: diagonal_asy(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)), r = [17/24, 7/24], output_format = 'asymptotic')
-        12
+        12 + O(n^(-1))
 
         sage: from sage_acsv import diagonal_asy
         sage: var('x,y,z')
@@ -375,12 +391,12 @@ def diagonal_asy(
         sage: G = (1+x)*(1-x*y^2+x^2)
         sage: H = (1-z*(1+x^2+x*y^2))*(1-y)*(1+x^2)
         sage: strat = [
-                [(1-z*(1+x^2+x*y^2), 1-y, 1+x^2)],
-                [(1-z*(1+x^2+x*y^2), 1-y),(1-z*(1+x^2+x*y^2), 1+x^2),(1-y,1+x^2)],
-                [(H,)]
-            ]
+        ....:     [(1-z*(1+x^2+x*y^2), 1-y, 1+x^2)],
+        ....:     [(1-z*(1+x^2+x*y^2), 1-y),(1-z*(1+x^2+x*y^2), 1+x^2),(1-y,1+x^2)],
+        ....:     [(H,)],
+        ....: ]
         sage: diagonal_asy(G/H, r = [1,1,1], output_format = 'asymptotic', whitney_strat = strat)
-        0.8660254037844386*3^n/(sqrt(pi)*sqrt(n))
+        0.866025403784439?/sqrt(pi)*3^n*n^(-1/2) + O(3^n*n^(-3/2))
 
     """
     G, H = F.numerator(), F.denominator()
@@ -408,8 +424,8 @@ def diagonal_asy(
     except (ValueError, TypeError):
         r = [AA(ri) for ri in r]
 
-    _, (t, lambda_, u_) = PolynomialRing(QQ, 't, lambda_, u_').objgens()
-    expanded_R, _ = PolynomialRing(QQ, len(vs)+3, vs + [t, lambda_, u_]).objgens()
+    t, lambda_, u_ = PolynomialRing(QQ, 't, lambda_, u_').gens()
+    expanded_R = PolynomialRing(QQ, len(vs)+3, vs + [t, lambda_, u_])
 
     vs = [expanded_R(v) for v in vs]
     t, lambda_, u_ = expanded_R(t), expanded_R(lambda_), expanded_R(u_)
@@ -450,7 +466,6 @@ def diagonal_asy(
     timer = Timer()
 
     asm_quantities = []
-    #print(min_crit_pts)
     for cp in min_crit_pts:
         # Step 1: Determine if pt is a transverse multiple point of H, and compute the factorization
         # for now, we'll just try to factor it in the polynomial ring
@@ -497,7 +512,7 @@ def diagonal_asy(
             if Jac.determinant() != 0:
                 break
 
-            print("Variables do not parametrize, shuffling")
+            acsv_logger.info("Variables do not parametrize, shuffling")
             vs_r_cp = list(zip(vs,r, cp))
             shuffle(vs_r_cp) # shuffle mutates the list
             vs, r, cp = zip(*vs_r_cp)
@@ -579,11 +594,11 @@ def diagonal_asy(
 
     elif output_format == OutputFormat.ASYMPTOTIC:
         from sage.all import AsymptoticRing
-        SR_without_n = SR.subring(rejecting_variables=('n',))
-        AR = AsymptoticRing('SR^n * n^QQ', SR_without_n)
+        AR = AsymptoticRing('QQbar^n * n^QQ', QQbar)
         n = AR.gen()
         result = sum([
-            constant * (pi**(s-d)).sqrt() * SR(base)**n * n**exponent * (AR(expansion) + (n**(-expansion_precision)).O())
+            constant * (pi**(s-d)).sqrt() * base**n * n**exponent * AR(expansion)
+            + (abs(base)**n * n**(exponent - expansion_precision)).O()
             for (base, exponent, constant, expansion, s) in asm_vals
         ])
 
@@ -704,7 +719,7 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision):
     # Function to compute constants appearing in asymptotic expansion
     def constants_clj(ell, j):
         extra_contrib = (-1)**j / (2**(ell + j) * factorial(ell) * factorial(ell + j))
-        return extra_contrib * SR(eval_op(EE[ell + j], PP[ell]))
+        return extra_contrib * eval_op(EE[ell + j], PP[ell])
 
     res = [
         sum([constants_clj(ell, j) for ell in srange(2*j + 1)])
@@ -713,7 +728,7 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision):
     try:
         for i in range(len(res)):
             if res[i].imag() == 0:
-                res[i] = SR(AA(res[i]))
+                res[i] = AA(res[i])
     except:
         pass
 
@@ -759,7 +774,7 @@ def ContributingCombinatorialSmooth(G, H, variables, r=None, linear_form=None):
         ....: )
         sage: sorted(pts)
         [[-1/4, -1, -1], [1/4, 1, 1]]
-        """
+    """
 
     timer = Timer()
 
@@ -867,9 +882,8 @@ def ContributingCombinatorialSmooth(G, H, variables, r=None, linear_form=None):
     if len(pos_minimals) == 0:
         raise ACSVException("No smooth minimal critical points found.")
     elif len(pos_minimals) > 1:
-        print(pos_minimals)
         raise ACSVException(
-            "More than one minimal point with positive real coordinates found."
+            f"More than one minimal point with positive real coordinates found: {pos_minimals}"
         )
 
     # Find all minimal critical points
@@ -895,7 +909,15 @@ def ContributingCombinatorialSmooth(G, H, variables, r=None, linear_form=None):
 
     return [[(q/Pd).subs(u_=u) for q in Qs[:len(vs)]] for u in minimals]
 
-def ContributingCombinatorial(G, H, variables, r=None, linear_form=None, m2=None, whitney_strat=None):
+def ContributingCombinatorial(
+    G,
+    H,
+    variables,
+    r=None,
+    linear_form=None,
+    m2=None,
+    whitney_strat=None,
+):
     r"""Compute contributing points of a combinatorial multivariate
     rational function F=G/H admitting a finite number of critical points.
 
@@ -937,7 +959,7 @@ def ContributingCombinatorial(G, H, variables, r=None, linear_form=None, m2=None
         ....:     ([x, y], lambda_, t, u_)
         ....: )
         sage: sorted(pts)
-        [[3/4, 2/3]]
+        [[3/4, 3/2]]
 
     """
 
@@ -980,7 +1002,6 @@ def ContributingCombinatorial(G, H, variables, r=None, linear_form=None, m2=None
     r = [expanded_R(ri) for ri in r]
 
     vsT = vs + list(r_variable_values.keys())+ [t, lambda_]
-    #####
 
     # Compute the critical point system for each stratum
     pure_H = PolynomialRing(QQ, vs)
@@ -1100,9 +1121,8 @@ def ContributingCombinatorial(G, H, variables, r=None, linear_form=None, m2=None
     if len(contributing_pos_minimals) == 0:
         raise ACSVException("No smooth minimal critical points found.")
     if len(contributing_pos_minimals) > 1:
-        print(contributing_pos_minimals)
         raise ACSVException(
-            "More than one minimal point with positive real coordinates found."
+            f"More than one minimal point with positive real coordinates found: {contributing_pos_minimals}"
         )
     minimal = contributing_pos_minimals[0]
 
@@ -1236,7 +1256,6 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=N
             non_min = [[(q/Pd).subs(u_=u) for q in Qs[0:-2]] for u in rts_t_zo]
 
             # Filter the real roots for minimal points with positive coords
-            pos_minimals = []
             for u in one_minus_t.roots(AA, multiplicities=False):
                 is_min = True
                 v = [(q/Pd).subs(u_=u) for q in Qs[:len(vs)]]

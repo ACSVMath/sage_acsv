@@ -1,5 +1,8 @@
 from enum import Enum
 
+from sage.rings.asymptotic.asymptotic_ring import AsymptoticRing
+from sage.symbolic.operators import add_vararg
+
 from sage.all import AA, QQ, SR, Ideal, Polyhedron, ceil, gcd, matrix, randint, vector, kronecker_delta, prod
 
 class OutputFormat(Enum):
@@ -204,9 +207,9 @@ def ImplicitHessian(Hs, vs, r, subs):
         sage: from sage_acsv.helpers import ImplicitHessian
         sage: R.<x,y,z,w> = PolynomialRing(QQ,4)
         sage: Hs = [
-                z^2+z*w+x*y-4,
-                w^3+z*x-y
-            ]
+        ....:     z^2+z*w+x*y-4,
+        ....:     w^3+z*x-y
+        ....: ]
         sage: ImplicitHessian(Hs, [x,y,z,w], [1,1,1,1], {x:1,y:1,z:1,w:1})
         [21/32     0]
         [    0   7/8]
@@ -366,42 +369,54 @@ def get_coefficients(expr):
 
     EXAMPLES::
 
-        sage: from sage_acsv import diagonal_asy
+        sage: from sage_acsv import diagonal_asy, get_coefficients
         sage: var('x,y')
         (x, y)
-        sage: res = diagonal_asy(F1, r=[1,1], expansion_precision = 2, as_symbolic=True)
-        sage: from sage_acsv.helpers import get_coefficients
+        sage: res = diagonal_asy(1/(1 - x - y), r=[1,1], expansion_precision=2)
+        sage: coefs = get_coefficients(res) 
+        sage: sorted(coefs.items())
+        [(-3/2, [(-1/8/sqrt(pi), 4^n)]), (-1/2, [(1/sqrt(pi), 4^n)])]
+        sage: res = diagonal_asy(1/(1 - x - y), r=[1,1], expansion_precision=2, output_format="tuple")
+        sage: get_coefficients(res) == coefs
+        True
+        sage: res = diagonal_asy(1/(1 - x - y), r=[1,1], expansion_precision=2, output_format="symbolic")
+        sage: get_coefficients(res) == coefs
+        True
+
+    ::
+
+        sage: res = diagonal_asy(1/(1 - x^7))
         sage: get_coefficients(res)
-        {-1/2: [(1/sqrt(pi), 4^n)], -3/2: [(-1/8/sqrt(pi), 4^n)]}
+        {0: [(1/7, (e^(I*pi - I*arctan(4.381286267534823?)))^n),
+          (1/7, (e^(I*pi - I*arctan(0.4815746188075287?)))^n),
+          (1/7, (e^(-I*pi + I*arctan(4.381286267534823?)))^n),
+          (1/7, (e^(-I*pi + I*arctan(0.4815746188075287?)))^n),
+          (1/7, (e^(I*arctan(1.253960337662704?)))^n),
+          (1/7, (e^(-I*arctan(1.253960337662704?)))^n),
+          (1, 1)]}
 
     """
-    from sage.all import AsymptoticRing
-    terms_by_degree = {}
     if isinstance(expr, tuple):
-        expr = prod(expr)
+        expr = SR(prod(expr))
     elif isinstance(expr, list):
-        expr = sum([prod(tup) for tup in expr])
+        expr = SR(sum([prod(tup) for tup in expr]))
     elif isinstance(expr.parent(), AsymptoticRing):
-        expr = expr.exact_part()
-    elif not isinstance(expr.parent(), SR.parent()):
+        expr = SR(expr.exact_part())
+
+    if not isinstance(expr.parent(), type(SR)):
         raise ACSVException(f"Cannot deal with expression of type {expr.parent()}")
     
-    expr = SR(expr)
     if len(expr.args()) > 1:
-        raise ACSVException("Cannot compute multivariate symbolic expansion.")
+        raise ACSVException("Cannot process multivariate symbolic expression.")
     n = expr.args()[0]
 
     # If expression is the sum of a bunch of terms, handle each one separately
-    from sage.symbolic.operators import add_vararg
-    terms = [expr.expand()]
-    idx=0
-    while idx < len(terms):
-        if terms[idx].operator() == add_vararg:
-            term = terms.pop(idx)
-            terms.extend(term.operands())
-        else:
-            idx += 1
+    expr = expr.expand()
+    terms = [expr]
+    if expr.operator() == add_vararg:
+        terms = expr.operands()
 
+    terms_by_degree = {}
     for term in terms:
         deg = 0
         const = 1
