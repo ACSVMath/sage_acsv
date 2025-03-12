@@ -283,13 +283,8 @@ def diagonal_asy_smooth(
     timer.checkpoint("Final Asymptotics")
 
     if as_symbolic:
-        from warnings import warn
-
-        warn(
+        acsv_logger.warning(
             "The as_symbolic argument has been deprecated in favor of output_format='symbolic' "
-            "and will be removed in a future release.",
-            DeprecationWarning,
-            stacklevel=2,
         )
         output_format = ACSVSettings.Output.SYMBOLIC
 
