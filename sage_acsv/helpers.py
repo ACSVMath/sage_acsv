@@ -22,13 +22,13 @@ class OutputFormat(Enum):
     works as intended::
 
         sage: OutputFormat.get_default()
-        <OutputFormat.SYMBOLIC: 'symbolic'>
+        <OutputFormat.ASYMPTOTIC: 'asymptotic'>
         sage: OutputFormat.set_default("tuple")
         sage: OutputFormat.get_default()
         <OutputFormat.TUPLE: 'tuple'>
         sage: OutputFormat.set_default()
         sage: OutputFormat.get_default()
-        <OutputFormat.SYMBOLIC: 'symbolic'>
+        <OutputFormat.ASYMPTOTIC: 'asymptotic'>
 
     """
     ASYMPTOTIC = "asymptotic"
@@ -57,7 +57,7 @@ class OutputFormat(Enum):
         """
         if hasattr(cls, '_default'):
             return cls._default
-        return cls.SYMBOLIC
+        return cls.ASYMPTOTIC
     
 
 
