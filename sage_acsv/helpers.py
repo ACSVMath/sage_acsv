@@ -375,8 +375,8 @@ def get_coefficients(expr):
         sage: res = diagonal_asy(1/(1 - x - y), r=[1,1], expansion_precision=2)
         sage: coefs = get_coefficients(res) 
         sage: sorted(coefs)
-        [Term(degree=-3/2, constant=-1/8/sqrt(pi), base=4),
-         Term(degree=-1/2, constant=1/sqrt(pi), base=4)]
+        [Term(degree=-1/2, constant=1, base=4, pi_exp=-1/2),
+         Term(degree=-3/2, constant=-1/8, base=4, pi_exp=-1/2)]
         sage: res = diagonal_asy(1/(1 - x - y), r=[1,1], expansion_precision=2, output_format="tuple")
         sage: sorted(get_coefficients(res)) == coefs
         True
