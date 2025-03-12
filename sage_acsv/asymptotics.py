@@ -203,8 +203,8 @@ def diagonal_asy_smooth(
     # Initialize variables
     vs = list(H.variables())
 
-    _, (t, lambda_, u_) = PolynomialRing(QQ, 't, lambda_, u_').objgens()
-    expanded_R, _ = PolynomialRing(QQ, len(vs)+3, vs + [t, lambda_, u_]).objgens()
+    t, lambda_, u_ = PolynomialRing(QQ, 't, lambda_, u_').gens()
+    expanded_R = PolynomialRing(QQ, len(vs)+3, vs + [t, lambda_, u_])
 
     vs = [expanded_R(v) for v in vs]
     t, lambda_, u_ = expanded_R(t), expanded_R(lambda_), expanded_R(u_)
@@ -424,8 +424,8 @@ def diagonal_asy(
     except (ValueError, TypeError):
         r = [AA(ri) for ri in r]
 
-    _, (t, lambda_, u_) = PolynomialRing(QQ, 't, lambda_, u_').objgens()
-    expanded_R, _ = PolynomialRing(QQ, len(vs)+3, vs + [t, lambda_, u_]).objgens()
+    t, lambda_, u_ = PolynomialRing(QQ, 't, lambda_, u_').gens()
+    expanded_R = PolynomialRing(QQ, len(vs)+3, vs + [t, lambda_, u_])
 
     vs = [expanded_R(v) for v in vs]
     t, lambda_, u_ = expanded_R(t), expanded_R(lambda_), expanded_R(u_)
