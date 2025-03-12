@@ -720,7 +720,7 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision):
     # Function to compute constants appearing in asymptotic expansion
     def constants_clj(ell, j):
         extra_contrib = (-1)**j / (2**(ell + j) * factorial(ell) * factorial(ell + j))
-        return extra_contrib * SR(eval_op(EE[ell + j], PP[ell]))
+        return extra_contrib * eval_op(EE[ell + j], PP[ell])
 
     res = [
         sum([constants_clj(ell, j) for ell in srange(2*j + 1)])
@@ -729,7 +729,7 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision):
     try:
         for i in range(len(res)):
             if res[i].imag() == 0:
-                res[i] = SR(AA(res[i]))
+                res[i] = AA(res[i])
     except:
         pass
 
