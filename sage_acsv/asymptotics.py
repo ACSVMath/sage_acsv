@@ -4,12 +4,13 @@ of multivariate rational functions.
 from copy import copy
 
 from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra, Ideal, Polyhedron
-from sage.all import gcd, prod, pi, matrix, exp, log, add, I, factorial, srange, shuffle, vector
+from sage.all import gcd, prod, pi, matrix, exp, log, I, factorial, srange, shuffle, vector
 
 from sage_acsv.kronecker import _kronecker_representation, _msolve_kronecker_representation
 from sage_acsv.helpers import ACSVException, IsContributing, NewtonSeries, RationalFunctionReduce, OutputFormat, GetHessian, ImplicitHessian
 from sage_acsv.debug import Timer, acsv_logger
-from sage_acsv.whitney import WhitneyStrat, PrimaryDecomposition
+from sage_acsv.whitney import WhitneyStrat
+from sage_acsv.macaulay2 import PrimaryDecomposition, Saturate
 
 
 MAX_MIN_CRIT_RETRIES = 3
@@ -1015,7 +1016,7 @@ def ContributingCombinatorial(
     critical_point_ideals = []
     for d, stratum in enumerate(whitney_strat):
         critical_point_ideals.append([])
-        for P in PrimaryDecomposition(stratum, m2):
+        for P in PrimaryDecomposition(stratum):
             c = len(vs) - d
             P_ext = P.change_ring(expanded_R)
             M = matrix(
@@ -1032,7 +1033,7 @@ def ContributingCombinatorial(
             cpid = P_ext + Ideal(M.minors(c+1) + [H.subs({v:v*t for v in vs}), (prod(vs)*lambda_ - 1)] + r_polys)
             # Saturate cpid by lower dimension stratum, if d > 0
             if d > 0:
-                cpid = cpid.saturation(whitney_strat[d-1].change_ring(expanded_R))[0]
+                cpid = Saturate(cpid, whitney_strat[d-1].change_ring(expanded_R))
             
             critical_point_ideals[-1].append((P, cpid))
 
@@ -1218,7 +1219,7 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=N
     critical_points = []
     pos_minimals = []
     for d, stratum in enumerate(whitney_strat):
-        for P_comp in PrimaryDecomposition(stratum, m2):
+        for P_comp in PrimaryDecomposition(stratum):
             c = len(vs) - d
             P_ext = P_comp.change_ring(expanded_R)
             M = matrix(
@@ -1235,7 +1236,7 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=N
             ideal = P_ext + Ideal(M.minors(c+1) + [H.subs({v:v*t for v in vs}), (prod(vs)*lambda_ - 1)] + r_polys)
             # Saturate cpid by lower dimension stratum, if d > 0
             if d > 0:
-                ideal = ideal.saturation(whitney_strat[d-1].change_ring(expanded_R))[0]
+                ideal = Saturate(ideal, whitney_strat[d-1].change_ring(expanded_R))
         
             if ideal.dimension() < 0:
                 continue
@@ -1380,7 +1381,7 @@ def CriticalPoints(G, H, variables, r=None, linear_form=None, m2=None, whitney_s
 
     critical_points = []
     for d, stratum in enumerate(whitney_strat):
-        for P_comp in PrimaryDecomposition(stratum, m2):
+        for P_comp in PrimaryDecomposition(stratum):
             c = len(vs) - d
             P_ext = P_comp.change_ring(expanded_R)
             M = matrix(
@@ -1397,7 +1398,7 @@ def CriticalPoints(G, H, variables, r=None, linear_form=None, m2=None, whitney_s
             ideal = P_ext + Ideal(M.minors(c+1) + [(prod(vs)*lambda_ - 1)] + r_polys)
             # Saturate cpid by lower dimension stratum, if d > 0
             if d > 0:
-                ideal = ideal.saturation(whitney_strat[d-1].change_ring(expanded_R))[0]
+                ideal = Saturate(ideal, whitney_strat[d-1].change_ring(expanded_R))
         
             if ideal.dimension() < 0:
                 continue

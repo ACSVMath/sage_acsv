@@ -4,6 +4,7 @@ from sage.rings.polynomial.multi_polynomial_ideal import MPolynomialIdeal
 from sage_acsv.helpers import ACSVException, GenerateLinearForm
 from sage_acsv.debug import acsv_logger
 from sage_acsv.msolve import get_parametrization
+from sage_acsv.macaulay2 import GroebnerBasis, Radical
 
 
 def _kronecker_representation(system, u_, vs, lambda_=None, linear_form=None):
@@ -63,14 +64,14 @@ def _kronecker_representation(system, u_, vs, lambda_=None, linear_form=None):
     # Compute Grobner basis for ordered system of polynomials
     ideal = MPolynomialIdeal(rabinowitsch_R, rabinowitsch_system)
     try:
-        ideal = MPolynomialIdeal(rabinowitsch_R, ideal.groebner_basis())
+        ideal = MPolynomialIdeal(rabinowitsch_R, GroebnerBasis(ideal))
     except Exception:
         raise ACSVException("Trouble computing Groebner basis. System may be too large.")
     
     if ideal.dimension() != 0:
         raise ACSVException(f"Ideal {ideal} is not 0-dimensional. Cannot compute Kronecker representation.")
 
-    ideal = ideal.radical()
+    ideal = Radical(ideal)
     gb = ideal.transformed_basis('fglm')
 
     rabinowitsch_R = rabinowitsch_R.change_ring(order="lex")
