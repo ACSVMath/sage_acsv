@@ -51,6 +51,8 @@ class ACSVSettings:
     Output = OutputFormat
     _default_output_format = DEFAULT_OUTPUT_FORMAT
 
+    MAX_MIN_CRIT_RETRIES = 3  # Maximum number of retries for critical point detection
+
     @classmethod
     def set_default_output_format(cls, output_format: OutputFormat | str | None = None) -> None:
         """Set the default output format chosen when not explicitly

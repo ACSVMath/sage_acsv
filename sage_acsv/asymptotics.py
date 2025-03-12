@@ -13,8 +13,6 @@ from sage_acsv.settings import ACSVSettings
 from sage_acsv.whitney import WhitneyStrat, PrimaryDecomposition
 
 
-MAX_MIN_CRIT_RETRIES = 3
-
 # we need to monkeypatch a function from the asymptotics module such that creating
 # asymptotic expansions over QQbar is possible. this should be removed once the
 # upstream issue is resolved.
@@ -226,7 +224,7 @@ def diagonal_asy_smooth(
         raise ValueError("Denominator vanishes at 0.")
 
     # In case form doesn't separate, we want to try again
-    for _ in range(MAX_MIN_CRIT_RETRIES):
+    for _ in range(ACSVSettings.MAX_MIN_CRIT_RETRIES):
         try:
             # Find minimal critical points in Kronecker Representation
             min_crit_pts = ContributingCombinatorialSmooth(
@@ -449,7 +447,7 @@ def diagonal_asy(
 
     H_sf = prod([f for f,_ in H.factor()])
     # In case form doesn't separate, we want to try again
-    for _ in range(MAX_MIN_CRIT_RETRIES):
+    for _ in range(ACSVSettings.MAX_MIN_CRIT_RETRIES):
         try:
             # Find minimal critical points in Kronecker Representation
             min_crit_pts = ContributingCombinatorial(
