@@ -366,17 +366,33 @@ def get_coefficients(expr):
 
     EXAMPLES::
 
-        sage: from sage_acsv import diagonal_asy
+        sage: from sage_acsv import diagonal_asy, get_coefficients
         sage: var('x,y')
         (x, y)
-        sage: res = diagonal_asy(F1, r=[1,1], expansion_precision = 2, as_symbolic=True)
-        sage: from sage_acsv.helpers import get_coefficients
+        sage: res = diagonal_asy(1/(1 - x - y), r=[1,1], expansion_precision=2)
+        sage: coefs = get_coefficients(res) 
+        sage: sorted(coefs.items())
+        [(-3/2, [(-1/8/sqrt(pi), 4^n)]), (-1/2, [(1/sqrt(pi), 4^n)])]
+        sage: res = diagonal_asy(1/(1 - x - y), r=[1,1], expansion_precision=2, output_format="tuple")
+        sage: get_coefficients(res) == coefs
+        True
+        sage: res = diagonal_asy(1/(1 - x - y), r=[1,1], expansion_precision=2, output_format="symbolic")
+        sage: get_coefficients(res) == coefs
+        True
+
+    ::
+
+        sage: res = diagonal_asy(1/(1 - x^7))
         sage: get_coefficients(res)
-        {-1/2: [(1/sqrt(pi), 4^n)], -3/2: [(-1/8/sqrt(pi), 4^n)]}
+        {0: [(1/7, (e^(I*pi - I*arctan(4.381286267534823?)))^n),
+          (1/7, (e^(I*pi - I*arctan(0.4815746188075287?)))^n),
+          (1/7, (e^(-I*pi + I*arctan(4.381286267534823?)))^n),
+          (1/7, (e^(-I*pi + I*arctan(0.4815746188075287?)))^n),
+          (1/7, (e^(I*arctan(1.253960337662704?)))^n),
+          (1/7, (e^(-I*arctan(1.253960337662704?)))^n),
+          (1, 1)]}
 
     """
-    from sage.all import AsymptoticRing
-    terms_by_degree = {}
     if isinstance(expr, tuple):
         expr = prod(expr)
     elif isinstance(expr, list):
