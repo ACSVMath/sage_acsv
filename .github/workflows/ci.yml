@@ -5,16 +5,16 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
-          - sagelib: "10.0"
           - sagelib: "10.1"
           - sagelib: "10.2"
           - sagelib: "10.3"
           - sagelib: "10.4"
+          - sagelib: "10.5"
     steps:
       - uses: actions/checkout@v4
         with: { submodules: recursive }

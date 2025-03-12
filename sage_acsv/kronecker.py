@@ -3,6 +3,7 @@ from sage.rings.polynomial.multi_polynomial_ideal import MPolynomialIdeal
 
 from sage_acsv.helpers import ACSVException, GenerateLinearForm
 from sage_acsv.debug import acsv_logger
+from sage_acsv.msolve import get_parametrization
 
 
 def _kronecker_representation(system, u_, vs, lambda_=None, linear_form=None):
@@ -65,6 +66,9 @@ def _kronecker_representation(system, u_, vs, lambda_=None, linear_form=None):
         ideal = MPolynomialIdeal(rabinowitsch_R, ideal.groebner_basis())
     except Exception:
         raise ACSVException("Trouble computing Groebner basis. System may be too large.")
+    
+    if ideal.dimension() != 0:
+        raise ACSVException(f"Ideal {ideal} is not 0-dimensional. Cannot compute Kronecker representation.")
 
     ideal = ideal.radical()
     gb = ideal.transformed_basis('fglm')
@@ -130,8 +134,38 @@ def _kronecker_representation(system, u_, vs, lambda_=None, linear_form=None):
 
     return P, Qs
 
+def _msolve_kronecker_representation(system, u_, vs):
+    result = get_parametrization(vs, system)
+    _, nvars, _, msvars, _, param = result[1]
 
-def kronecker(system, vs, linear_form=None):
+    # msolve may reorder the variables, so order them back
+    Qparams = param[1][2]
+    vsExt = [str(v) for v in vs]
+    # Check if no new variable was created by msolve
+    # If so, the linear_form used is just zd
+    # i.e. u_ = zd and Qd = zd * P'(zd)
+    if nvars == len(vs):
+        Pdz = [0] + [-c for c in param[1][1][1]]
+        Qparams.append([[1, Pdz], 1])
+    pidx = [msvars.index(v) for v in vsExt]
+    Qparams = [Qparams[i] for i in pidx]
+
+    R = PolynomialRing(QQ, u_)
+    u_ = R(u_)
+
+    P_coeffs = param[1][0][1]
+    P = sum([c * u_**i for (i, c) in enumerate(P_coeffs)])
+
+    Qs = []
+    for Q_param in Qparams:
+        Q_coeffs = Q_param[0][1]
+        c_div = Q_param[1]
+        Q = -sum([c * u_**i for (i, c) in enumerate(Q_coeffs)])/c_div
+        Qs.append(Q)
+
+    return P, Qs
+
+def kronecker(system, vs, linear_form=None, use_msolve=False):
     r"""Computes the Kronecker Representation of a system of polynomials
 
     INPUT:
@@ -159,4 +193,6 @@ def kronecker(system, vs, linear_form=None):
     system = [R(f) for f in system]
     vs = [R(v) for v in vs]
     u_ = R(u_)
+    if use_msolve:
+        return _msolve_kronecker_representation(system, u_, vs)
     return _kronecker_representation(system, u_, vs, linear_form=linear_form)

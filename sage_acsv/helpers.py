@@ -1,6 +1,6 @@
 from enum import Enum
 
-from sage.all import AA, QQ, Ideal, ceil, gcd, matrix, randint
+from sage.all import AA, QQ, SR, Ideal, Polyhedron, ceil, gcd, matrix, randint, vector, kronecker_delta
 
 class OutputFormat(Enum):
     """Output options for displaying the asymptotic behavior determined
@@ -55,7 +55,7 @@ def GenerateLinearForm(system, vsT, u_, linear_form=None):
         return u_ - linear_form
 
     maxcoeff = ceil(max([
-        max([abs(x) for x in f.coefficients()]) for f in system
+        max([abs(x) for x in f.coefficients()]) for f in system if f != 0
     ]))
     maxdegree = max([f.degree() for f in system])
     return u_ - sum([
@@ -178,6 +178,179 @@ def NewtonSeries(phi, variables, series_precision):
         return ModX(F, N), ModX(G, ceil(N/2))
     
     return NewtonRecur(Mod(phi, series_precision), series_precision)[0]
+
+def ImplicitHessian(Hs, vs, r, subs):
+    r"""Compute the Hessian of an implicitly defined function.
+    
+    Given a transverse intersection point `w` in `H_1(w),\dots,H_s(w)=0`, we can parametrize `V(H_1,\dots,H_s)`
+    near `w` by writing `z_{d-s+j} = g_j(z_1,\dots,z_{d-s})`. 
+    
+    Let `h(\theta_1,\dots,\theta_{d-s}) = \sum_{j=1}^s r_{d-s+j}\log g_j({w_1 exp(i\theta_1) \dots w_{d-s} exp(i\theta_{d-s})})`.
+    This function returns the Hessian of h.
+    
+    INPUT:
+
+    * ``Hs`` -- A list of polynomials `H`
+    * ``vs`` -- A list of variables in the equation
+    * ``r`` -- A direction vector
+    * ``subs`` -- a dic `{v_i:w_i}` for point w
+
+    OUTPUT:
+
+    The Hessian of the implicitly defined function `h` defined above.
+
+    EXAMPLES::
+
+        sage: from sage_acsv.helpers import ImplicitHessian
+        sage: R.<x,y,z,w> = PolynomialRing(QQ,4)
+        sage: Hs = [
+        ....:     z^2+z*w+x*y-4,
+        ....:     w^3+z*x-y
+        ....: ]
+        sage: ImplicitHessian(Hs, [x,y,z,w], [1,1,1,1], {x:1,y:1,z:1,w:1})
+        [21/32     0]
+        [    0   7/8]
+    """
+
+    d = len(vs)
+    s = len(Hs)
+    Hs, vs = [SR(H) for H in Hs], [SR(v) for v in vs]
+    if subs:
+        subs = {SR(v):val for v, val in subs.items()}
+    dHdg = matrix(
+        [
+            [
+                H.derivative(v) for v in vs[d-s:]
+            ] for H in Hs
+        ]
+    )
+    dHdv = matrix(
+        [
+            [
+                H.derivative(v) for v in vs[:d-s]
+            ] for H in Hs
+        ]
+    )
+    dgdv = -dHdg.inverse() * dHdv
+
+    d2gdv2 = [
+        [ -dHdg.inverse() * (
+            vector([H.derivative(vs[i]).derivative(vs[j]) for H in Hs]) + \
+                matrix(
+                    [
+                        [
+                            H.derivative(vs[i]).derivative(g) for g in vs[d-s:]
+                        ] for H in Hs
+                    ]
+                ) * dgdv.column(j)+ \
+                matrix(
+                    [
+                        [
+                            H.derivative(g).derivative(vs[j]) for g in vs[d-s:]
+                        ] for H in Hs
+                    ]
+                ) * dgdv.column(i) + \
+                vector(
+                    [
+                        matrix(
+                            [
+                                [
+                                    H.derivative(g1).derivative(g2) for g1 in vs[d-s:]
+                                ]
+                                for g2 in vs[d-s:]
+                            ]
+                        ) * dgdv.column(i) * dgdv.column(j)
+                     for H in Hs
+                    ]
+                )
+            ) for i in range(d-s)
+        ] for j in range(d-s)
+    ]
+
+    Hess = matrix(
+        [
+            [
+                sum(
+                    [
+                        r[k] * (
+                            -vs[i] * vs[j] * d2gdv2[i][j][k-(d-s)]*vs[k] - kronecker_delta(i,j)*dgdv[k-(d-s),j]*vs[k]*vs[i] \
+                                + vs[i]*vs[j]*dgdv[k-(d-s),i]*dgdv[k-(d-s),j]
+                        )/vs[k]**2 for k in range(d-s, d)
+                    ]
+                ) for i in range(d-s)
+            ] for j in range(d-s)
+        ] 
+    )
+    if subs:
+        return Hess.subs(subs)
+
+    return Hess
+
+def IsContributing(vs, pt, r, factors, c):
+    r"""Determines if critical point `pt` is contributing; that is, `r` is in the interior
+    of the scaled log-normal cone of `factors` at `pt`
+    
+    INPUT:
+
+    * ``vs`` -- A list of variables
+    * ``pt`` -- A point
+    * ``r`` -- A direction vector
+    * ``factors`` -- A list of factors of `H` for which `pt` vanishes
+    * ``c`` -- The co-dimension of the intersection of factors
+
+    OUTPUT:
+
+    If vs is contributing
+
+    EXAMPLES::
+
+        sage: from sage_acsv.helpers import IsContributing
+        sage: R.<x,y> = PolynomialRing(QQ, 2)
+        sage: IsContributing([x,y], [1,1], [17/24, 7/24], [1-(2*x+y)/3,1-(3*x+y)/4], 2)
+        True
+        sage: IsContributing([x,y], [1,1], [1, 1], [1-(2*x+y)/3,1-(3*x+y)/4], 2)
+        False
+
+    """
+    critical_subs = {v:point for v, point in zip(vs, pt)}
+    # Compute irreducible components of H that contain the point
+    vanishing_factors = list(
+        f for f in factors
+        if f.subs(critical_subs) == 0
+    )
+    for f in vanishing_factors:
+        if all([f.derivative(v).subs(critical_subs)==0 for v in vs]):
+            raise ACSVException(f"Critical point {pt} lies in non-smooth part of component {f}")
+
+    vkjs = []
+    for f in vanishing_factors:
+        for v in vs:
+            if f.derivative(v).subs(critical_subs)!=0:
+                vkjs.append(v)
+                break
+        else:
+            # In theory this shouldn't ever happen, now that we check the condition before
+            raise ACSVException(f"All partials of component {vanishing_factors} vanish at point {pt}")
+
+    normals = matrix(
+        list(
+            [AA(
+                f.derivative(v).subs(critical_subs) * critical_subs[v] / (
+                    critical_subs[vkj] * f.derivative(vkj).subs(critical_subs)
+                )
+            ) for v in vs] for vkj, f in zip(vkjs, vanishing_factors)
+        )
+    )
+    
+    polytope = Polyhedron(rays=normals)
+    if r not in polytope:
+        return False
+    elif any([r in f for f in polytope.faces(c-1)]):
+        # If r is in the boundary of the log normal cone, point is non-generic
+        raise ACSVException(
+            f"Non-generic critical point found - {pt} is contained in {len(vs)-c}-dimensional stratum"
+        )
+    return True
 
 class ACSVException(Exception):
     def __init__(self, message, retry=False):
