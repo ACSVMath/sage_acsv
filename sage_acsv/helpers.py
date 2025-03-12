@@ -1,5 +1,8 @@
 from enum import Enum
 
+from sage.rings.asymptotic.asymptotic_ring import AsymptoticRing
+from sage.symbolic.operators import add_vararg
+
 from sage.all import AA, QQ, SR, Ideal, Polyhedron, ceil, gcd, matrix, randint, vector, kronecker_delta, prod
 
 class OutputFormat(Enum):
@@ -399,20 +402,21 @@ def get_coefficients(expr):
         expr = sum([prod(tup) for tup in expr])
     elif isinstance(expr.parent(), AsymptoticRing):
         expr = SR(expr.exact_part())
-    elif not isinstance(expr.parent(), SR.parent()):
+
+    if not isinstance(expr.parent(), type(SR)):
         raise ACSVException(f"Cannot deal with expression of type {expr.parent()}")
     
     if len(expr.args()) > 1:
-        raise ACSVException("Cannot compute multivariate symbolic expansion.")
+        raise ACSVException("Cannot process multivariate symbolic expression.")
     n = expr.args()[0]
 
     # If expression is the sum of a bunch of terms, handle each one separately
-    from sage.symbolic.operators import add_vararg
     expr = expr.expand()
     terms = [expr]
     if expr.operator() == add_vararg:
         terms = expr.operands()
 
+    terms_by_degree = {}
     for term in terms:
         deg = 0
         const = 1
