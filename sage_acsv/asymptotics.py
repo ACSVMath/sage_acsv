@@ -466,7 +466,6 @@ def diagonal_asy(
     timer = Timer()
 
     asm_quantities = []
-    #print(min_crit_pts)
     for cp in min_crit_pts:
         # Step 1: Determine if pt is a transverse multiple point of H, and compute the factorization
         # for now, we'll just try to factor it in the polynomial ring
@@ -513,7 +512,7 @@ def diagonal_asy(
             if Jac.determinant() != 0:
                 break
 
-            print("Variables do not parametrize, shuffling")
+            acsv_logger.info("Variables do not parametrize, shuffling")
             vs_r_cp = list(zip(vs,r, cp))
             shuffle(vs_r_cp) # shuffle mutates the list
             vs, r, cp = zip(*vs_r_cp)
@@ -775,7 +774,7 @@ def ContributingCombinatorialSmooth(G, H, variables, r=None, linear_form=None):
         ....: )
         sage: sorted(pts)
         [[-1/4, -1, -1], [1/4, 1, 1]]
-        """
+    """
 
     timer = Timer()
 
@@ -883,9 +882,8 @@ def ContributingCombinatorialSmooth(G, H, variables, r=None, linear_form=None):
     if len(pos_minimals) == 0:
         raise ACSVException("No smooth minimal critical points found.")
     elif len(pos_minimals) > 1:
-        print(pos_minimals)
         raise ACSVException(
-            "More than one minimal point with positive real coordinates found."
+            f"More than one minimal point with positive real coordinates found: {pos_minimals}"
         )
 
     # Find all minimal critical points
@@ -911,7 +909,15 @@ def ContributingCombinatorialSmooth(G, H, variables, r=None, linear_form=None):
 
     return [[(q/Pd).subs(u_=u) for q in Qs[:len(vs)]] for u in minimals]
 
-def ContributingCombinatorial(G, H, variables, r=None, linear_form=None, m2=None, whitney_strat=None):
+def ContributingCombinatorial(
+    G,
+    H,
+    variables,
+    r=None,
+    linear_form=None,
+    m2=None,
+    whitney_strat=None,
+):
     r"""Compute contributing points of a combinatorial multivariate
     rational function F=G/H admitting a finite number of critical points.
 
@@ -996,7 +1002,6 @@ def ContributingCombinatorial(G, H, variables, r=None, linear_form=None, m2=None
     r = [expanded_R(ri) for ri in r]
 
     vsT = vs + list(r_variable_values.keys())+ [t, lambda_]
-    #####
 
     # Compute the critical point system for each stratum
     pure_H = PolynomialRing(QQ, vs)
@@ -1116,9 +1121,8 @@ def ContributingCombinatorial(G, H, variables, r=None, linear_form=None, m2=None
     if len(contributing_pos_minimals) == 0:
         raise ACSVException("No smooth minimal critical points found.")
     if len(contributing_pos_minimals) > 1:
-        print(contributing_pos_minimals)
         raise ACSVException(
-            "More than one minimal point with positive real coordinates found."
+            f"More than one minimal point with positive real coordinates found: {contributing_pos_minimals}"
         )
     minimal = contributing_pos_minimals[0]
 
