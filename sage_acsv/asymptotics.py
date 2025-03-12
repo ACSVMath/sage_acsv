@@ -7,13 +7,13 @@ from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra,
 from sage.all import gcd, prod, pi, matrix, exp, log, I, factorial, srange, shuffle, vector
 
 from sage_acsv.kronecker import _kronecker_representation, _msolve_kronecker_representation
-from sage_acsv.helpers import ACSVException, IsContributing, NewtonSeries, RationalFunctionReduce, OutputFormat, GetHessian, ImplicitHessian
+from sage_acsv.helpers import ACSVException, IsContributing, NewtonSeries, RationalFunctionReduce, GetHessian, ImplicitHessian
 from sage_acsv.debug import Timer, acsv_logger
 from sage_acsv.whitney import WhitneyStrat
 from sage_acsv.macaulay2 import PrimaryDecomposition, Saturate
+from sage_acsv.settings import ACSVSettings
+from sage_acsv.whitney import WhitneyStrat
 
-
-MAX_MIN_CRIT_RETRIES = 3
 
 # we need to monkeypatch a function from the asymptotics module such that creating
 # asymptotic expansions over QQbar is possible. this should be removed once the
@@ -59,15 +59,18 @@ def diagonal_asy_smooth(
       term.
     * ``return_points`` -- If ``True``, also returns the coordinates of
       minimal critical points. By default ``False``.
-    * ``output_format`` -- (Optional) A string or :class:`.OutputFormat` specifying
+    * ``output_format`` -- (Optional) A string or :class:`.ACSVSettings.Output` specifying
       the way the asymptotic growth is returned. Allowed values currently are:
-      - ``"tuple"`` or ``None``, the default: the growth is returned as a list of
+      - ``"tuple"``: the growth is returned as a list of
         tuples of the form ``(a, n^b, pi^c, d)`` such that the `r`-diagonal of `F`
         is the sum of ``a^n n^b pi^c d + O(a^n n^{b-1})`` over these tuples.
       - ``"symbolic"``: the growth is returned as an expression from the symbolic
         ring ``SR`` in the variable ``n``.
       - ``"asymptotic"``: the growth is returned as an expression from an appropriate
         ``AsymptoticRing`` in the variable ``n``.
+      - ``None``: the default, which uses the default set for :class:`.ACSVSettings.Output`
+        itself via :meth:`.ACSVSettings.set_default_output_format`. The default behavior
+        is asymptotic output.
     * ``as_symbolic`` -- deprecated in favor of the equivalent
       ``output_format="symbolic"``. Will be removed in a future release.
 
@@ -111,7 +114,7 @@ def diagonal_asy_smooth(
     Not specifying any ``output_format`` falls back to the default tuple
     representation::
 
-        sage: from sage_acsv import diagonal_asy_smooth, OutputFormat
+        sage: from sage_acsv import diagonal_asy_smooth
         sage: var('x')
         x
         sage: diagonal_asy_smooth(1/(1 - 2*x))
@@ -223,7 +226,7 @@ def diagonal_asy_smooth(
         raise ValueError("Denominator vanishes at 0.")
 
     # In case form doesn't separate, we want to try again
-    for _ in range(MAX_MIN_CRIT_RETRIES):
+    for _ in range(ACSVSettings.MAX_MIN_CRIT_RETRIES):
         try:
             # Find minimal critical points in Kronecker Representation
             min_crit_pts = ContributingCombinatorialSmooth(
@@ -282,32 +285,26 @@ def diagonal_asy_smooth(
     timer.checkpoint("Final Asymptotics")
 
     if as_symbolic:
-        from warnings import warn
-
-        warn(
+        acsv_logger.warning(
             "The as_symbolic argument has been deprecated in favor of output_format='symbolic' "
-            "and will be removed in a future release.",
-            DeprecationWarning,
-            stacklevel=2,
         )
-        if output_format is None:
-            output_format = OutputFormat.SYMBOLIC
+        output_format = ACSVSettings.Output.SYMBOLIC
 
     if output_format is None:
-        output_format = OutputFormat.ASYMPTOTIC
+        output_format = ACSVSettings.get_default_output_format()
     else:
-        output_format = OutputFormat(output_format)
+        output_format = ACSVSettings.Output(output_format)
 
-    if output_format in (OutputFormat.TUPLE, OutputFormat.SYMBOLIC):
+    if output_format in (ACSVSettings.Output.TUPLE, ACSVSettings.Output.SYMBOLIC):
         n = SR.var('n')
         result = [
             (base, n**exponent, pi**exponent, constant * expansion)
             for (base, exponent, constant, expansion) in asm_vals
         ]
-        if output_format == OutputFormat.SYMBOLIC:
+        if output_format == ACSVSettings.Output.SYMBOLIC:
             result = sum([a**n * b * c * d for (a, b, c, d) in result])
 
-    elif output_format == OutputFormat.ASYMPTOTIC:
+    elif output_format == ACSVSettings.Output.ASYMPTOTIC:
         from sage.all import AsymptoticRing
         AR = AsymptoticRing('QQbar^n * n^QQ', QQbar)
         n = AR.gen()
@@ -350,15 +347,18 @@ def diagonal_asy(
       term.
     * ``return_points`` -- If ``True``, also returns the coordinates of
       minimal critical points. By default ``False``.
-    * ``output_format`` -- (Optional) A string or :class:`.OutputFormat` specifying
+    * ``output_format`` -- (Optional) A string or :class:`.ACSVSettings.Output` specifying
       the way the asymptotic growth is returned. Allowed values currently are:
-      - ``"tuple"`` or ``None``, the default: the growth is returned as a list of
+      - ``"tuple"``: the growth is returned as a list of
         tuples of the form ``(a, n^b, pi^c, d)`` such that the `r`-diagonal of `F`
         is the sum of ``a^n n^b pi^c d + O(a^n n^{b-1})`` over these tuples.
       - ``"symbolic"``: the growth is returned as an expression from the symbolic
         ring ``SR`` in the variable ``n``.
       - ``"asymptotic"``: the growth is returned as an expression from an appropriate
         ``AsymptoticRing`` in the variable ``n``.
+      - ``None``: the default, which uses the default set for :class:`.ACSVSettings.Output`
+        itself via :meth:`.ACSVSettings.set_default_output_format`. The default behavior
+        is symbolic output.
     * ``as_symbolic`` -- deprecated in favor of the equivalent
       ``output_format="symbolic"``. Will be removed in a future release.
     * ``whitney_strat`` -- (Optional) The user can pass in a Whitney Stratification of V(H)
@@ -389,6 +389,8 @@ def diagonal_asy(
         sage: from sage_acsv import diagonal_asy
         sage: var('x,y,z')
         (x, y, z)
+        sage: diagonal_asy(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)), r = [17/24, 7/24], output_format = 'asymptotic')
+        12 + O(n^(-1))
         sage: G = (1+x)*(1-x*y^2+x^2)
         sage: H = (1-z*(1+x^2+x*y^2))*(1-y)*(1+x^2)
         sage: strat = [
@@ -442,7 +444,7 @@ def diagonal_asy(
 
     H_sf = prod([f for f,_ in H.factor()])
     # In case form doesn't separate, we want to try again
-    for _ in range(MAX_MIN_CRIT_RETRIES):
+    for _ in range(ACSVSettings.MAX_MIN_CRIT_RETRIES):
         try:
             # Find minimal critical points in Kronecker Representation
             min_crit_pts = ContributingCombinatorial(
@@ -575,25 +577,26 @@ def diagonal_asy(
     asm_vals = [(c, d, b.sqrt(), a, s) for a,b,c,d,s in asm_quantities]
 
     if as_symbolic:
-        acsv_logger.warn(
+        acsv_logger.warning(
             "The as_symbolic argument has been deprecated in favor of output_format='symbolic' "
         )
+        output_format = ACSVSettings.Output.SYMBOLIC
     
     if output_format is None:
-        output_format = OutputFormat.ASYMPTOTIC
+        output_format = ACSVSettings.get_default_output_format()
     else:
-        output_format = OutputFormat(output_format)
+        output_format = ACSVSettings.Output(output_format)
 
-    if output_format in (OutputFormat.TUPLE, OutputFormat.SYMBOLIC):
+    if output_format in (ACSVSettings.Output.TUPLE, ACSVSettings.Output.SYMBOLIC):
         n = SR.var('n')
         result = [
             (base, n**exponent, (pi**(s-d)).sqrt(), constant * expansion)
             for (base, exponent, constant, expansion, s) in asm_vals
         ]
-        if output_format == OutputFormat.SYMBOLIC:
+        if output_format == ACSVSettings.Output.SYMBOLIC:
             result = sum([a**n * b * c * d for (a, b, c, d) in result])
 
-    elif output_format == OutputFormat.ASYMPTOTIC:
+    elif output_format == ACSVSettings.Output.ASYMPTOTIC:
         from sage.all import AsymptoticRing
         AR = AsymptoticRing('QQbar^n * n^QQ', QQbar)
         n = AR.gen()
