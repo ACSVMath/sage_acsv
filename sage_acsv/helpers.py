@@ -1,19 +1,6 @@
-from enum import Enum
+from __future__ import annotations
 
 from sage.all import AA, QQ, SR, Ideal, Polyhedron, ceil, gcd, matrix, randint, vector, kronecker_delta
-
-class OutputFormat(Enum):
-    """Output options for displaying the asymptotic behavior determined
-    by :func:`.diagonal_asy`.
-
-    See also:
-
-    - :func:`.diagonal_asy`
-    """
-    ASYMPTOTIC = "asymptotic"
-    SYMBOLIC = "symbolic"
-    TUPLE = "tuple"
-    
 
 
 def RationalFunctionReduce(G, H):
