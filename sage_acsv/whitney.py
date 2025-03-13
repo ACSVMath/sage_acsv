@@ -19,7 +19,7 @@ def Con(X, P, RZ):
     
     return Saturate(X.defining_ideal().change_ring(RZ)+JacZ, Jac.change_ring(RZ))
 
-def Decompose(Y,X,P,R,RZ, m2=None):
+def Decompose(Y,X,P,R,RZ):
     r"""Given varieties `X` and `Y`, return the points in `Y` that fail
     Whitney's condition `B` with respect to `X`.
     """
@@ -52,7 +52,7 @@ def merge_stratifications(Xs, Ys):
         
     return res
     
-def WhitneyStratProjective(X, P, m2=None):
+def WhitneyStratProjective(X, P):
     r"""
     Computes a WhitneyStratification of projective variety X in the ring P
     """
@@ -78,12 +78,12 @@ def WhitneyStratProjective(X, P, m2=None):
         Xd = Xs[d]
         if Xd.dimension() < d:
             continue
-        Xs = merge_stratifications(Xs, Decompose(Xd, X, P, R, RZ, m2))
-        Xs = merge_stratifications(Xs, WhitneyStratProjective(Xd, P, m2))
+        Xs = merge_stratifications(Xs, Decompose(Xd, X, P, R, RZ))
+        Xs = merge_stratifications(Xs, WhitneyStratProjective(Xd, P))
         
     return Xs
 
-def WhitneyStrat(IX, R, m2=None):
+def WhitneyStrat(IX, R):
     r"""Computes the Whitney Stratification of a pure-dimensional algebraic variety.
 
     Uses an algorithm developed by Helmer and Nanda (2022).
@@ -92,8 +92,6 @@ def WhitneyStrat(IX, R, m2=None):
 
     * ``IX`` -- A `k`-dimensional polynomial ideal representation of the algebraic variety `X`
     * ``R`` -- Base ring of the ideal. Should be a PolynomialRing object
-    * ``m2`` -- (Optional) The option to pass in a SageMath Macaulay2 interface for
-        computing primary decompositions. Macaulay2 must be installed by the user
 
     OUTPUT:
 
@@ -138,7 +136,7 @@ def WhitneyStrat(IX, R, m2=None):
     
     z0 = vsP[-1]
     R_hom = z0.parent()
-    proj_strat = WhitneyStratProjective(P.subscheme(IX.change_ring(R_hom).homogenize(z0)), P, m2)
+    proj_strat = WhitneyStratProjective(P.subscheme(IX.change_ring(R_hom).homogenize(z0)), P)
     
     
     strat = [Ideal(R(1)) for _ in range(len(proj_strat))]

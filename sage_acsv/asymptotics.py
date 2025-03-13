@@ -6,7 +6,7 @@ from copy import copy
 from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra, Ideal, Polyhedron
 from sage.all import gcd, prod, pi, matrix, exp, log, I, factorial, srange, shuffle, vector
 
-from sage_acsv.kronecker import _kronecker_representation, _msolve_kronecker_representation
+from sage_acsv.kronecker import _kronecker_representation
 from sage_acsv.helpers import ACSVException, IsContributing, NewtonSeries, RationalFunctionReduce, GetHessian, ImplicitHessian
 from sage_acsv.debug import Timer, acsv_logger
 from sage_acsv.whitney import WhitneyStrat
@@ -872,7 +872,7 @@ def ContributingCombinatorialSmooth(G, H, variables, r=None, linear_form=None):
     # Compute the Kronecker representation of our system
     timer.checkpoint()
 
-    P, Qs = _kronecker_representation(system, u_, vsT, lambda_, linear_form)
+    P, Qs = _kronecker_representation(system, u_, vsT, linear_form)
     timer.checkpoint("Kronecker")
 
     Qt = Qs[-2]  # Qs ordering is H.variables() + rvars + [t, lambda_]
@@ -956,7 +956,6 @@ def ContributingCombinatorial(
     variables,
     r=None,
     linear_form=None,
-    m2=None,
     whitney_strat=None,
 ):
     r"""Compute contributing points of a combinatorial multivariate
@@ -972,8 +971,6 @@ def ContributingCombinatorial(
     * ``r`` -- (Optional) Length ``d`` vector of positive integers
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions
-    * ``m2`` -- (Optional) The option to pass in a SageMath Macaulay2 interface for
-        computing primary decompositions. Macaulay2 must be installed by the user
     * ``whitney_strat`` -- (Optional) The user can pass in a Whitney Stratification of V(H)
         to save computation time. The program will not check if this stratification is correct.
         The whitney_strat should be an array of length ``d``, with the ``k``-th entry a list of
@@ -1048,7 +1045,7 @@ def ContributingCombinatorial(
     pure_H = PolynomialRing(QQ, vs)
 
     if whitney_strat is None:
-        whitney_strat = WhitneyStrat(Ideal(pure_H(H)), pure_H, m2)
+        whitney_strat = WhitneyStrat(Ideal(pure_H(H)), pure_H)
     else:
         # Cast symbolic generators for provided stratification into the correct ring
         whitney_strat = [prod([Ideal([pure_H(f) for f in comp]) for comp in stratum]) for stratum in whitney_strat]
@@ -1088,7 +1085,7 @@ def ContributingCombinatorial(
         for _, ideal in ideals:
             if ideal.dimension() < 0:
                 continue
-            P, Qs = _kronecker_representation(ideal.gens(), u_, vsT, lambda_, linear_form)
+            P, Qs = _kronecker_representation(ideal.gens(), u_, vsT, linear_form)
 
             Qt = Qs[-2]  # Qs ordering is H.variables() + rvars + [t, lambda_]
             Pd = P.derivative()
@@ -1176,7 +1173,7 @@ def ContributingCombinatorial(
 
     return contributing_points
 
-def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=None, whitney_strat=None):
+def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, whitney_strat=None):
     r"""Compute nonzero minimal critical points of a combinatorial multivariate
     rational function F=G/H admitting a finite number of critical points.
 
@@ -1190,8 +1187,6 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=N
     * ``r`` -- (Optional) Length ``d`` vector of positive integers
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions
-    * ``m2`` -- (Optional) The option to pass in a SageMath Macaulay2 interface for
-        computing primary decompositions. Macaulay2 must be installed by the user
     * ``whitney_strat`` -- (Optional) The user can pass in a Whitney Stratification of V(H)
         to save computation time. The program will not check if this stratification is correct.
         The whitney_strat should be an array of length ``d``, with the ``k``-th entry a list of
@@ -1251,7 +1246,7 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=N
     pure_H = PolynomialRing(QQ, vs)
 
     if whitney_strat is None:
-        whitney_strat = WhitneyStrat(Ideal(pure_H(H)), pure_H, m2)
+        whitney_strat = WhitneyStrat(Ideal(pure_H(H)), pure_H)
     else:
         # Cast symbolic generators for provided stratification into the correct ring
         whitney_strat = [prod([Ideal([pure_H(f) for f in comp]) for comp in stratum]) for stratum in whitney_strat]
@@ -1280,7 +1275,7 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=N
         
             if ideal.dimension() < 0:
                 continue
-            P, Qs = _kronecker_representation(ideal.gens(), u_, vsT, lambda_, linear_form)
+            P, Qs = _kronecker_representation(ideal.gens(), u_, vsT, linear_form)
 
             Qt = Qs[-2]  # Qs ordering is H.variables() + rvars + [t, lambda_]
             Pd = P.derivative()
@@ -1338,7 +1333,7 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=N
 
     return minimal_criticals
 
-def CriticalPoints(G, H, variables, r=None, linear_form=None, m2=None, whitney_strat=None):
+def CriticalPoints(G, H, variables, r=None, linear_form=None, whitney_strat=None):
     r"""Compute critical points of a multivariate
     rational function F=G/H admitting a finite number of critical points.
 
@@ -1352,8 +1347,6 @@ def CriticalPoints(G, H, variables, r=None, linear_form=None, m2=None, whitney_s
     * ``r`` -- (Optional) Length ``d`` vector of positive integers
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions
-    * ``m2`` -- (Optional) The option to pass in a SageMath Macaulay2 interface for
-        computing primary decompositions. Macaulay2 must be installed by the user
     * ``whitney_strat`` -- (Optional) The user can pass in a Whitney Stratification of V(H)
         to save computation time. The program will not check if this stratification is correct.
         The whitney_strat should be an array of length ``d``, with the ``k``-th entry a list of
@@ -1414,7 +1407,7 @@ def CriticalPoints(G, H, variables, r=None, linear_form=None, m2=None, whitney_s
     pure_H = PolynomialRing(QQ, vs)
 
     if whitney_strat is None:
-        whitney_strat = WhitneyStrat(Ideal(pure_H(H)), pure_H, m2)
+        whitney_strat = WhitneyStrat(Ideal(pure_H(H)), pure_H)
     else:
         # Cast symbolic generators for provided stratification into the correct ring
         whitney_strat = [prod([Ideal([pure_H(f) for f in comp]) for comp in stratum]) for stratum in whitney_strat]
@@ -1442,7 +1435,7 @@ def CriticalPoints(G, H, variables, r=None, linear_form=None, m2=None, whitney_s
         
             if ideal.dimension() < 0:
                 continue
-            P, Qs = _kronecker_representation(ideal.gens(), u_, vsT, lambda_, linear_form)
+            P, Qs = _kronecker_representation(ideal.gens(), u_, vsT, linear_form)
 
             Qt = Qs[-2]  # Qs ordering is H.variables() + rvars + [t, lambda_]
             Pd = P.derivative()

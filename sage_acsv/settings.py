@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from enum import Enum
 
-
 from sage_acsv.debug import acsv_logger
 
 
@@ -22,8 +21,29 @@ class OutputFormat(Enum):
     SYMBOLIC = "symbolic"
     TUPLE = "tuple"
 
+class KroneckerBackend(Enum):
+    """Options for computing Kronecker representations determined by
+    :func:`.ContributingCombinatorial`, :func:`.MinimalCriticalCombinatorial`, and
+    :func:`.CriticalPoints`.
+
+    See also:
+
+    - :func:`.ContributingCombinatorial`
+    - :func:`.MinimalCriticalCombinatorial`
+    - :func:`.CriticalPoints`
+    - :class:`.ACSVSettings`
+
+    """
+    SAGE_ACSV = "sage_acsv"
+    MSOLVE = "msolve"
+
+class GroebnerBackend(Enum):
+    SINGULAR = "singular"
+    MACAULAY2 = "macaulay2"
 
 DEFAULT_OUTPUT_FORMAT = OutputFormat.ASYMPTOTIC
+DEFAULT_KRONECKER_BACKEND = KroneckerBackend.SAGE_ACSV
+DEFAULT_GROEBNER_BACKEND = GroebnerBackend.SINGULAR
 
 class ACSVSettings:
     """Global settings for the package.
@@ -53,6 +73,9 @@ class ACSVSettings:
     """
     Output = OutputFormat
     _default_output_format = DEFAULT_OUTPUT_FORMAT
+    _default_kronecker_backend = DEFAULT_KRONECKER_BACKEND
+    _default_groebner_backend = DEFAULT_GROEBNER_BACKEND
+    _m2_installation_path = None
 
     MAX_MIN_CRIT_RETRIES = 3  # Maximum number of retries for critical point detection
 
@@ -104,3 +127,33 @@ class ACSVSettings:
             20
         """
         acsv_logger.setLevel(level)
+    
+    @classmethod
+    def set_default_kronecker_backend(cls, backend: KroneckerBackend | str | None) -> None:
+        if backend is None:
+            cls._default_kronecker_backend = DEFAULT_KRONECKER_BACKEND
+        else:
+            cls._default_kronecker_backend = KroneckerBackend(backend)
+
+    @classmethod
+    def get_default_kronecker_backend(cls) -> KroneckerBackend:
+        return cls._default_kronecker_backend
+
+    @classmethod
+    def set_default_groebner_backend(cls, backend: GroebnerBackend | str | None) -> None:
+        if backend is None:
+            cls._default_groebner_backend = DEFAULT_GROEBNER_BACKEND
+        else:
+            cls._default_groebner_backend = GroebnerBackend(backend)
+
+    @classmethod
+    def get_default_groebner_backend(cls) -> KroneckerBackend:
+        return cls._default_groebner_backend
+    
+    @classmethod
+    def set_macaulay2_path(cls, path: str | None) -> None:
+        cls._m2_installation_path = path
+
+    @classmethod
+    def get_macaulay2_path(cls) -> KroneckerBackend:
+        return cls._m2_installation_path

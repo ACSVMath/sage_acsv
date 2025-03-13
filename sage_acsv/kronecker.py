@@ -5,9 +5,10 @@ from sage_acsv.helpers import ACSVException, GenerateLinearForm
 from sage_acsv.debug import acsv_logger
 from sage_acsv.msolve import get_parametrization
 from sage_acsv.macaulay2 import GroebnerBasis, Radical
+from sage_acsv.settings import ACSVSettings, KroneckerBackend
 
 
-def _kronecker_representation(system, u_, vs, lambda_=None, linear_form=None):
+def _kronecker_representation_sage(system, u_, vs, linear_form=None):
     r"""Computes the Kronecker Representation of a system of polynomials.
 
     This method is intended for internal use and requires a consistent
@@ -19,7 +20,6 @@ def _kronecker_representation(system, u_, vs, lambda_=None, linear_form=None):
     * ``system`` -- A system of polynomials in ``d`` variables
     * ``u_`` -- Variable not contained in the variables in system
     * ``vs`` -- Variables of the system
-    * ``lambda_``: (Optional) Parameter introduced for critical point computation
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions
 
@@ -55,9 +55,6 @@ def _kronecker_representation(system, u_, vs, lambda_=None, linear_form=None):
     )
     u_ = rabinowitsch_R(u_)
 
-    if lambda_:
-        lambda_ = rabinowitsch_R(lambda_)
-
     rabinowitsch_system = [rabinowitsch_R(f) for f in system]
     rabinowitsch_system.append(rabinowitsch_R(linear_form))
 
@@ -76,8 +73,6 @@ def _kronecker_representation(system, u_, vs, lambda_=None, linear_form=None):
 
     rabinowitsch_R = rabinowitsch_R.change_ring(order="lex")
     u_ = rabinowitsch_R(u_)
-    if lambda_:
-        lambda_ = rabinowitsch_R(lambda_)
 
     Ps = [
         p for p in gb
@@ -135,7 +130,7 @@ def _kronecker_representation(system, u_, vs, lambda_=None, linear_form=None):
 
     return P, Qs
 
-def _msolve_kronecker_representation(system, u_, vs):
+def _kronecker_representation_msolve(system, u_, vs):
     result = get_parametrization(vs, system)
     _, nvars, _, msvars, _, param = result[1]
 
@@ -166,7 +161,7 @@ def _msolve_kronecker_representation(system, u_, vs):
 
     return P, Qs
 
-def kronecker(system, vs, linear_form=None, use_msolve=False):
+def _kronecker_representation(system, u_, vs, linear_form=None):
     r"""Computes the Kronecker Representation of a system of polynomials
 
     INPUT:
@@ -194,6 +189,6 @@ def kronecker(system, vs, linear_form=None, use_msolve=False):
     system = [R(f) for f in system]
     vs = [R(v) for v in vs]
     u_ = R(u_)
-    if use_msolve:
-        return _msolve_kronecker_representation(system, u_, vs)
-    return _kronecker_representation(system, u_, vs, linear_form=linear_form)
+    if ACSVSettings.get_default_kronecker_backend() == KroneckerBackend.MSOLVE:
+        return _kronecker_representation_msolve(system, u_, vs)
+    return _kronecker_representation_sage(system, u_, vs, linear_form=linear_form)
