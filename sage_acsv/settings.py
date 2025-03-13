@@ -38,6 +38,19 @@ class KroneckerBackend(Enum):
     MSOLVE = "msolve"
 
 class GroebnerBackend(Enum):
+    """Options for computing Groebner Bases and related ideal functions
+    :func:`.GroebnerBasis`, :func:`.PrimaryDecomposition`, :func:`.Saturate`, and
+    :func:`.CriticalPoints`.
+
+    See also:
+
+    - :func:`.GroebnerBasis`
+    - :func:`.PrimaryDecomposition`
+    - :func:`.Saturate`
+    - :func:`.Radical`
+    - :class:`.ACSVSettings`
+
+    """
     SINGULAR = "singular"
     MACAULAY2 = "macaulay2"
 
@@ -72,6 +85,8 @@ class ACSVSettings:
 
     """
     Output = OutputFormat
+    Kronecker = KroneckerBackend
+    Groebner  = GroebnerBackend
     _default_output_format = DEFAULT_OUTPUT_FORMAT
     _default_kronecker_backend = DEFAULT_KRONECKER_BACKEND
     _default_groebner_backend = DEFAULT_GROEBNER_BACKEND

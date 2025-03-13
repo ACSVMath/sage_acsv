@@ -5,7 +5,7 @@ from sage_acsv.helpers import ACSVException, GenerateLinearForm
 from sage_acsv.debug import acsv_logger
 from sage_acsv.msolve import get_parametrization
 from sage_acsv.macaulay2 import GroebnerBasis, Radical
-from sage_acsv.settings import ACSVSettings, KroneckerBackend
+from sage_acsv.settings import ACSVSettings
 
 
 def _kronecker_representation_sage(system, u_, vs, linear_form=None):
@@ -179,7 +179,7 @@ def _kronecker_representation(system, u_, vs, linear_form=None):
     A polynomial ``P`` and ``d`` polynomials ``Q1, ..., Q_d`` such that
     ``z_i = Q_i(u)/P'(u)`` for ``u`` ranging over the roots of ``P``.
     """
-    if ACSVSettings.get_default_kronecker_backend() == KroneckerBackend.MSOLVE:
+    if ACSVSettings.get_default_kronecker_backend() == ACSVSettings.Kronecker.MSOLVE:
         return _kronecker_representation_msolve(system, u_, vs)
     return _kronecker_representation_sage(system, u_, vs, linear_form=linear_form)
 
