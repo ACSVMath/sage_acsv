@@ -32,7 +32,7 @@ asy_misc.strip_symbolic = strip_symbolic
 
 
 
-def diagonal_asy_smooth(
+def _diagonal_asy_smooth(
     F,
     r=None,
     linear_form=None,
@@ -77,130 +77,28 @@ def diagonal_asy_smooth(
     A representation of the asymptotic main term, either as a list of tuples,
     or as a symbolic expression.
 
-    NOTE:
+    See also:
 
-    The code randomly generates a linear form, which for generic rational functions
-    separates the solutions of an intermediate polynomial system with high probability.
-    This separation step can fail, but (assuming `F` has a finite number of critical
-    points) the code can be rerun until a separating form is found.
+    - :func:`.diagonal_asy`
 
-    Examples::
-
-        sage: from sage_acsv import diagonal_asy_smooth
-        sage: var('x,y,z,w')
-        (x, y, z, w)
-        sage: diagonal_asy_smooth(1/(1-x-y))
-        1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2))
-        sage: diagonal_asy_smooth(1/(1-(1+x)*y), r = [1,2], return_points=True)
-        (1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2)), [[1, 1/2]])
-        sage: diagonal_asy_smooth(1/(1-(x+y+z)+(3/4)*x*y*z), output_format="symbolic")
-        0.840484893481498?*24.68093482214177?^n/(pi*n)
-        sage: diagonal_asy_smooth(1/(1-(x+y+z)+(3/4)*x*y*z))
-        0.840484893481498?/pi*24.68093482214177?^n*n^(-1) + O(24.68093482214177?^n*n^(-2))
-        sage: var('n')
-        n
-        sage: asy = diagonal_asy_smooth(
-        ....:     1/(1 - w*(1 + x)*(1 + y)*(1 + z)*(x*y*z + y*z + y + z + 1)),
-        ....:     output_format="tuple",
-        ....: )
-        sage: sum([
-        ....:      a.radical_expression()^n * b * c * QQbar(d).radical_expression()
-        ....:      for (a, b, c, d) in asy
-        ....: ])
-        1/4*(12*sqrt(2) + 17)^n*sqrt(17/2*sqrt(2) + 12)/(pi^(3/2)*n^(3/2))
-
-    Not specifying any ``output_format`` falls back to the default tuple
-    representation::
-
-        sage: from sage_acsv import diagonal_asy_smooth
-        sage: var('x')
-        x
-        sage: diagonal_asy_smooth(1/(1 - 2*x))
-        2^n + O(2^n*n^(-1))
-        sage: diagonal_asy_smooth(1/(1 - 2*x), output_format="tuple")
-        [(2, 1, 1, 1)]
-
-    Passing ``"symbolic"`` lets the function return an element of the
-    symbolic ring in the variable ``n`` that describes the asymptotic growth::
-
-        sage: growth = diagonal_asy_smooth(1/(1 - 2*x), output_format="symbolic"); growth
-        2^n
-        sage: growth.parent()
-        Symbolic Ring
-
-    The argument ``"asymptotic"`` constructs an asymptotic expansion over
-    an appropriate ``AsymptoticRing`` in the variable ``n``, including the
-    appropriate error term::
-
-        sage: assume(SR.an_element() > 0)  # required to make coercions involving SR work properly
-        sage: growth = diagonal_asy_smooth(1/(1 - x - y), output_format="asymptotic"); growth
-        1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2))
-        sage: growth.parent()
-        Asymptotic Ring <(Algebraic Real Field)^n * n^QQ * (Arg_(Algebraic Field))^n> over Symbolic Ring
-
-    Increasing the precision of the expansion returns an expansion with more terms
-    (works for all available output formats)::
-
-        sage: diagonal_asy_smooth(1/(1 - x - y), expansion_precision=3, output_format="asymptotic")
-        1/sqrt(pi)*4^n*n^(-1/2) - 1/8/sqrt(pi)*4^n*n^(-3/2) + 1/128/sqrt(pi)*4^n*n^(-5/2)
-        + O(4^n*n^(-7/2))
-
-    The direction of the diagonal, `r`, defaults to the standard diagonal (i.e., the
-    vector of all 1's) if not specified. It also supports passing non-integer values,
-    notably rational numbers::
-
-        sage: diagonal_asy_smooth(1/(1 - x - y), r=(1, 17/42), output_format="symbolic")
-        1.317305628032865?*2.324541507270374?^n/(sqrt(pi)*sqrt(n))
-    
-    and even algebraic numbers (note, however, that the performance for complicated
-    algebraic numbers is significantly degraded)::
-
-        sage: diagonal_asy_smooth(1/(1 - x - y), r=(sqrt(2), 1))
-        0.9238795325112868?/sqrt(pi)*(2.414213562373095?/0.5857864376269049?^1.414213562373095?)^n*n^(-1/2) + O((2.414213562373095?/0.5857864376269049?^1.414213562373095?)^n*n^(-3/2))
-
-    ::
-
-        sage: diagonal_asy_smooth(1/(1 - x - y*x^2), r=(1, 1/2 - 1/2*sqrt(1/5)), output_format="asymptotic")
-        1.710862642974252?/sqrt(pi)*1.618033988749895?^n*n^(-1/2)
-        + O(1.618033988749895?^n*n^(-3/2))
-
-    The function times individual steps of the algorithm, timings can
-    be displayed by increasing the printed verbosity level of our debug logger::
-
-        sage: import logging
-        sage: from sage_acsv.debug import acsv_logger
-        sage: acsv_logger.setLevel(logging.INFO)
-        sage: diagonal_asy_smooth(1/(1 - x - y))
-        INFO:sage_acsv:... Executed Kronecker in ... seconds.
-        INFO:sage_acsv:... Executed Minimal Points in ... seconds.
-        INFO:sage_acsv:... Executed Final Asymptotics in ... seconds.
-        1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2))
-        sage: acsv_logger.setLevel(logging.WARNING)
-
-
-    Tests:
+    TESTS:
 
     Check that passing a non-supported ``output_format`` errors out::
 
-        sage: diagonal_asy_smooth(1/(1 - x - y), output_format='hello world')
+        sage: from sage_acsv import diagonal_asy
+        sage: var('x y')
+        (x, y)
+        sage: diagonal_asy(1/(1 - x - y), output_format='hello world')  # indirect doctest
         Traceback (most recent call last):
         ...
         ValueError: 'hello world' is not a valid OutputFormat
-        sage: diagonal_asy_smooth(1/(1 - x - y), output_format=42)
+        sage: diagonal_asy(1/(1 - x - y), output_format=42)  # indirect doctest
         Traceback (most recent call last):
         ...
         ValueError: 42 is not a valid OutputFormat
 
     """
     G, H = F.numerator(), F.denominator()
-    if r is None:
-        n = len(H.variables())
-        r = [1 for _ in range(n)]
-
-    try:
-        r = [QQ(ri) for ri in r]
-    except (ValueError, TypeError):
-        r = [AA(ri) for ri in r]
 
     # Initialize variables
     vs = list(H.variables())
@@ -378,17 +276,102 @@ def diagonal_asy(
     This separation step can fail, but (assuming `F` has a finite number of critical
     points) the code can be rerun until a separating form is found.
 
-    Examples::
+    EXAMPLES:
 
         sage: from sage_acsv import diagonal_asy
-        sage: var('x,y')
-        (x, y)
+        sage: var('x,y,z,w')
+        (x, y, z, w)
+        sage: diagonal_asy(1/(1-x-y))
+        1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2))
+        sage: diagonal_asy(1/(1-(1+x)*y), r = [1,2], return_points=True)
+        (1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2)), [[1, 1/2]])
+        sage: diagonal_asy(1/(1-(x+y+z)+(3/4)*x*y*z), output_format="symbolic")
+        0.840484893481498?*24.68093482214177?^n/(pi*n)
+        sage: diagonal_asy(1/(1-(x+y+z)+(3/4)*x*y*z))
+        0.840484893481498?/pi*24.68093482214177?^n*n^(-1) + O(24.68093482214177?^n*n^(-2))
+        sage: var('n')
+        n
+        sage: asy = diagonal_asy(
+        ....:     1/(1 - w*(1 + x)*(1 + y)*(1 + z)*(x*y*z + y*z + y + z + 1)),
+        ....:     output_format="tuple",
+        ....: )
+        sage: sum([
+        ....:      a.radical_expression()^n * b * c * QQbar(d).radical_expression()
+        ....:      for (a, b, c, d) in asy
+        ....: ])
+        1/4*(12*sqrt(2) + 17)^n*sqrt(17/2*sqrt(2) + 12)/(pi^(3/2)*n^(3/2))
+
+    Not specifying any ``output_format`` falls back to the default asymptotic
+    representation::
+
+        sage: diagonal_asy(1/(1 - 2*x))
+        2^n + O(2^n*n^(-1))
+        sage: diagonal_asy(1/(1 - 2*x), output_format="tuple")
+        [(2, 1, 1, 1)]
+
+    Passing ``"symbolic"`` lets the function return an element of the
+    symbolic ring in the variable ``n`` that describes the asymptotic growth::
+
+        sage: growth = diagonal_asy(1/(1 - 2*x), output_format="symbolic"); growth
+        2^n
+        sage: growth.parent()
+        Symbolic Ring
+
+    The argument ``"asymptotic"`` constructs an asymptotic expansion over
+    an appropriate ``AsymptoticRing`` in the variable ``n``, including the
+    appropriate error term::
+
+        sage: assume(SR.an_element() > 0)  # required to make coercions involving SR work properly
+        sage: growth = diagonal_asy(1/(1 - x - y), output_format="asymptotic"); growth
+        1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2))
+        sage: growth.parent()
+        Asymptotic Ring <(Algebraic Real Field)^n * n^QQ * (Arg_(Algebraic Field))^n> over Symbolic Ring
+
+    Increasing the precision of the expansion returns an expansion with more terms
+    (works for all available output formats)::
+
+        sage: diagonal_asy(1/(1 - x - y), expansion_precision=3, output_format="asymptotic")
+        1/sqrt(pi)*4^n*n^(-1/2) - 1/8/sqrt(pi)*4^n*n^(-3/2) + 1/128/sqrt(pi)*4^n*n^(-5/2)
+        + O(4^n*n^(-7/2))
+
+    The direction of the diagonal, `r`, defaults to the standard diagonal (i.e., the
+    vector of all 1's) if not specified. It also supports passing non-integer values,
+    notably rational numbers::
+
+        sage: diagonal_asy(1/(1 - x - y), r=(1, 17/42), output_format="symbolic")
+        1.317305628032865?*2.324541507270374?^n/(sqrt(pi)*sqrt(n))
+    
+    and even algebraic numbers (note, however, that the performance for complicated
+    algebraic numbers is significantly degraded)::
+
+        sage: diagonal_asy(1/(1 - x - y), r=(sqrt(2), 1))
+        0.9238795325112868?/sqrt(pi)*(2.414213562373095?/0.5857864376269049?^1.414213562373095?)^n*n^(-1/2) + O((2.414213562373095?/0.5857864376269049?^1.414213562373095?)^n*n^(-3/2))
+
+    ::
+
+        sage: diagonal_asy(1/(1 - x - y*x^2), r=(1, 1/2 - 1/2*sqrt(1/5)), output_format="asymptotic")
+        1.710862642974252?/sqrt(pi)*1.618033988749895?^n*n^(-1/2)
+        + O(1.618033988749895?^n*n^(-3/2))
+
+    The function times individual steps of the algorithm, timings can
+    be displayed by increasing the printed verbosity level of our debug logger::
+
+        sage: import logging
+        sage: from sage_acsv import ACSVSettings
+        sage: ACSVSettings.set_logging_level(logging.INFO)
+        sage: diagonal_asy(1/(1 - x - y))
+        INFO:sage_acsv:... Executed Kronecker in ... seconds.
+        INFO:sage_acsv:... Executed Minimal Points in ... seconds.
+        INFO:sage_acsv:... Executed Final Asymptotics in ... seconds.
+        1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2))
+        sage: ACSVSettings.set_logging_level(logging.WARNING)
+    
+    Extraction of coefficient asymptotics even works in cases where the singular variety of `F`
+    is not smooth::
+        
         sage: diagonal_asy(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)), r = [17/24, 7/24], output_format = 'asymptotic')
         12 + O(n^(-1))
 
-        sage: from sage_acsv import diagonal_asy
-        sage: var('x,y,z')
-        (x, y, z)
         sage: diagonal_asy(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)), r = [17/24, 7/24], output_format = 'asymptotic')
         12 + O(n^(-1))
         sage: G = (1+x)*(1-x*y^2+x^2)
@@ -438,19 +421,6 @@ def diagonal_asy(
     if linear_form is not None:
         linear_form = SR(linear_form).subs(var_subs)
 
-    R = PolynomialRing(QQ, vs, len(vs))
-    H_sing = Ideal([R(H)] + [R(H.derivative(v)) for v in vs])
-    if H_sing.dimension() < 0:
-        return diagonal_asy_smooth(
-            F,
-            r = r,
-            linear_form = linear_form,
-            expansion_precision=expansion_precision,
-            return_points = return_points,
-            output_format = output_format,
-            as_symbolic=as_symbolic
-        )
-
     if r is None:
         n = len(H.variables())
         r = [1 for _ in range(n)]
@@ -459,6 +429,19 @@ def diagonal_asy(
         r = [QQ(ri) for ri in r]
     except (ValueError, TypeError):
         r = [AA(ri) for ri in r]
+
+    R = PolynomialRing(QQ, vs, len(vs))
+    H_sing = Ideal([R(H)] + [R(H.derivative(v)) for v in vs])
+    if H_sing.dimension() < 0:
+        return _diagonal_asy_smooth(
+            F,
+            r = r,
+            linear_form = linear_form,
+            expansion_precision=expansion_precision,
+            return_points = return_points,
+            output_format = output_format,
+            as_symbolic=as_symbolic
+        )
 
     t, lambda_, u_ = PolynomialRing(QQ, 't, lambda_, u_').gens()
     expanded_R = PolynomialRing(QQ, len(vs)+3, vs + [t, lambda_, u_])
@@ -584,7 +567,7 @@ def diagonal_asy(
         else:
             # Higher order expansions not currently supported for non-smooth critical points
             if expansion_precision > 1:
-                acsv_logger.warn("Higher order expansions are not supported in the non-smooth case. Defaulting to expansion_precision 1.")
+                acsv_logger.warning("Higher order expansions are not supported in the non-smooth case. Defaulting to expansion_precision 1.")
             # For non-complete intersections, we must compute the parametrized Hessian matrix
             if s != d:
                 Qw = ImplicitHessian(factors, vs, r, subs=subs_dict)
@@ -778,7 +761,7 @@ def ContributingCombinatorialSmooth(G, H, variables, r=None, linear_form=None):
     rational function F=G/H admitting a finite number of critical points.
     Assumes the singular variety of F is smooth.
 
-    Typically, this function is called as a subroutine of :func:`.diagonal_asy_smooth`.
+    Typically, this function is called as a subroutine of :func:`._diagonal_asy_smooth`.
 
     INPUT:
 
