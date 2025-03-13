@@ -7,7 +7,7 @@ from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra,
 from sage.all import gcd, prod, pi, matrix, exp, log, add, I, factorial, srange, shuffle, vector
 
 from sage_acsv.kronecker import _kronecker_representation, _msolve_kronecker_representation
-from sage_acsv.helpers import ACSVException, IsContributing, NewtonSeries, RationalFunctionReduce, GetHessian, ImplicitHessian
+from sage_acsv.helpers import ACSVException, IsContributing, NewtonSeries, RationalFunctionReduce, GetHessian, ImplicitHessian, collapse_zero_part
 from sage_acsv.debug import Timer, acsv_logger
 from sage_acsv.settings import ACSVSettings
 from sage_acsv.whitney import WhitneyStrat, PrimaryDecomposition
@@ -206,7 +206,7 @@ def _diagonal_asy_smooth(
         n = AR.gen()
         result = sum([ # bug in AsymptoticRing requires splitting out modulus manually
             constant * pi**exponent 
-            * abs(base)**n * (base/abs(base))**n
+            * abs(base)**n * collapse_zero_part(base/abs(base))**n
             * n**exponent * AR(expansion) 
             + (abs(base)**n * n**(exponent - expansion_precision)).O()
             for (base, exponent, constant, expansion) in asm_vals
@@ -390,7 +390,7 @@ def diagonal_asy(
     the modulus works as intended::
 
         sage: diagonal_asy(1/(1 - x^4 - y^4))
-        1/2/sqrt(pi)*1.414213562373095?^n*n^(-1/2) + 1/2/sqrt(pi)*1.414213562373095?^n*n^(-1/2)*(e^(I*arg(-1)))^n + 1/2/sqrt(pi)*1.414213562373095?^n*n^(-1/2)*(e^(I*arg(0.?e-... + 1.000000000000000?*I)))^n + 1/2/sqrt(pi)*1.414213562373095?^n*n^(-1/2)*(e^(I*arg(0.?e-... - 1.000000000000000?*I)))^n + O(1.414213562373095?^n*n^(-3/2))
+        1/2/sqrt(pi)*1.414213562373095?^n*n^(-1/2) + 1/2/sqrt(pi)*1.414213562373095?^n*n^(-1/2)*(e^(I*arg(-1)))^n + 1/2/sqrt(pi)*1.414213562373095?^n*n^(-1/2)*(e^(I*arg(-I)))^n + 1/2/sqrt(pi)*1.414213562373095?^n*n^(-1/2)*(e^(I*arg(I)))^n + O(1.414213562373095?^n*n^(-3/2))
 
     Check that there are no prohibited variable names::
 
@@ -618,7 +618,7 @@ def diagonal_asy(
         n = AR.gen()
         result = sum([ # bug in AsymptoticRing requires splitting out modulus manually
             constant * (pi**(s-d)).sqrt()
-            * abs(base)**n * (base / abs(base))**n
+            * abs(base)**n * collapse_zero_part(base / abs(base))**n
             * n**exponent * AR(expansion)
             + (abs(base)**n * n**(exponent - expansion_precision)).O()
             for (base, exponent, constant, expansion, s) in asm_vals
@@ -1106,7 +1106,10 @@ def ContributingCombinatorial(
                     pos_minimals.append(u)
 
             pos_minimals_by_stratum[d].extend(
-                [[QQbar((q/Pd).subs(u_=u)) for q in Qs[:len(vs)]] for u in pos_minimals]
+                [
+                    [collapse_zero_part(QQbar((q/Pd).subs(u_=u))) for q in Qs[:len(vs)]]
+                    for u in pos_minimals
+                ]
             )
 
             # Characterize all complex critical points in each stratum
@@ -1118,7 +1121,9 @@ def ContributingCombinatorial(
                 if (any([rv[r_var] != r_value for r_var, r_value in r_variable_values.items()])):
                     continue
 
-                w = [QQbar((q/Pd).subs(u_=u)) for q in Qs[:len(vs)]]
+                w = [
+                    collapse_zero_part(QQbar((q/Pd).subs(u_=u))) for q in Qs[:len(vs)]
+                ]
                 critical_points_by_stratum[d].append(w)
 
     # Refine positive minimal critical points to those that are contributing
@@ -1317,6 +1322,10 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=N
         if any([all([abs(w_i)==abs(min_i) for w_i, min_i in zip(w, minimal)]) for minimal in pos_minimals]):
             minimal_criticals.append(w)
 
+    minimal_criticals = [
+        [collapse_zero_part(w_i) for w_i in w]
+        for w in minimal_criticals
+    ]
     return minimal_criticals
 
 def CriticalPoints(G, H, variables, r=None, linear_form=None, m2=None, whitney_strat=None):
@@ -1437,7 +1446,9 @@ def CriticalPoints(G, H, variables, r=None, linear_form=None, m2=None, whitney_s
                 if (any([rv[r_var] != r_value for r_var, r_value in r_variable_values.items()])):
                     continue
 
-                w = [QQbar((q/Pd).subs(u_=u)) for q in Qs[:len(vs)]]
+                w = [
+                    collapse_zero_part(QQbar((q/Pd).subs(u_=u))) for q in Qs[:len(vs)]
+                ]
                 critical_points.append(w)
 
     return critical_points

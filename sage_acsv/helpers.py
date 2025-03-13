@@ -1,7 +1,16 @@
 from __future__ import annotations
 
+from sage.rings.qqbar import QQbar, AlgebraicNumber
+
 from sage.all import AA, QQ, SR, Ideal, Polyhedron, ceil, gcd, matrix, randint, vector, kronecker_delta
 
+
+def collapse_zero_part(algebraic_number: AlgebraicNumber) -> AlgebraicNumber:
+    if algebraic_number.real().is_zero():
+        algebraic_number = QQbar(algebraic_number.imag()) * QQbar(-1).sqrt()
+    if algebraic_number.imag().is_zero():
+        algebraic_number = QQbar(algebraic_number.real())
+    return algebraic_number
 
 def RationalFunctionReduce(G, H):
     r"""Reduction of G and H by dividing out their GCD.
