@@ -3,10 +3,10 @@ of multivariate rational functions.
 """
 from copy import copy
 
-from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra, Ideal, Polyhedron
-from sage.all import gcd, prod, pi, matrix, exp, log, add, I, factorial, srange, shuffle, vector
+from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra, Ideal
+from sage.all import gcd, prod, pi, matrix, exp, log, I, factorial, srange, shuffle, vector
 
-from sage_acsv.kronecker import _kronecker_representation, _msolve_kronecker_representation
+from sage_acsv.kronecker import _kronecker_representation
 from sage_acsv.helpers import ACSVException, IsContributing, NewtonSeries, RationalFunctionReduce, GetHessian, ImplicitHessian, collapse_zero_part
 from sage_acsv.debug import Timer, acsv_logger
 from sage_acsv.settings import ACSVSettings
@@ -116,7 +116,6 @@ def _diagonal_asy_smooth(
 
     d = len(vs)
     rd = r[-1]
-    vd = vs[-1]
 
     # Make sure G and H are coprime, and that H does not vanish at 0
     G, H = expanded_R(G), expanded_R(H)
@@ -481,8 +480,6 @@ def diagonal_asy(
     else:
         return
 
-    timer = Timer()
-
     asm_quantities = []
     for cp in min_crit_pts:
         # Step 1: Determine if pt is a transverse multiple point of H, and compute the factorization
@@ -750,7 +747,7 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision):
         for i in range(len(res)):
             if res[i].imag() == 0:
                 res[i] = AA(res[i])
-    except:
+    except (TypeError, ValueError, NotImplementedError):
         pass
 
     return res
@@ -941,7 +938,6 @@ def _find_contributing_points_combinatorial(
     This separation step can fail, but (assuming F has a finite number of critical points)
     the code can be rerun until a separating form is found.
     """
-    timer = Timer()
     (
         expanded_R,
         vs,
@@ -1413,8 +1409,6 @@ def CriticalPoints(F, r=None, linear_form=None, m2=None, whitney_strat=None):
             if ideal.dimension() < 0:
                 continue
             P, Qs = _kronecker_representation(ideal.gens(), u_, vsT, lambda_, linear_form)
-
-            Qt = Qs[-2]  # Qs ordering is H.variables() + rvars + [t, lambda_]
             Pd = P.derivative()
 
             # Characterize all complex critical points in each stratum
