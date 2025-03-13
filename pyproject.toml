@@ -23,6 +23,10 @@ dev = [
     "ruff>=0.10.0",
 ]
 
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [tool.ruff.lint]
 exclude = ["*.ipynb"]
 ignore = ["F821"]
