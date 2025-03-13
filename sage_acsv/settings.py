@@ -130,6 +130,16 @@ class ACSVSettings:
     
     @classmethod
     def set_default_kronecker_backend(cls, backend: KroneckerBackend | str | None) -> None:
+        """Set the preferred method for computing a Kronecker Representation. Will default
+        to the sage_acsv implementation if not specified.
+        
+        See :func:`._kronecker_representation`.
+
+        INPUT:
+
+        * ``backend`` -- a given :class:`.KroneckerBackend`, a string identifying one,
+          or ``None`` to restore the default behavior.
+        """
         if backend is None:
             cls._default_kronecker_backend = DEFAULT_KRONECKER_BACKEND
         else:
@@ -137,10 +147,22 @@ class ACSVSettings:
 
     @classmethod
     def get_default_kronecker_backend(cls) -> KroneckerBackend:
+        """Get the default kronecker representation backend."""
         return cls._default_kronecker_backend
 
     @classmethod
     def set_default_groebner_backend(cls, backend: GroebnerBackend | str | None) -> None:
+        """Set the preferred method for performing Groebner Bases and related computations,
+        including :func:`.GroebnerBasis`, :func:`.PrimaryDecomposition`, :func:`.Saturate`,
+        and :func:`.Radical`
+
+        Will default to singular.
+
+        INPUT:
+
+        * ``backend`` -- a given :class:`.GroebnerBackend`, a string identifying one,
+          or ``None`` to restore the default behavior.
+        """
         if backend is None:
             cls._default_groebner_backend = DEFAULT_GROEBNER_BACKEND
         else:
@@ -148,12 +170,20 @@ class ACSVSettings:
 
     @classmethod
     def get_default_groebner_backend(cls) -> KroneckerBackend:
+        """Get the default groebner basis backend."""
         return cls._default_groebner_backend
     
     @classmethod
     def set_macaulay2_path(cls, path: str | None) -> None:
+        """Set the path of the Macaulay2 executable.
+
+        INPUT:
+
+        * ``path`` -- a filepath string or `None` to run from anywhere
+        """
         cls._m2_installation_path = path
 
     @classmethod
     def get_macaulay2_path(cls) -> KroneckerBackend:
+        """Get the Macaulay2 installation path."""
         return cls._m2_installation_path

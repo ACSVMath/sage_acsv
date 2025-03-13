@@ -164,6 +164,28 @@ def _kronecker_representation_msolve(system, u_, vs):
 def _kronecker_representation(system, u_, vs, linear_form=None):
     r"""Computes the Kronecker Representation of a system of polynomials
 
+    Internal intermediate function for choosing the Kronecker backend implementation
+
+    INPUT:
+
+    * ``system`` -- A system of polynomials in ``d`` variables
+    * ``u_`` -- Variable not contained in the variables in system
+    * ``vs`` -- Variables of the system
+    * ``linear_form`` -- (Optional) A linear combination of the
+      input variables that separates the critical point solutions
+
+    OUTPUT:
+
+    A polynomial ``P`` and ``d`` polynomials ``Q1, ..., Q_d`` such that
+    ``z_i = Q_i(u)/P'(u)`` for ``u`` ranging over the roots of ``P``.
+    """
+    if ACSVSettings.get_default_kronecker_backend() == KroneckerBackend.MSOLVE:
+        return _kronecker_representation_msolve(system, u_, vs)
+    return _kronecker_representation_sage(system, u_, vs, linear_form=linear_form)
+
+def kronecker(system, vs, linear_form=None):
+    r"""Computes the Kronecker Representation of a system of polynomials
+
     INPUT:
 
     * ``system`` -- A system of polynomials in ``d`` variables
@@ -177,7 +199,7 @@ def _kronecker_representation(system, u_, vs, linear_form=None):
     ``z_i = Q_i(u)/P'(u)`` for ``u`` ranging over the roots of ``P``.
 
     Examples::
-        sage: from sage_acsv import kronecker
+        sage: from sage_acsv.kronecker import kronecker
         sage: var('x,y')
         (x, y)
         sage: kronecker([x**3+y**3-10, y**2-2], [x,y], x+y)
@@ -189,6 +211,5 @@ def _kronecker_representation(system, u_, vs, linear_form=None):
     system = [R(f) for f in system]
     vs = [R(v) for v in vs]
     u_ = R(u_)
-    if ACSVSettings.get_default_kronecker_backend() == KroneckerBackend.MSOLVE:
-        return _kronecker_representation_msolve(system, u_, vs)
-    return _kronecker_representation_sage(system, u_, vs, linear_form=linear_form)
+    return _kronecker_representation(system, u_, vs, linear_form)
+    
