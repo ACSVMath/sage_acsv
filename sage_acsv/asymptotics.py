@@ -33,7 +33,8 @@ asy_misc.strip_symbolic = strip_symbolic
 
 
 def _diagonal_asy_smooth(
-    F,
+    G,
+    H,
     r=None,
     linear_form=None,
     expansion_precision=1,
@@ -41,13 +42,15 @@ def _diagonal_asy_smooth(
     output_format=None,
     as_symbolic=False
 ):
-    r"""Asymptotics in a given direction `r` of the multivariate rational function `F`.
-        Assumes the singular variety of F is smooth.
+    r"""Asymptotics in a given direction `r` of the multivariate rational
+    function `F = G/H` when the singular variety of `F` is smooth.
+    
+    The function is assumed to have a combinatorial expansion.
 
     INPUT:
 
-    * ``F`` -- The rational function ``G/H`` in ``d`` variables. This function is
-      assumed to have a combinatorial expansion.
+    * ``G`` -- The numerator of the rational function ``F``.
+    * ``H`` -- The numerator of the rational function ``F``.
     * ``r`` -- A vector of length d of positive algebraic numbers (generally integers).
       Defaults to the appropriate vector of all 1's if not specified.
     * ``linear_form`` -- (Optional) A linear combination of the input
@@ -98,8 +101,6 @@ def _diagonal_asy_smooth(
         ValueError: 42 is not a valid OutputFormat
 
     """
-    G, H = F.numerator(), F.denominator()
-
     # Initialize variables
     vs = list(H.variables())
 
@@ -115,7 +116,6 @@ def _diagonal_asy_smooth(
     vd = vs[-1]
 
     # Make sure G and H are coprime, and that H does not vanish at 0
-    G, H = RationalFunctionReduce(G, H)
     G, H = expanded_R(G), expanded_R(H)
     if H.subs({v: 0 for v in H.variables()}) == 0:
         raise ValueError("Denominator vanishes at 0.")
@@ -399,26 +399,19 @@ def diagonal_asy(
         0.866025403784439?/pi*27^n*n^(-1) + O(27^n*n^(-2))
 
     """
-    G, H = F.numerator(), F.denominator()
-    # Initialize variables
-    original_variables = H.variables()
-    if any(v not in original_variables for v in G.variables()):
-        raise ValueError("Numerator cannot contain variables not occurring in denominator.")
-    vs = list(SR.var('acsvvar', len(original_variables)))
-    var_subs = {hvar: acsvvar for hvar, acsvvar in zip(original_variables, vs)}
-    G = G.subs(var_subs)
-    H = H.subs(var_subs)
-    F = G / H
+    G, H, variable_map = _prepare_symbolic_fraction(F)
+    vs = list(variable_map.values())
+
     if whitney_strat is not None:
         whitney_strat = [
             [
-                tuple(SR(gen).subs(var_subs) for gen in component)
+                tuple(SR(gen).subs(variable_map) for gen in component)
                 for component in stratum
             ] 
             for stratum in whitney_strat
         ]
     if linear_form is not None:
-        linear_form = SR(linear_form).subs(var_subs)
+        linear_form = SR(linear_form).subs(variable_map)
 
     if r is None:
         n = len(H.variables())
@@ -433,7 +426,7 @@ def diagonal_asy(
     H_sing = Ideal([R(H)] + [R(H.derivative(v)) for v in vs])
     if H_sing.dimension() < 0:
         return _diagonal_asy_smooth(
-            F,
+            G, H,
             r = r,
             linear_form = linear_form,
             expansion_precision=expansion_precision,
@@ -461,7 +454,7 @@ def diagonal_asy(
     for _ in range(ACSVSettings.MAX_MIN_CRIT_RETRIES):
         try:
             # Find minimal critical points in Kronecker Representation
-            min_crit_pts = ContributingCombinatorial(
+            min_crit_pts = _find_contributing_points_combinatorial(
                 G, H_sf, vs,
                 r=r,
                 linear_form=linear_form,
@@ -900,7 +893,7 @@ def ContributingCombinatorialSmooth(G, H, variables, r=None, linear_form=None):
 
     return [[(q/Pd).subs(u_=u) for q in Qs[:len(vs)]] for u in minimals]
 
-def ContributingCombinatorial(
+def _find_contributing_points_combinatorial(
     G,
     H,
     variables,
@@ -938,19 +931,6 @@ def ContributingCombinatorial(
     separates the solutions of an intermediate polynomial system with high probability.
     This separation step can fail, but (assuming F has a finite number of critical points)
     the code can be rerun until a separating form is found.
-
-    Examples::
-
-        sage: from sage_acsv import ContributingCombinatorial
-        sage: R.<x, y, lambda_, t, u_> = QQ[]
-        sage: pts = ContributingCombinatorial(
-        ....:     1,
-        ....:     (1-(2*x+y)/3)*(1-(3*x+y)/4),
-        ....:     [x, y],
-        ....: )
-        sage: sorted(pts)
-        [[3/4, 3/2]]
-
     """
     timer = Timer()
     (
@@ -1100,7 +1080,76 @@ def ContributingCombinatorial(
 
     return contributing_points
 
-def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=None, whitney_strat=None):
+def ContributingCombinatorial(
+    F,
+    r=None,
+    linear_form=None,
+    m2=None,
+    whitney_strat=None,
+):
+    r"""Compute contributing points of a combinatorial multivariate
+    rational function `F=G/H` admitting a finite number of critical points.
+
+    INPUT:
+
+    * ``F`` -- Symbolic fraction, the rational function assumed to have
+      a finite number of critical points
+    * ``r`` -- (Optional) Length ``d`` vector of positive integers
+    * ``linear_form`` -- (Optional) A linear combination of the input
+      variables that separates the critical point solutions
+    * ``m2`` -- (Optional) The option to pass in a SageMath Macaulay2 interface for
+        computing primary decompositions. Macaulay2 must be installed by the user
+    * ``whitney_strat`` -- (Optional) The user can pass in a Whitney Stratification of V(H)
+        to save computation time. The program will not check if this stratification is correct.
+        The whitney_strat should be an array of length ``d``, with the ``k``-th entry a list of
+        tuples of ideal generators representing a component of the ``k``-dimensional stratum.
+
+    OUTPUT:
+
+    A list of minimal contributing points of `F` in the direction `r`,
+
+    NOTE:
+
+    The code randomly generates a linear form, which for generic rational functions
+    separates the solutions of an intermediate polynomial system with high probability.
+    This separation step can fail, but (assuming F has a finite number of critical points)
+    the code can be rerun until a separating form is found.
+
+    Examples::
+
+        sage: from sage_acsv import ContributingCombinatorial
+        sage: var('x y')
+        (x, y)
+        sage: pts = ContributingCombinatorial(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)))
+        sage: sorted(pts)
+        [[3/4, 3/2]]
+
+    """
+    G, H, variable_map = _prepare_symbolic_fraction(F)
+    variables = list(variable_map.values())
+    if whitney_strat is not None:
+        whitney_strat = [
+            [
+                tuple(SR(gen).subs(variable_map) for gen in component)
+                for component in stratum
+            ] 
+            for stratum in whitney_strat
+        ]
+    if linear_form is not None:
+        linear_form = SR(linear_form).subs(variable_map)
+
+    return _find_contributing_points_combinatorial(
+        G,
+        H,
+        variables,
+        r=r,
+        linear_form=linear_form,
+        m2=m2,
+        whitney_strat=whitney_strat,
+    )
+
+
+def MinimalCriticalCombinatorial(F, r=None, linear_form=None, m2=None, whitney_strat=None):
     r"""Compute nonzero minimal critical points of a combinatorial multivariate
     rational function F=G/H admitting a finite number of critical points.
 
@@ -1134,16 +1183,25 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=N
     Examples::
 
         sage: from sage_acsv import MinimalCriticalCombinatorial
-        sage: R.<x, y, lambda_, t, u_> = QQ[]
-        sage: pts = MinimalCriticalCombinatorial(
-        ....:     1,
-        ....:     (1-(2*x+y)/3)*(1-(3*x+y)/4),
-        ....:     [x, y],
-        ....: )
+        sage: var('x y')
+        (x, y)
+        sage: pts = MinimalCriticalCombinatorial(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)))
         sage: sorted(pts)
         [[3/4, 3/2], [1, 1]]
 
     """
+    _, H, variable_map = _prepare_symbolic_fraction(F)
+    variables = list(variable_map.values())
+    if whitney_strat is not None:
+        whitney_strat = [
+            [
+                tuple(SR(gen).subs(variable_map) for gen in component)
+                for component in stratum
+            ] 
+            for stratum in whitney_strat
+        ]
+    if linear_form is not None:
+        linear_form = SR(linear_form).subs(variable_map)
     (
         expanded_R,
         vs,
@@ -1250,9 +1308,9 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=N
     ]
     return minimal_criticals
 
-def CriticalPoints(G, H, variables, r=None, linear_form=None, m2=None, whitney_strat=None):
+def CriticalPoints(F, r=None, linear_form=None, m2=None, whitney_strat=None):
     r"""Compute critical points of a multivariate
-    rational function F=G/H admitting a finite number of critical points.
+    rational function `F=G/H` admitting a finite number of critical points.
 
     Typically, this function is called as a subroutine of :func:`.diagonal_asy`.
 
@@ -1284,16 +1342,25 @@ def CriticalPoints(G, H, variables, r=None, linear_form=None, m2=None, whitney_s
     Examples::
 
         sage: from sage_acsv import CriticalPoints
-        sage: R.<x, y, lambda_, u_> = QQ[]
-        sage: pts = CriticalPoints(
-        ....:     1,
-        ....:     (1-(2*x+y)/3)*(1-(3*x+y)/4),
-        ....:     [x, y],
-        ....: )
+        sage: var('x y')
+        (x, y)
+        sage: pts = CriticalPoints(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)))
         sage: sorted(pts)
         [[2/3, 2], [3/4, 3/2], [1, 1]]
 
     """
+    _, H, variable_map = _prepare_symbolic_fraction(F)
+    variables = list(variable_map.values())
+    if whitney_strat is not None:
+        whitney_strat = [
+            [
+                tuple(SR(gen).subs(variable_map) for gen in component)
+                for component in stratum
+            ] 
+            for stratum in whitney_strat
+        ]
+    if linear_form is not None:
+        linear_form = SR(linear_form).subs(variable_map)
     (
         expanded_R,
         vs,
@@ -1358,7 +1425,24 @@ def CriticalPoints(G, H, variables, r=None, linear_form=None, m2=None, whitney_s
 
     return critical_points
 
+def _prepare_symbolic_fraction(F):
+    r"""Extract polynomial numerators and denomiators from a symbolic fraction,
+    including the replacement of variable names.
 
+    INPUT:
+
+    * ``F`` -- A symbolic fraction
+    """
+    G, H = F.numerator(), F.denominator()
+    original_variables = H.variables()
+    if any(v not in original_variables for v in G.variables()):
+        raise ValueError(f"Numerator {G} has variables not in denominator {H}")
+    new_variables = list(SR.var('acsvvar', len(original_variables)))
+    variable_map = {v: new_v for v, new_v in zip(original_variables, new_variables)}
+    G = G.subs(variable_map)
+    H = H.subs(variable_map)
+    frac_gcd = gcd(G, H)
+    return G/frac_gcd, H/frac_gcd, variable_map
 
 def _prepare_expanded_polynomial_ring(variables, direction=None, include_t=True):
     r"""Prepare an auxiliary polynomial ring for the diagonal asymptotics.
