@@ -7,7 +7,7 @@ from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra,
 from sage.all import gcd, prod, pi, matrix, exp, log, add, I, factorial, srange, shuffle, vector
 
 from sage_acsv.kronecker import _kronecker_representation, _msolve_kronecker_representation
-from sage_acsv.helpers import ACSVException, IsContributing, NewtonSeries, RationalFunctionReduce, GetHessian, ImplicitHessian
+from sage_acsv.helpers import ACSVException, IsContributing, NewtonSeries, RationalFunctionReduce, GetHessian, ImplicitHessian, collapse_zero_part
 from sage_acsv.debug import Timer, acsv_logger
 from sage_acsv.settings import ACSVSettings
 from sage_acsv.whitney import WhitneyStrat, PrimaryDecomposition
@@ -32,8 +32,9 @@ asy_misc.strip_symbolic = strip_symbolic
 
 
 
-def diagonal_asy_smooth(
-    F,
+def _diagonal_asy_smooth(
+    G,
+    H,
     r=None,
     linear_form=None,
     expansion_precision=1,
@@ -41,24 +42,28 @@ def diagonal_asy_smooth(
     output_format=None,
     as_symbolic=False
 ):
-    r"""Asymptotics in a given direction `r` of the multivariate rational function `F`.
-        Assumes the singular variety of F is smooth.
+    r"""Asymptotics in a given direction `r` of the multivariate rational
+    function `F = G/H` when the singular variety of `F` is smooth.
+    
+    The function is assumed to have a combinatorial expansion.
 
     INPUT:
 
-    * ``F`` -- The rational function ``G/H`` in ``d`` variables. This function is
-      assumed to have a combinatorial expansion.
-    * ``r`` -- A vector of length d of positive algebraic numbers (generally integers).
-      Defaults to the appropriate vector of all 1's if not specified.
+    * ``G`` -- The numerator of the rational function ``F``.
+    * ``H`` -- The denominator of the rational function ``F``.
+    * ``r`` -- A vector of positive algebraic numbers (generally integers),
+      one entry per variable of `F`. Defaults to the appropriate vector of
+      all 1's if not specified.
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions.
-    * ``expansion_precision`` -- A positive integer value. This is the number of terms to
-      compute in the asymptotic expansion. Defaults to 1, which only computes the leading
-      term.
+    * ``expansion_precision`` -- A positive integer value. This is the number
+      of terms to compute in the asymptotic expansion. Defaults to 1, which
+      only computes the leading term.
     * ``return_points`` -- If ``True``, also returns the coordinates of
       minimal critical points. By default ``False``.
-    * ``output_format`` -- (Optional) A string or :class:`.ACSVSettings.Output` specifying
-      the way the asymptotic growth is returned. Allowed values currently are:
+    * ``output_format`` -- (Optional) A string or :class:`.ACSVSettings.Output`
+      specifying the way the asymptotic growth is returned. Allowed values
+      currently are:
       - ``"tuple"``: the growth is returned as a list of
         tuples of the form ``(a, n^b, pi^c, d)`` such that the `r`-diagonal of `F`
         is the sum of ``a^n n^b pi^c d + O(a^n n^{b-1})`` over these tuples.
@@ -66,142 +71,39 @@ def diagonal_asy_smooth(
         ring ``SR`` in the variable ``n``.
       - ``"asymptotic"``: the growth is returned as an expression from an appropriate
         ``AsymptoticRing`` in the variable ``n``.
-      - ``None``: the default, which uses the default set for :class:`.ACSVSettings.Output`
-        itself via :meth:`.ACSVSettings.set_default_output_format`. The default behavior
+      - ``None``: the default, which uses the default set for
+        :class:`.ACSVSettings.Output` itself via 
+        :meth:`.ACSVSettings.set_default_output_format`. The default behavior
         is asymptotic output.
     * ``as_symbolic`` -- deprecated in favor of the equivalent
       ``output_format="symbolic"``. Will be removed in a future release.
 
     OUTPUT:
 
-    A representation of the asymptotic main term, either as a list of tuples,
-    or as a symbolic expression.
+    A representation of the asymptotic behavior of the coefficient sequence,
+    either as a list of tuples, or as a symbolic expression.
 
-    NOTE:
+    See also:
 
-    The code randomly generates a linear form, which for generic rational functions
-    separates the solutions of an intermediate polynomial system with high probability.
-    This separation step can fail, but (assuming `F` has a finite number of critical
-    points) the code can be rerun until a separating form is found.
+    - :func:`.diagonal_asy`
 
-    Examples::
-
-        sage: from sage_acsv import diagonal_asy_smooth
-        sage: var('x,y,z,w')
-        (x, y, z, w)
-        sage: diagonal_asy_smooth(1/(1-x-y))
-        1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2))
-        sage: diagonal_asy_smooth(1/(1-(1+x)*y), r = [1,2], return_points=True)
-        (1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2)), [[1, 1/2]])
-        sage: diagonal_asy_smooth(1/(1-(x+y+z)+(3/4)*x*y*z), output_format="symbolic")
-        0.840484893481498?*24.68093482214177?^n/(pi*n)
-        sage: diagonal_asy_smooth(1/(1-(x+y+z)+(3/4)*x*y*z))
-        0.840484893481498?/pi*24.68093482214177?^n*n^(-1) + O(24.68093482214177?^n*n^(-2))
-        sage: var('n')
-        n
-        sage: asy = diagonal_asy_smooth(
-        ....:     1/(1 - w*(1 + x)*(1 + y)*(1 + z)*(x*y*z + y*z + y + z + 1)),
-        ....:     output_format="tuple",
-        ....: )
-        sage: sum([
-        ....:      a.radical_expression()^n * b * c * QQbar(d).radical_expression()
-        ....:      for (a, b, c, d) in asy
-        ....: ])
-        1/4*(12*sqrt(2) + 17)^n*sqrt(17/2*sqrt(2) + 12)/(pi^(3/2)*n^(3/2))
-
-    Not specifying any ``output_format`` falls back to the default tuple
-    representation::
-
-        sage: from sage_acsv import diagonal_asy_smooth
-        sage: var('x')
-        x
-        sage: diagonal_asy_smooth(1/(1 - 2*x))
-        2^n + O(2^n*n^(-1))
-        sage: diagonal_asy_smooth(1/(1 - 2*x), output_format="tuple")
-        [(2, 1, 1, 1)]
-
-    Passing ``"symbolic"`` lets the function return an element of the
-    symbolic ring in the variable ``n`` that describes the asymptotic growth::
-
-        sage: growth = diagonal_asy_smooth(1/(1 - 2*x), output_format="symbolic"); growth
-        2^n
-        sage: growth.parent()
-        Symbolic Ring
-
-    The argument ``"asymptotic"`` constructs an asymptotic expansion over
-    an appropriate ``AsymptoticRing`` in the variable ``n``, including the
-    appropriate error term::
-
-        sage: assume(SR.an_element() > 0)  # required to make coercions involving SR work properly
-        sage: growth = diagonal_asy_smooth(1/(1 - x - y), output_format="asymptotic"); growth
-        1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2))
-        sage: growth.parent()
-        Asymptotic Ring <(Algebraic Real Field)^n * n^QQ * (Arg_(Algebraic Field))^n> over Symbolic Ring
-
-    Increasing the precision of the expansion returns an expansion with more terms
-    (works for all available output formats)::
-
-        sage: diagonal_asy_smooth(1/(1 - x - y), expansion_precision=3, output_format="asymptotic")
-        1/sqrt(pi)*4^n*n^(-1/2) - 1/8/sqrt(pi)*4^n*n^(-3/2) + 1/128/sqrt(pi)*4^n*n^(-5/2)
-        + O(4^n*n^(-7/2))
-
-    The direction of the diagonal, `r`, defaults to the standard diagonal (i.e., the
-    vector of all 1's) if not specified. It also supports passing non-integer values,
-    notably rational numbers::
-
-        sage: diagonal_asy_smooth(1/(1 - x - y), r=(1, 17/42), output_format="symbolic")
-        1.317305628032865?*2.324541507270374?^n/(sqrt(pi)*sqrt(n))
-    
-    and even algebraic numbers (note, however, that the performance for complicated
-    algebraic numbers is significantly degraded)::
-
-        sage: diagonal_asy_smooth(1/(1 - x - y), r=(sqrt(2), 1))
-        0.9238795325112868?/sqrt(pi)*(2.414213562373095?/0.5857864376269049?^1.414213562373095?)^n*n^(-1/2) + O((2.414213562373095?/0.5857864376269049?^1.414213562373095?)^n*n^(-3/2))
-
-    ::
-
-        sage: diagonal_asy_smooth(1/(1 - x - y*x^2), r=(1, 1/2 - 1/2*sqrt(1/5)), output_format="asymptotic")
-        1.710862642974252?/sqrt(pi)*1.618033988749895?^n*n^(-1/2)
-        + O(1.618033988749895?^n*n^(-3/2))
-
-    The function times individual steps of the algorithm, timings can
-    be displayed by increasing the printed verbosity level of our debug logger::
-
-        sage: import logging
-        sage: from sage_acsv.debug import acsv_logger
-        sage: acsv_logger.setLevel(logging.INFO)
-        sage: diagonal_asy_smooth(1/(1 - x - y))
-        INFO:sage_acsv:... Executed Kronecker in ... seconds.
-        INFO:sage_acsv:... Executed Minimal Points in ... seconds.
-        INFO:sage_acsv:... Executed Final Asymptotics in ... seconds.
-        1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2))
-        sage: acsv_logger.setLevel(logging.WARNING)
-
-
-    Tests:
+    TESTS:
 
     Check that passing a non-supported ``output_format`` errors out::
 
-        sage: diagonal_asy_smooth(1/(1 - x - y), output_format='hello world')
+        sage: from sage_acsv import diagonal_asy
+        sage: var('x y')
+        (x, y)
+        sage: diagonal_asy(1/(1 - x - y), output_format='hello world')  # indirect doctest
         Traceback (most recent call last):
         ...
         ValueError: 'hello world' is not a valid OutputFormat
-        sage: diagonal_asy_smooth(1/(1 - x - y), output_format=42)
+        sage: diagonal_asy(1/(1 - x - y), output_format=42)  # indirect doctest
         Traceback (most recent call last):
         ...
         ValueError: 42 is not a valid OutputFormat
 
     """
-    G, H = F.numerator(), F.denominator()
-    if r is None:
-        n = len(H.variables())
-        r = [1 for _ in range(n)]
-
-    try:
-        r = [QQ(ri) for ri in r]
-    except (ValueError, TypeError):
-        r = [AA(ri) for ri in r]
-
     # Initialize variables
     vs = list(H.variables())
 
@@ -212,13 +114,11 @@ def diagonal_asy_smooth(
     t, lambda_, u_ = expanded_R(t), expanded_R(lambda_), expanded_R(u_)
     vsT = vs + [t, lambda_]
 
-    all_variables = (vs, lambda_, t, u_)
     d = len(vs)
     rd = r[-1]
     vd = vs[-1]
 
     # Make sure G and H are coprime, and that H does not vanish at 0
-    G, H = RationalFunctionReduce(G, H)
     G, H = expanded_R(G), expanded_R(H)
     if H.subs({v: 0 for v in H.variables()}) == 0:
         raise ValueError("Denominator vanishes at 0.")
@@ -228,14 +128,14 @@ def diagonal_asy_smooth(
         try:
             # Find minimal critical points in Kronecker Representation
             min_crit_pts = ContributingCombinatorialSmooth(
-                G, H, all_variables,
+                G, H, vs,
                 r=r,
                 linear_form=linear_form
             )
             break
         except Exception as e:
             if isinstance(e, ACSVException) and e.retry:
-                acsv_logger.warning(
+                acsv_logger.info(
                     "Randomly generated linear form was not suitable, "
                     f"encountered error: {e}\nRetrying..."
                 )
@@ -308,7 +208,7 @@ def diagonal_asy_smooth(
         n = AR.gen()
         result = sum([ # bug in AsymptoticRing requires splitting out modulus manually
             constant * pi**exponent 
-            * abs(base)**n * (base/abs(base))**n
+            * abs(base)**n * collapse_zero_part(base/abs(base))**n
             * n**exponent * AR(expansion) 
             + (abs(base)**n * n**(exponent - expansion_precision)).O()
             for (base, exponent, constant, expansion) in asm_vals
@@ -332,44 +232,49 @@ def diagonal_asy(
     whitney_strat=None,
     as_symbolic=False
 ):
-    r"""Asymptotics in a given direction `r` of the multivariate rational function `F`.
+    r"""Asymptotic behavior of the coefficient array of a multivariate rational
+    function `F` along a given direction `r`.
 
     INPUT:
 
-    * ``F`` -- The rational function ``G/H`` in ``d`` variables. This function is
+    * ``F`` -- The rational function `G/H` in `d` variables. This function is
       assumed to have a combinatorial expansion.
-    * ``r`` -- A vector of length d of positive algebraic numbers (generally integers).
+    * ``r`` -- A vector of length `d` of positive algebraic numbers.
       Defaults to the appropriate vector of all 1's if not specified.
     * ``linear_form`` -- (Optional) A linear combination of the input
-      variables that separates the critical point solutions.
-    * ``expansion_precision`` -- A positive integer value. This is the number of terms to
-      compute in the asymptotic expansion. Defaults to 1, which only computes the leading
-      term.
+      variables that separates the critical point solutions. Is generated
+      randomly if not specified.
+    * ``expansion_precision`` -- A positive integer, the number of terms to
+      compute in the asymptotic expansion. Defaults to 1, which only computes
+      the leading term.
     * ``return_points`` -- If ``True``, also returns the coordinates of
       minimal critical points. By default ``False``.
-    * ``output_format`` -- (Optional) A string or :class:`.ACSVSettings.Output` specifying
-      the way the asymptotic growth is returned. Allowed values currently are:
+    * ``output_format`` -- (Optional) A string or
+      :class:`.ACSVSettings.Output` specifying the way the asymptotic growth
+      is returned. Allowed values currently are:
       - ``"tuple"``: the growth is returned as a list of
         tuples of the form ``(a, n^b, pi^c, d)`` such that the `r`-diagonal of `F`
-        is the sum of ``a^n n^b pi^c d + O(a^n n^{b-1})`` over these tuples.
+        behaves like the sum of ``a^n n^b pi^c d + O(a^n n^{b-1})`` over these tuples.
       - ``"symbolic"``: the growth is returned as an expression from the symbolic
         ring ``SR`` in the variable ``n``.
       - ``"asymptotic"``: the growth is returned as an expression from an appropriate
         ``AsymptoticRing`` in the variable ``n``.
-      - ``None``: the default, which uses the default set for :class:`.ACSVSettings.Output`
-        itself via :meth:`.ACSVSettings.set_default_output_format`. The default behavior
-        is symbolic output.
+      - ``None``: the default, which uses the default set for
+        :class:`.ACSVSettings.Output` itself via
+        :meth:`.ACSVSettings.set_default_output_format`. The default behavior
+        is asymptotic output.
     * ``as_symbolic`` -- deprecated in favor of the equivalent
       ``output_format="symbolic"``. Will be removed in a future release.
-    * ``whitney_strat`` -- (Optional) The user can pass in a Whitney Stratification of V(H)
-        to save computation time. The program will not check if this stratification is correct.
-        The whitney_strat should be an array of length ``d``, with the ``k``-th entry a list of
-        tuples of ideal generators representing a component of the ``k``-dimensional stratum.
+    * ``whitney_strat`` -- (Optional) If known / precomputed, a 
+      Whitney Stratification of `V(H)`. The program will not check if
+      this stratification is correct. Should be a list of length ``d``, where
+      the ``k``-th entry is a list of tuples of ideas generators representing
+      a component of the ``k``-dimensional stratum.
 
     OUTPUT:
 
-    A representation of the asymptotic main term, either as a list of tuples,
-    or as a symbolic expression.
+    A representation of the asymptotic behavior of the coefficient array of `F` along
+    the specified direction.
 
     NOTE:
 
@@ -378,17 +283,102 @@ def diagonal_asy(
     This separation step can fail, but (assuming `F` has a finite number of critical
     points) the code can be rerun until a separating form is found.
 
-    Examples::
+    EXAMPLES:
 
         sage: from sage_acsv import diagonal_asy
-        sage: var('x,y')
-        (x, y)
+        sage: var('x,y,z,w')
+        (x, y, z, w)
+        sage: diagonal_asy(1/(1-x-y))
+        1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2))
+        sage: diagonal_asy(1/(1-(1+x)*y), r = [1,2], return_points=True)
+        (1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2)), [[1, 1/2]])
+        sage: diagonal_asy(1/(1-(x+y+z)+(3/4)*x*y*z), output_format="symbolic")
+        0.840484893481498?*24.68093482214177?^n/(pi*n)
+        sage: diagonal_asy(1/(1-(x+y+z)+(3/4)*x*y*z))
+        0.840484893481498?/pi*24.68093482214177?^n*n^(-1) + O(24.68093482214177?^n*n^(-2))
+        sage: var('n')
+        n
+        sage: asy = diagonal_asy(
+        ....:     1/(1 - w*(1 + x)*(1 + y)*(1 + z)*(x*y*z + y*z + y + z + 1)),
+        ....:     output_format="tuple",
+        ....: )
+        sage: sum([
+        ....:      a.radical_expression()^n * b * c * QQbar(d).radical_expression()
+        ....:      for (a, b, c, d) in asy
+        ....: ])
+        1/4*(12*sqrt(2) + 17)^n*sqrt(17/2*sqrt(2) + 12)/(pi^(3/2)*n^(3/2))
+
+    Not specifying any ``output_format`` falls back to the default asymptotic
+    representation::
+
+        sage: diagonal_asy(1/(1 - 2*x))
+        2^n + O(2^n*n^(-1))
+        sage: diagonal_asy(1/(1 - 2*x), output_format="tuple")
+        [(2, 1, 1, 1)]
+
+    Passing ``"symbolic"`` lets the function return an element of the
+    symbolic ring in the variable ``n`` that describes the asymptotic growth::
+
+        sage: growth = diagonal_asy(1/(1 - 2*x), output_format="symbolic"); growth
+        2^n
+        sage: growth.parent()
+        Symbolic Ring
+
+    The argument ``"asymptotic"`` constructs an asymptotic expansion over
+    an appropriate ``AsymptoticRing`` in the variable ``n``, including the
+    appropriate error term::
+
+        sage: assume(SR.an_element() > 0)  # required to make coercions involving SR work properly
+        sage: growth = diagonal_asy(1/(1 - x - y), output_format="asymptotic"); growth
+        1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2))
+        sage: growth.parent()
+        Asymptotic Ring <(Algebraic Real Field)^n * n^QQ * (Arg_(Algebraic Field))^n> over Symbolic Ring
+
+    Increasing the precision of the expansion returns an expansion with more terms
+    (works for all available output formats)::
+
+        sage: diagonal_asy(1/(1 - x - y), expansion_precision=3, output_format="asymptotic")
+        1/sqrt(pi)*4^n*n^(-1/2) - 1/8/sqrt(pi)*4^n*n^(-3/2) + 1/128/sqrt(pi)*4^n*n^(-5/2)
+        + O(4^n*n^(-7/2))
+
+    The direction of the diagonal, `r`, defaults to the standard diagonal (i.e., the
+    vector of all 1's) if not specified. It also supports passing non-integer values,
+    notably rational numbers::
+
+        sage: diagonal_asy(1/(1 - x - y), r=(1, 17/42), output_format="symbolic")
+        1.317305628032865?*2.324541507270374?^n/(sqrt(pi)*sqrt(n))
+    
+    and even algebraic numbers (note, however, that the performance for complicated
+    algebraic numbers is significantly degraded)::
+
+        sage: diagonal_asy(1/(1 - x - y), r=(sqrt(2), 1))
+        0.9238795325112868?/sqrt(pi)*(2.414213562373095?/0.5857864376269049?^1.414213562373095?)^n*n^(-1/2) + O((2.414213562373095?/0.5857864376269049?^1.414213562373095?)^n*n^(-3/2))
+
+    ::
+
+        sage: diagonal_asy(1/(1 - x - y*x^2), r=(1, 1/2 - 1/2*sqrt(1/5)), output_format="asymptotic")
+        1.710862642974252?/sqrt(pi)*1.618033988749895?^n*n^(-1/2)
+        + O(1.618033988749895?^n*n^(-3/2))
+
+    The function times individual steps of the algorithm, timings can
+    be displayed by increasing the printed verbosity level of our debug logger::
+
+        sage: import logging
+        sage: from sage_acsv import ACSVSettings
+        sage: ACSVSettings.set_logging_level(logging.INFO)
+        sage: diagonal_asy(1/(1 - x - y))
+        INFO:sage_acsv:... Executed Kronecker in ... seconds.
+        INFO:sage_acsv:... Executed Minimal Points in ... seconds.
+        INFO:sage_acsv:... Executed Final Asymptotics in ... seconds.
+        1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2))
+        sage: ACSVSettings.set_logging_level(logging.WARNING)
+    
+    Extraction of coefficient asymptotics even works in cases where the singular variety of `F`
+    is not smooth::
+        
         sage: diagonal_asy(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)), r = [17/24, 7/24], output_format = 'asymptotic')
         12 + O(n^(-1))
 
-        sage: from sage_acsv import diagonal_asy
-        sage: var('x,y,z')
-        (x, y, z)
         sage: diagonal_asy(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)), r = [17/24, 7/24], output_format = 'asymptotic')
         12 + O(n^(-1))
         sage: G = (1+x)*(1-x*y^2+x^2)
@@ -407,7 +397,7 @@ def diagonal_asy(
     the modulus works as intended::
 
         sage: diagonal_asy(1/(1 - x^4 - y^4))
-        1/2/sqrt(pi)*1.414213562373095?^n*n^(-1/2) + 1/2/sqrt(pi)*1.414213562373095?^n*n^(-1/2)*(e^(I*arg(-1)))^n + 1/2/sqrt(pi)*1.414213562373095?^n*n^(-1/2)*(e^(I*arg(0.?e-... + 1.000000000000000?*I)))^n + 1/2/sqrt(pi)*1.414213562373095?^n*n^(-1/2)*(e^(I*arg(0.?e-... - 1.000000000000000?*I)))^n + O(1.414213562373095?^n*n^(-3/2))
+        1/2/sqrt(pi)*1.414213562373095?^n*n^(-1/2) + 1/2/sqrt(pi)*1.414213562373095?^n*n^(-1/2)*(e^(I*arg(-1)))^n + 1/2/sqrt(pi)*1.414213562373095?^n*n^(-1/2)*(e^(I*arg(-I)))^n + 1/2/sqrt(pi)*1.414213562373095?^n*n^(-1/2)*(e^(I*arg(I)))^n + O(1.414213562373095?^n*n^(-3/2))
 
     Check that there are no prohibited variable names::
 
@@ -417,39 +407,19 @@ def diagonal_asy(
         0.866025403784439?/pi*27^n*n^(-1) + O(27^n*n^(-2))
 
     """
-    G, H = F.numerator(), F.denominator()
-    # Initialize variables
-    original_variables = H.variables()
-    if any(v not in original_variables for v in G.variables()):
-        raise ValueError("Numerator cannot contain variables not occurring in denominator.")
-    vs = list(SR.var('acsvvar', len(original_variables)))
-    var_subs = {hvar: acsvvar for hvar, acsvvar in zip(original_variables, vs)}
-    G = G.subs(var_subs)
-    H = H.subs(var_subs)
-    F = G / H
+    G, H, variable_map = _prepare_symbolic_fraction(F)
+    vs = list(variable_map.values())
+
     if whitney_strat is not None:
         whitney_strat = [
             [
-                tuple(SR(gen).subs(var_subs) for gen in component)
+                tuple(SR(gen).subs(variable_map) for gen in component)
                 for component in stratum
             ] 
             for stratum in whitney_strat
         ]
     if linear_form is not None:
-        linear_form = SR(linear_form).subs(var_subs)
-
-    R = PolynomialRing(QQ, vs, len(vs))
-    H_sing = Ideal([R(H)] + [R(H.derivative(v)) for v in vs])
-    if H_sing.dimension() < 0:
-        return diagonal_asy_smooth(
-            F,
-            r = r,
-            linear_form = linear_form,
-            expansion_precision=expansion_precision,
-            return_points = return_points,
-            output_format = output_format,
-            as_symbolic=as_symbolic
-        )
+        linear_form = SR(linear_form).subs(variable_map)
 
     if r is None:
         n = len(H.variables())
@@ -460,13 +430,25 @@ def diagonal_asy(
     except (ValueError, TypeError):
         r = [AA(ri) for ri in r]
 
+    R = PolynomialRing(QQ, vs, len(vs))
+    H_sing = Ideal([R(H)] + [R(H.derivative(v)) for v in vs])
+    if H_sing.dimension() < 0:
+        return _diagonal_asy_smooth(
+            G, H,
+            r = r,
+            linear_form = linear_form,
+            expansion_precision=expansion_precision,
+            return_points = return_points,
+            output_format = output_format,
+            as_symbolic=as_symbolic
+        )
+
     t, lambda_, u_ = PolynomialRing(QQ, 't, lambda_, u_').gens()
     expanded_R = PolynomialRing(QQ, len(vs)+3, vs + [t, lambda_, u_])
 
     vs = [expanded_R(v) for v in vs]
     t, lambda_, u_ = expanded_R(t), expanded_R(lambda_), expanded_R(u_)
 
-    all_variables = (vs, lambda_, t, u_)
     d = len(vs)
 
     # Make sure G and H are coprime, and that H does not vanish at 0
@@ -480,8 +462,8 @@ def diagonal_asy(
     for _ in range(ACSVSettings.MAX_MIN_CRIT_RETRIES):
         try:
             # Find minimal critical points in Kronecker Representation
-            min_crit_pts = ContributingCombinatorial(
-                G, H_sf, all_variables,
+            min_crit_pts = _find_contributing_points_combinatorial(
+                G, H_sf, vs,
                 r=r,
                 linear_form=linear_form,
                 whitney_strat=whitney_strat
@@ -584,7 +566,7 @@ def diagonal_asy(
         else:
             # Higher order expansions not currently supported for non-smooth critical points
             if expansion_precision > 1:
-                acsv_logger.warn("Higher order expansions are not supported in the non-smooth case. Defaulting to expansion_precision 1.")
+                acsv_logger.warning("Higher order expansions are not supported in the non-smooth case. Defaulting to expansion_precision 1.")
             # For non-complete intersections, we must compute the parametrized Hessian matrix
             if s != d:
                 Qw = ImplicitHessian(factors, vs, r, subs=subs_dict)
@@ -635,7 +617,7 @@ def diagonal_asy(
         n = AR.gen()
         result = sum([ # bug in AsymptoticRing requires splitting out modulus manually
             constant * (pi**(s-d)).sqrt()
-            * abs(base)**n * (base / abs(base))**n
+            * abs(base)**n * collapse_zero_part(base / abs(base))**n
             * n**exponent * AR(expansion)
             + (abs(base)**n * n**(exponent - expansion_precision)).O()
             for (base, exponent, constant, expansion, s) in asm_vals
@@ -775,16 +757,15 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision):
 
 def ContributingCombinatorialSmooth(G, H, variables, r=None, linear_form=None):
     r"""Compute contributing points of a combinatorial multivariate
-    rational function F=G/H admitting a finite number of critical points.
-    Assumes the singular variety of F is smooth.
+    rational function `F=G/H` admitting a finite number of critical points.
+    Assumes the singular variety of `F` is smooth.
 
-    Typically, this function is called as a subroutine of :func:`.diagonal_asy_smooth`.
+    Typically, this function is called as a subroutine of :func:`._diagonal_asy_smooth`.
 
     INPUT:
 
     * ``G, H`` -- Coprime polynomials with `F = G/H`.
-    * ``variables`` -- Tuple of variables of ``G`` and ``H``, followed
-      by ``lambda_, t, u_``.
+    * ``variables`` -- List of variables of ``G`` and ``H``.
     * ``r`` -- (Optional) the direction, a vector of positive algebraic
       numbers (usually integers).
     * ``linear_form`` -- (Optional) A linear combination of the input
@@ -809,50 +790,22 @@ def ContributingCombinatorialSmooth(G, H, variables, r=None, linear_form=None):
         sage: pts = ContributingCombinatorialSmooth(
         ....:     1,
         ....:     1 - w*(y + x + x^2*y + x*y^2),
-        ....:     ([w, x, y], lambda_, t, u_)
+        ....:     [w, x, y],
         ....: )
         sage: sorted(pts)
         [[-1/4, -1, -1], [1/4, 1, 1]]
     """
 
     timer = Timer()
+    (
+        expanded_R,
+        vs,
+        (t, lambda_, u_),
+        r,
+        r_variable_values,
+    ) = _prepare_expanded_polynomial_ring(variables, direction=r)
 
-    # Fetch the variables we need
-    vs, lambda_, t, u_ = variables
-    vsT = vs + [t, lambda_]
-
-    # If direction r is not given, default to the diagonal
-    if r is None:
-        r = [1 for _ in vs]
-
-    # Make copy of r so they don't get mutated outside of function
-    r = copy(r)
-
-    # Replace irrational r with variable ri, add min poly to system
-    r_variable_values = {}
-    r_subs = []
-    for idx, direction in enumerate(r):
-        r_i = direction
-        if AA(direction).minpoly().degree() > 1:
-            r_i = SR.var(f"r{idx}")
-            r_variable_values[r_i] = AA(direction)
-        r_subs.append(r_i)
-    
-    r = r_subs
-
-    # variables need to be ordered in this particular way
-    expanded_R_variables = vs + list(r_variable_values.keys()) + [t, lambda_, u_]
-    expanded_R = PolynomialRing(QQ, expanded_R_variables)
-
-    vs = [expanded_R(v) for v in vs]
-    t, lambda_, u_ = expanded_R(t), expanded_R(lambda_), expanded_R(u_)
     G, H = expanded_R(G), expanded_R(H)
-
-    r_variable_values = {
-        expanded_R(ri): val for (ri, val) in r_variable_values.items()
-    }
-    r = [expanded_R(ri) for ri in r]
-
     vsT = vs + list(r_variable_values.keys()) + [t, lambda_]
 
     # Create the critical point equations system
@@ -948,7 +901,7 @@ def ContributingCombinatorialSmooth(G, H, variables, r=None, linear_form=None):
 
     return [[(q/Pd).subs(u_=u) for q in Qs[:len(vs)]] for u in minimals]
 
-def ContributingCombinatorial(
+def _find_contributing_points_combinatorial(
     G,
     H,
     variables,
@@ -958,28 +911,28 @@ def ContributingCombinatorial(
     whitney_strat=None,
 ):
     r"""Compute contributing points of a combinatorial multivariate
-    rational function F=G/H admitting a finite number of critical points.
+    rational function `F=G/H` admitting a finite number of critical points.
 
     Typically, this function is called as a subroutine of :func:`.diagonal_asy`.
 
     INPUT:
 
     * ``G, H`` -- Coprime polynomials with ``F = G/H``
-    * ``variables`` -- Tuple of variables of ``G`` and ``H``, followed
-      by ``lambda_, t, u_``
+    * ``variables`` -- List of variables of ``G`` and ``H``
     * ``r`` -- (Optional) Length ``d`` vector of positive integers
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions
     * ``m2`` -- (Optional) The option to pass in a SageMath Macaulay2 interface for
         computing primary decompositions. Macaulay2 must be installed by the user
-    * ``whitney_strat`` -- (Optional) The user can pass in a Whitney Stratification of V(H)
-        to save computation time. The program will not check if this stratification is correct.
-        The whitney_strat should be an array of length ``d``, with the ``k``-th entry a list of
-        tuples of ideal generators representing a component of the ``k``-dimensional stratum.
+    * ``whitney_strat`` -- (Optional) If known / precomputed, a 
+      Whitney Stratification of `V(H)`. The program will not check if
+      this stratification is correct. Should be a list of length ``d``, where
+      the ``k``-th entry is a list of tuples of ideas generators representing
+      a component of the ``k``-dimensional stratum.
 
     OUTPUT:
 
-    A list of minimal contributing points of `F` in the direction `r`,
+    A list of minimal contributing points of `F` in the direction `r`.
 
     NOTE:
 
@@ -987,60 +940,17 @@ def ContributingCombinatorial(
     separates the solutions of an intermediate polynomial system with high probability.
     This separation step can fail, but (assuming F has a finite number of critical points)
     the code can be rerun until a separating form is found.
-
-    Examples::
-
-        sage: from sage_acsv import ContributingCombinatorial
-        sage: R.<x, y, lambda_, t, u_> = QQ[]
-        sage: pts = ContributingCombinatorial(
-        ....:     1,
-        ....:     (1-(2*x+y)/3)*(1-(3*x+y)/4),
-        ....:     ([x, y], lambda_, t, u_)
-        ....: )
-        sage: sorted(pts)
-        [[3/4, 3/2]]
-
     """
-
-    #####
     timer = Timer()
-
-    # Fetch the variables we need
-    vs, lambda_, t, u_ = variables
-    vsT = vs + [t, lambda_]
-
-    # If direction r is not given, default to the diagonal
-    if r is None:
-        r = [1 for _ in range(len(vs))]
-
-    # Make copies of r so they don't get mutated outside of function
-    r_copy = copy(r)
-
-    # Replace irrational r with variable ri, add min poly to system
-    r_variable_values = {}
-    r_subs = []
-    for idx, direction in enumerate(r):
-        r_i = direction
-        if AA(direction).minpoly().degree() > 1:
-            r_i = SR.var(f"r{idx}")
-            r_variable_values[r_i] = AA(direction)
-        r_subs.append(r_i)
-
-    r = r_subs
-
-    expanded_R_variables = vs + list(r_variable_values.keys()) + [t, lambda_, u_]
-    expanded_R = PolynomialRing(QQ, expanded_R_variables)
-
-    vs = [expanded_R(v) for v in vs]
-    t, lambda_, u_ = expanded_R(t), expanded_R(lambda_), expanded_R(u_)
-    G, H = expanded_R(G), expanded_R(H)
-
-    r_variable_values = {
-        expanded_R(ri):val for (ri, val) in r_variable_values.items()
-    }
-    r = [expanded_R(ri) for ri in r]
-
-    vsT = vs + list(r_variable_values.keys())+ [t, lambda_]
+    (
+        expanded_R,
+        vs,
+        (t, lambda_, u_),
+        r,
+        r_variable_values,
+    ) = _prepare_expanded_polynomial_ring(variables, direction=r)
+    H = expanded_R(H)
+    vsT = vs + list(r_variable_values.keys()) + [t, lambda_]
 
     # Compute the critical point system for each stratum
     pure_H = PolynomialRing(QQ, vs)
@@ -1123,7 +1033,10 @@ def ContributingCombinatorial(
                     pos_minimals.append(u)
 
             pos_minimals_by_stratum[d].extend(
-                [[QQbar((q/Pd).subs(u_=u)) for q in Qs[:len(vs)]] for u in pos_minimals]
+                [
+                    [collapse_zero_part(QQbar((q/Pd).subs(u_=u))) for q in Qs[:len(vs)]]
+                    for u in pos_minimals
+                ]
             )
 
             # Characterize all complex critical points in each stratum
@@ -1135,13 +1048,15 @@ def ContributingCombinatorial(
                 if (any([rv[r_var] != r_value for r_var, r_value in r_variable_values.items()])):
                     continue
 
-                w = [QQbar((q/Pd).subs(u_=u)) for q in Qs[:len(vs)]]
+                w = [
+                    collapse_zero_part(QQbar((q/Pd).subs(u_=u))) for q in Qs[:len(vs)]
+                ]
                 critical_points_by_stratum[d].append(w)
 
     # Refine positive minimal critical points to those that are contributing
     contributing_pos_minimals = []
     all_factors = list(factor[0] for factor in H.factor())
-    r = r_copy
+    r = [QQbar(r_variable_values.get(ri, ri)) for ri in r]
     for d in reversed(range(len(critical_point_ideals))):
         pos_minimals = pos_minimals_by_stratum[d]
         if len(contributing_pos_minimals) > 0:
@@ -1174,30 +1089,34 @@ def ContributingCombinatorial(
 
     return contributing_points
 
-def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=None, whitney_strat=None):
-    r"""Compute nonzero minimal critical points of a combinatorial multivariate
-    rational function F=G/H admitting a finite number of critical points.
-
-    Typically, this function is called as a subroutine of :func:`.diagonal_asy`.
+def ContributingCombinatorial(
+    F,
+    r=None,
+    linear_form=None,
+    m2=None,
+    whitney_strat=None,
+):
+    r"""Compute contributing points of a combinatorial multivariate
+    rational function `F=G/H` admitting a finite number of critical points.
 
     INPUT:
 
-    * ``G, H`` -- Coprime polynomials with ``F = G/H``
-    * ``variables`` -- Tuple of variables of ``G`` and ``H``, followed
-      by ``lambda_, t, u_``
+    * ``F`` -- Symbolic fraction, the rational function assumed to have
+      a finite number of critical points
     * ``r`` -- (Optional) Length ``d`` vector of positive integers
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions
     * ``m2`` -- (Optional) The option to pass in a SageMath Macaulay2 interface for
         computing primary decompositions. Macaulay2 must be installed by the user
-    * ``whitney_strat`` -- (Optional) The user can pass in a Whitney Stratification of V(H)
-        to save computation time. The program will not check if this stratification is correct.
-        The whitney_strat should be an array of length ``d``, with the ``k``-th entry a list of
-        tuples of ideal generators representing a component of the ``k``-dimensional stratum.
+    * ``whitney_strat`` -- (Optional) If known / precomputed, a 
+      Whitney Stratification of `V(H)`. The program will not check if
+      this stratification is correct. Should be a list of length ``d``, where
+      the ``k``-th entry is a list of tuples of ideas generators representing
+      a component of the ``k``-dimensional stratum.
 
     OUTPUT:
 
-    A list of minimal contributing points of `F` in the direction `r`,
+    A list of minimal contributing points of `F` in the direction `r`.
 
     NOTE:
 
@@ -1208,42 +1127,99 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=N
 
     Examples::
 
+        sage: from sage_acsv import ContributingCombinatorial
+        sage: var('x y')
+        (x, y)
+        sage: pts = ContributingCombinatorial(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)))
+        sage: sorted(pts)
+        [[3/4, 3/2]]
+
     """
+    G, H, variable_map = _prepare_symbolic_fraction(F)
+    variables = list(variable_map.values())
+    if whitney_strat is not None:
+        whitney_strat = [
+            [
+                tuple(SR(gen).subs(variable_map) for gen in component)
+                for component in stratum
+            ] 
+            for stratum in whitney_strat
+        ]
+    if linear_form is not None:
+        linear_form = SR(linear_form).subs(variable_map)
 
-    #####
-    # Fetch the variables we need
-    vs, lambda_, t, u_ = variables
-    vsT = vs + [t, lambda_]
+    return _find_contributing_points_combinatorial(
+        G,
+        H,
+        variables,
+        r=r,
+        linear_form=linear_form,
+        m2=m2,
+        whitney_strat=whitney_strat,
+    )
 
-    # If direction r is not given, default to the diagonal
-    if r is None:
-        r = [1 for _ in range(len(vs))]
 
-    # Replace irrational r with variable ri, add min poly to system
-    r_variable_values = {}
-    r_subs = []
-    for idx, direction in enumerate(r):
-        r_i = direction
-        if AA(direction).minpoly().degree() > 1:
-            r_i = SR.var(f"r{idx}")
-            r_variable_values[r_i] = AA(direction)
-        r_subs.append(r_i)
+def MinimalCriticalCombinatorial(F, r=None, linear_form=None, m2=None, whitney_strat=None):
+    r"""Compute nonzero minimal critical points of a combinatorial multivariate
+    rational function `F=G/H` admitting a finite number of critical points.
 
-    r = r_subs
+    INPUT:
 
-    expanded_R_variables = vs + list(r_variable_values.keys()) + [t, lambda_, u_]
-    expanded_R = PolynomialRing(QQ, expanded_R_variables)
+    * ``F`` -- Symbolic fraction, the rational function of interest.
+    * ``r`` -- (Optional) Length ``d`` vector of positive integers
+    * ``linear_form`` -- (Optional) A linear combination of the input
+      variables that separates the critical point solutions
+    * ``m2`` -- (Optional) The option to pass in a SageMath Macaulay2 interface for
+        computing primary decompositions. Macaulay2 must be installed by the user
+    * ``whitney_strat`` -- (Optional) If known / precomputed, a 
+      Whitney Stratification of `V(H)`. The program will not check if
+      this stratification is correct. Should be a list of length ``d``, where
+      the ``k``-th entry is a list of tuples of ideas generators representing
+      a component of the ``k``-dimensional stratum.
 
-    vs = [expanded_R(v) for v in vs]
-    t, lambda_, u_ = expanded_R(t), expanded_R(lambda_), expanded_R(u_)
-    G, H = expanded_R(G), expanded_R(H)
+    OUTPUT:
 
-    r_variable_values = {
-        expanded_R(ri):val for (ri, val) in r_variable_values.items()
-    }
-    r = [expanded_R(ri) for ri in r]
+    A list of minimal contributing points of `F` in the direction `r`.
 
-    vsT = vs + list(r_variable_values.keys())+ [t, lambda_]
+    NOTE:
+
+    The code randomly generates a linear form, which for generic rational functions
+    separates the solutions of an intermediate polynomial system with high probability.
+    This separation step can fail, but (assuming F has a finite number of critical points)
+    the code can be rerun until a separating form is found.
+
+    Examples::
+
+        sage: from sage_acsv import MinimalCriticalCombinatorial
+        sage: var('x y')
+        (x, y)
+        sage: pts = MinimalCriticalCombinatorial(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)))
+        sage: sorted(pts)
+        [[3/4, 3/2], [1, 1]]
+
+    """
+    _, H, variable_map = _prepare_symbolic_fraction(F)
+    variables = list(variable_map.values())
+    if whitney_strat is not None:
+        whitney_strat = [
+            [
+                tuple(SR(gen).subs(variable_map) for gen in component)
+                for component in stratum
+            ] 
+            for stratum in whitney_strat
+        ]
+    if linear_form is not None:
+        linear_form = SR(linear_form).subs(variable_map)
+    (
+        expanded_R,
+        vs,
+        (t, lambda_, u_),
+        r,
+        r_variable_values,
+    ) = _prepare_expanded_polynomial_ring(variables, direction=r)
+    H = expanded_R(H)
+
+    vsT = vs + list(r_variable_values) + [t, lambda_]
 
     # Compute the critical point system for each stratum
     pure_H = PolynomialRing(QQ, vs)
@@ -1334,28 +1310,31 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=N
         if any([all([abs(w_i)==abs(min_i) for w_i, min_i in zip(w, minimal)]) for minimal in pos_minimals]):
             minimal_criticals.append(w)
 
+    minimal_criticals = [
+        [collapse_zero_part(w_i) for w_i in w]
+        for w in minimal_criticals
+    ]
     return minimal_criticals
 
-def CriticalPoints(G, H, variables, r=None, linear_form=None, m2=None, whitney_strat=None):
+def CriticalPoints(F, r=None, linear_form=None, m2=None, whitney_strat=None):
     r"""Compute critical points of a multivariate
-    rational function F=G/H admitting a finite number of critical points.
+    rational function `F=G/H` admitting a finite number of critical points.
 
     Typically, this function is called as a subroutine of :func:`.diagonal_asy`.
 
     INPUT:
 
-    * ``G, H`` -- Coprime polynomials with ``F = G/H``
-    * ``variables`` -- Tuple of variables of ``G`` and ``H``, followed
-      by ``t`` and ``u_``
+    * ``F`` -- Symbolic fraction, the rational function of interest.
     * ``r`` -- (Optional) Length ``d`` vector of positive integers
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions
     * ``m2`` -- (Optional) The option to pass in a SageMath Macaulay2 interface for
         computing primary decompositions. Macaulay2 must be installed by the user
-    * ``whitney_strat`` -- (Optional) The user can pass in a Whitney Stratification of V(H)
-        to save computation time. The program will not check if this stratification is correct.
-        The whitney_strat should be an array of length ``d``, with the ``k``-th entry a list of
-        tuples of ideal generators representing a component of the ``k``-dimensional stratum.
+    * ``whitney_strat`` -- (Optional) If known / precomputed, a 
+      Whitney Stratification of `V(H)`. The program will not check if
+      this stratification is correct. Should be a list of length ``d``, where
+      the ``k``-th entry is a list of tuples of ideas generators representing
+      a component of the ``k``-dimensional stratum.
 
     OUTPUT:
 
@@ -1370,43 +1349,36 @@ def CriticalPoints(G, H, variables, r=None, linear_form=None, m2=None, whitney_s
 
     Examples::
 
+        sage: from sage_acsv import CriticalPoints
+        sage: var('x y')
+        (x, y)
+        sage: pts = CriticalPoints(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)))
+        sage: sorted(pts)
+        [[2/3, 2], [3/4, 3/2], [1, 1]]
+
     """
+    _, H, variable_map = _prepare_symbolic_fraction(F)
+    variables = list(variable_map.values())
+    if whitney_strat is not None:
+        whitney_strat = [
+            [
+                tuple(SR(gen).subs(variable_map) for gen in component)
+                for component in stratum
+            ] 
+            for stratum in whitney_strat
+        ]
+    if linear_form is not None:
+        linear_form = SR(linear_form).subs(variable_map)
+    (
+        expanded_R,
+        vs,
+        (lambda_, u_),
+        r,
+        r_variable_values,
+    ) = _prepare_expanded_polynomial_ring(variables, direction=r, include_t=False)
+    H = expanded_R(H)
 
-    #####
-
-    # Fetch the variables we need
-    vs, lambda_, u_ = variables
-    vsT = vs + [lambda_]
-
-    # If direction r is not given, default to the diagonal
-    if r is None:
-        r = [1 for _ in range(len(vs))]
-
-    # Replace irrational r with variable ri, add min poly to system
-    r_variable_values = {}
-    r_subs = []
-    for idx, direction in enumerate(r):
-        r_i = direction
-        if AA(direction).minpoly().degree() > 1:
-            r_i = SR.var(f"r{idx}")
-            r_variable_values[r_i] = AA(direction)
-        r_subs.append(r_i)
-
-    r = r_subs
-
-    expanded_R_variables = vs + list(r_variable_values.keys()) + [lambda_, u_]
-    expanded_R = PolynomialRing(QQ, expanded_R_variables)
-
-    vs = [expanded_R(v) for v in vs]
-    lambda_, u_ = expanded_R(lambda_), expanded_R(u_)
-    G, H = expanded_R(G), expanded_R(H)
-
-    r_variable_values = {
-        expanded_R(ri):val for (ri, val) in r_variable_values.items()
-    }
-    r = [expanded_R(ri) for ri in r]
-
-    vsT = vs + list(r_variable_values.keys())+ [lambda_]
+    vsT = vs + list(r_variable_values.keys()) + [lambda_]
 
     # Compute the critical point system for each stratum
     pure_H = PolynomialRing(QQ, vs)
@@ -1454,7 +1426,83 @@ def CriticalPoints(G, H, variables, r=None, linear_form=None, m2=None, whitney_s
                 if (any([rv[r_var] != r_value for r_var, r_value in r_variable_values.items()])):
                     continue
 
-                w = [QQbar((q/Pd).subs(u_=u)) for q in Qs[:len(vs)]]
+                w = [
+                    collapse_zero_part(QQbar((q/Pd).subs(u_=u))) for q in Qs[:len(vs)]
+                ]
                 critical_points.append(w)
 
     return critical_points
+
+def _prepare_symbolic_fraction(F):
+    r"""Extract polynomial numerators and denomiators from a symbolic fraction,
+    including the replacement of variable names.
+
+    INPUT:
+
+    * ``F`` -- A symbolic fraction
+    """
+    G, H = F.numerator(), F.denominator()
+    original_variables = H.variables()
+    if any(v not in original_variables for v in G.variables()):
+        raise ValueError(f"Numerator {G} has variables not in denominator {H}")
+    new_variables = list(SR.var('acsvvar', len(original_variables)))
+    variable_map = {v: new_v for v, new_v in zip(original_variables, new_variables)}
+    G = G.subs(variable_map)
+    H = H.subs(variable_map)
+    frac_gcd = gcd(G, H)
+    return G/frac_gcd, H/frac_gcd, variable_map
+
+def _prepare_expanded_polynomial_ring(variables, direction=None, include_t=True):
+    r"""Prepare an auxiliary polynomial ring for the diagonal asymptotics.
+    
+    INPUT:
+
+    * ``variables`` -- variables in the rational function `F`
+    * ``direction`` -- direction vector `r` for the asymptotics,
+      defaults to the diagonal (all ones).
+    * ``include_t`` -- whether to include the auxiliary variable `t`
+      in the expanded ring.
+    """
+    # if direction r is not given, default to the diagonal
+    if direction is None:
+        direction = [1 for _ in variables]
+
+    replaced_direction = copy(direction)
+
+    # in case there are irrational numbers in the direction vector,
+    # replace them with polynomial variables
+    direction_variable_values = {}
+    for idx, dir_entry in enumerate(replaced_direction):
+        if AA(dir_entry).minpoly().degree() > 1:
+            dir_var = SR.var(f"r{idx}")
+            direction_variable_values[dir_var] = AA(dir_entry)
+            replaced_direction[idx] = dir_var
+    
+    # auxiliary variables
+    auxiliary_variables = []
+    if include_t:
+        auxiliary_variables.append(SR.var('t'))
+    auxiliary_variables.append(SR.var('lambda_'))
+    auxiliary_variables.append(SR.var('u_'))
+
+    # create the expanded polynomial ring
+    expanded_ring = PolynomialRing(
+        QQ,
+        list(variables) + list(direction_variable_values) + auxiliary_variables
+    )
+    variables = [expanded_ring(v) for v in variables]
+    auxiliary_variables = [
+        expanded_ring(v) for v in auxiliary_variables
+    ]
+    replaced_direction = [expanded_ring(ri) for ri in replaced_direction]
+    direction_variable_values = {
+        expanded_ring(ri): val
+        for (ri, val) in direction_variable_values.items()
+    }
+    return (
+        expanded_ring,
+        variables,
+        auxiliary_variables,
+        replaced_direction,
+        direction_variable_values,
+    )

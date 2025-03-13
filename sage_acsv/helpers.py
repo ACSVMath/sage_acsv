@@ -41,6 +41,13 @@ class Term:
         return (self.base, self.power) < (other.base, other.power)
 
 
+def collapse_zero_part(algebraic_number: AlgebraicNumber) -> AlgebraicNumber:
+    if algebraic_number.real().is_zero():
+        algebraic_number = QQbar(algebraic_number.imag()) * QQbar(-1).sqrt()
+    if algebraic_number.imag().is_zero():
+        algebraic_number = QQbar(algebraic_number.real())
+    return algebraic_number
+
 def RationalFunctionReduce(G, H):
     r"""Reduction of G and H by dividing out their GCD.
 
