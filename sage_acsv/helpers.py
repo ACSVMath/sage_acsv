@@ -1,9 +1,45 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
 from enum import Enum
 
-from sage.rings.asymptotic.asymptotic_ring import AsymptoticRing
+from sage.rings.asymptotic.asymptotic_ring import AsymptoticRing, AsymptoticExpansion
+from sage.rings.qqbar import AlgebraicNumber, QQbar
+from sage.symbolic.expression import Expression
+from sage.symbolic.ring import SymbolicRing
 from sage.symbolic.operators import add_vararg
 
 from sage.all import AA, QQ, SR, Ideal, Polyhedron, ceil, gcd, matrix, randint, vector, kronecker_delta, prod, pi
+
+
+@dataclass
+class Term:
+    r"""A dataclass for storing the decomposed terms of an asymptotic expression.
+
+    INPUT:
+
+    * ``coefficient`` -- The coefficient of the term
+    * ``pi_factor`` -- The factor of pi in the term
+    * ``base`` -- The base of the term
+    * ``power`` -- The power of the term
+
+    OUTPUT:
+
+    A dataclass with the given attributes.
+
+    EXAMPLES::
+
+        sage: from sage_acsv.helpers import Term
+        sage: Term(1, 1/sqrt(pi), 4, -1/2)
+        Term(coefficient=1, pi_factor=1/sqrt(pi), base=4, power=-1/2)
+    """
+    coefficient: Expression | AlgebraicNumber
+    pi_factor: Expression
+    base: Expression | AlgebraicNumber
+    power: Expression | AlgebraicNumber
+
+    def __lt__(self, other):
+        return (self.base, self.power) < (other.base, other.power)
 
 class OutputFormat(Enum):
     """Output options for displaying the asymptotic behavior determined
@@ -355,7 +391,7 @@ def IsContributing(vs, pt, r, factors, c):
         )
     return True
 
-def get_coefficients(expr):
+def get_coefficients(expr: tuple | list[tuple] | Expression | AsymptoticExpansion) -> list[Term]:
     r"""Determines coefficients for each n^k that appears in the asymptotic expression.
     
     INPUT:
@@ -364,43 +400,64 @@ def get_coefficients(expr):
 
     OUTPUT:
 
-    A dictionary `{d: [(c, e)]}` where `c*e*n^d` is a term appearing in the fully expanded expr,
-    `c` is a constant, and `e` an exponential in `n`
+    A list of :class:`.DecomposedTerm` objects (with attributes ``coefficient``, ``pi_factor``,
+    ``base`` and ``power``), each representing a summand in the fully expanded expression.
 
     EXAMPLES::
 
         sage: from sage_acsv import diagonal_asy, get_coefficients
-        sage: var('x,y')
-        (x, y)
+        sage: var('x y z')
+        (x, y, z)
         sage: res = diagonal_asy(1/(1 - x - y), r=[1,1], expansion_precision=2)
-        sage: coefs = get_coefficients(res) 
-        sage: sorted(coefs)
-        [Term(degree=-1/2, constant=1, base=4, pi_exp=-1/2),
-         Term(degree=-3/2, constant=-1/8, base=4, pi_exp=-1/2)]
+        sage: coefs = sorted(get_coefficients(res), reverse=True)
+        sage: coefs
+        [Term(coefficient=1, pi_factor=1/sqrt(pi), base=4, power=-1/2),
+         Term(coefficient=-1/8, pi_factor=1/sqrt(pi), base=4, power=-3/2)]
         sage: res = diagonal_asy(1/(1 - x - y), r=[1,1], expansion_precision=2, output_format="tuple")
-        sage: sorted(get_coefficients(res)) == coefs
+        sage: sorted(get_coefficients(res)) == sorted(coefs)
         True
         sage: res = diagonal_asy(1/(1 - x - y), r=[1,1], expansion_precision=2, output_format="symbolic")
-        sage: sorted(get_coefficients(res)) == coefs
+        sage: sorted(get_coefficients(res)) == sorted(coefs)
         True
 
     ::
 
         sage: res = diagonal_asy(1/(1 - x^7))
         sage: get_coefficients(res)
-        [Term(degree=0, constant=1/7, base=e^(I*pi - I*arctan(4.381286267534823?)), pi_exp=0),
-         Term(degree=0, constant=1/7, base=e^(I*pi - I*arctan(0.4815746188075287?)), pi_exp=0),
-         Term(degree=0, constant=1/7, base=e^(-I*pi + I*arctan(4.381286267534823?)), pi_exp=0),
-         Term(degree=0, constant=1/7, base=e^(-I*pi + I*arctan(0.4815746188075287?)), pi_exp=0),
-         Term(degree=0, constant=1/7, base=e^(I*arctan(1.253960337662704?)), pi_exp=0),
-         Term(degree=0, constant=1/7, base=e^(-I*arctan(1.253960337662704?)), pi_exp=0),
-         Term(degree=0, constant=1, base=1, pi_exp=0)]
+        [Term(coefficient=1/7, pi_factor=1, base=e^(I*pi - I*arctan(4.381286267534823?)), power=0),
+         Term(coefficient=1/7, pi_factor=1, base=e^(I*pi - I*arctan(0.4815746188075287?)), power=0),
+         Term(coefficient=1/7, pi_factor=1, base=e^(-I*pi + I*arctan(4.381286267534823?)), power=0),
+         Term(coefficient=1/7, pi_factor=1, base=e^(-I*pi + I*arctan(0.4815746188075287?)), power=0),
+         Term(coefficient=1/7, pi_factor=1, base=e^(I*arctan(1.253960337662704?)), power=0),
+         Term(coefficient=1/7, pi_factor=1, base=e^(-I*arctan(1.253960337662704?)), power=0),
+         Term(coefficient=1/7, pi_factor=1, base=1, power=0)]
+
+    ::
+
+        sage: res = diagonal_asy(1/(1 - x - y^2))
+        sage: coefs = get_coefficients(res); coefs
+        [Term(coefficient=0.6123724356957945?, pi_factor=1/sqrt(pi), base=-2.598076211353316?, power=-1/2),
+         Term(coefficient=0.6123724356957945?, pi_factor=1/sqrt(pi), base=2.598076211353316?, power=-1/2)]
+        sage: coefs[0].coefficient.parent()
+        Algebraic Field
+        sage: coefs[0].coefficient.radical_expression()
+        1/2*sqrt(3/2)
+
+    ::
+
+        sage: F2 = (1+x)*(1+y)/(1-z*x*y*(x+y+1/x+1/y))
+        sage: res = diagonal_asy(F2, expansion_precision=3)
+        sage: coefs = get_coefficients(res); coefs
+        [Term(coefficient=4, pi_factor=1/pi, base=4, power=-1),
+         Term(coefficient=1, pi_factor=1/pi, base=-4, power=-3),
+         Term(coefficient=-6, pi_factor=1/pi, base=4, power=-2),
+         Term(coefficient=19/2, pi_factor=1/pi, base=4, power=-3)]
     """
     n = SR.var('n')
     if isinstance(expr, tuple):
         expr = SR(expr[0]**n * prod(expr[1:]))
     elif isinstance(expr, list):
-        expr =SR(sum([tup[0]**n * prod(tup[1:]) for tup in expr]))
+        expr = SR(sum([tup[0]**n * prod(tup[1:]) for tup in expr]))
     elif isinstance(expr.parent(), AsymptoticRing):
         expr = SR(expr.exact_part())
 
@@ -417,30 +474,38 @@ def get_coefficients(expr):
     if expr.operator() == add_vararg:
         terms = expr.operands()
 
-    from collections import namedtuple
-    DecomposedTerm = namedtuple('Term', ['degree', 'constant', 'base', 'pi_exp'])
     decomposed_terms = []
-    for term in terms:
-        deg = 0
-        const = 1
-        base = 1
-        pi_exp = 0
-        for v in term.operands():
+    for summand in terms:
+        term = Term(
+            coefficient=QQ.one(),
+            pi_factor=QQ.one(),
+            base=QQ.one(),
+            power=QQ.zero()
+        )
+        if summand in QQbar:
+            term.coefficient = QQbar(summand)
+            decomposed_terms.append(term)
+            continue
+
+        for v in summand.operands():
             if n in v.args():
                 if v.degree(n) != 0:
-                    deg += v.degree(n)
+                    term.power += v.degree(n)
                 else:
-                    base *= v.operands()[0]
+                    term.base *= v.operands()[0]
             elif v.degree(pi) != 0:
                 pi_deg = v.degree(pi)
-                pi_exp += pi_deg
-                const *= v.coefficient(pi**pi_deg)
+                term.pi_factor *= pi**pi_deg
+                term.coefficient *= v.coefficient(pi**pi_deg)
             else:
-                const *= v
+                term.coefficient *= v
         
-        decomposed_terms.append(
-            DecomposedTerm(degree=deg, constant=const, base=base, pi_exp=pi_exp)
-        )
+        for attr in ('coefficient', 'base', 'power'):
+            elem = getattr(term, attr)
+            if isinstance(elem.parent(), SymbolicRing) and elem in QQbar:
+                setattr(term, attr, QQbar(elem))
+
+        decomposed_terms.append(term)
 
     return decomposed_terms
 
