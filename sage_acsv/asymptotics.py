@@ -132,7 +132,7 @@ def _diagonal_asy_smooth(
             break
         except Exception as e:
             if isinstance(e, ACSVException) and e.retry:
-                acsv_logger.warning(
+                acsv_logger.info(
                     "Randomly generated linear form was not suitable, "
                     f"encountered error: {e}\nRetrying..."
                 )
@@ -952,10 +952,7 @@ def ContributingCombinatorial(
         [[3/4, 3/2]]
 
     """
-
-    #####
     timer = Timer()
-
     (
         expanded_R,
         vs,
