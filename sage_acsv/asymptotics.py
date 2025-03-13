@@ -110,7 +110,6 @@ def _diagonal_asy_smooth(
     t, lambda_, u_ = expanded_R(t), expanded_R(lambda_), expanded_R(u_)
     vsT = vs + [t, lambda_]
 
-    all_variables = (vs, lambda_, t, u_)
     d = len(vs)
     rd = r[-1]
     vd = vs[-1]
@@ -126,7 +125,7 @@ def _diagonal_asy_smooth(
         try:
             # Find minimal critical points in Kronecker Representation
             min_crit_pts = ContributingCombinatorialSmooth(
-                G, H, all_variables,
+                G, H, vs,
                 r=r,
                 linear_form=linear_form
             )
@@ -449,7 +448,6 @@ def diagonal_asy(
     vs = [expanded_R(v) for v in vs]
     t, lambda_, u_ = expanded_R(t), expanded_R(lambda_), expanded_R(u_)
 
-    all_variables = (vs, lambda_, t, u_)
     d = len(vs)
 
     # Make sure G and H are coprime, and that H does not vanish at 0
@@ -464,7 +462,7 @@ def diagonal_asy(
         try:
             # Find minimal critical points in Kronecker Representation
             min_crit_pts = ContributingCombinatorial(
-                G, H_sf, all_variables,
+                G, H_sf, vs,
                 r=r,
                 linear_form=linear_form,
                 whitney_strat=whitney_strat
@@ -766,8 +764,7 @@ def ContributingCombinatorialSmooth(G, H, variables, r=None, linear_form=None):
     INPUT:
 
     * ``G, H`` -- Coprime polynomials with `F = G/H`.
-    * ``variables`` -- Tuple of variables of ``G`` and ``H``, followed
-      by ``lambda_, t, u_``.
+    * ``variables`` -- List of variables of ``G`` and ``H``.
     * ``r`` -- (Optional) the direction, a vector of positive algebraic
       numbers (usually integers).
     * ``linear_form`` -- (Optional) A linear combination of the input
@@ -792,22 +789,20 @@ def ContributingCombinatorialSmooth(G, H, variables, r=None, linear_form=None):
         sage: pts = ContributingCombinatorialSmooth(
         ....:     1,
         ....:     1 - w*(y + x + x^2*y + x*y^2),
-        ....:     ([w, x, y], lambda_, t, u_)
+        ....:     [w, x, y],
         ....: )
         sage: sorted(pts)
         [[-1/4, -1, -1], [1/4, 1, 1]]
     """
 
     timer = Timer()
-    
-    vs, _, _, _ = variables
     (
         expanded_R,
         vs,
         (t, lambda_, u_),
         r,
         r_variable_values,
-    ) = _prepare_expanded_polynomial_ring(vs, direction=r)
+    ) = _prepare_expanded_polynomial_ring(variables, direction=r)
 
     G, H = expanded_R(G), expanded_R(H)
     vsT = vs + list(r_variable_values.keys()) + [t, lambda_]
@@ -922,8 +917,7 @@ def ContributingCombinatorial(
     INPUT:
 
     * ``G, H`` -- Coprime polynomials with ``F = G/H``
-    * ``variables`` -- Tuple of variables of ``G`` and ``H``, followed
-      by ``lambda_, t, u_``
+    * ``variables`` -- List of variables of ``G`` and ``H``
     * ``r`` -- (Optional) Length ``d`` vector of positive integers
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions
@@ -952,7 +946,7 @@ def ContributingCombinatorial(
         sage: pts = ContributingCombinatorial(
         ....:     1,
         ....:     (1-(2*x+y)/3)*(1-(3*x+y)/4),
-        ....:     ([x, y], lambda_, t, u_)
+        ....:     [x, y],
         ....: )
         sage: sorted(pts)
         [[3/4, 3/2]]
@@ -962,16 +956,14 @@ def ContributingCombinatorial(
     #####
     timer = Timer()
 
-    vs, _, _, _ = variables
     (
         expanded_R,
         vs,
         (t, lambda_, u_),
         r,
         r_variable_values,
-    ) = _prepare_expanded_polynomial_ring(vs, direction=r)
-
-    G, H = expanded_R(G), expanded_R(H)
+    ) = _prepare_expanded_polynomial_ring(variables, direction=r)
+    H = expanded_R(H)
     vsT = vs + list(r_variable_values.keys()) + [t, lambda_]
 
     # Compute the critical point system for each stratum
@@ -1120,8 +1112,7 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=N
     INPUT:
 
     * ``G, H`` -- Coprime polynomials with ``F = G/H``
-    * ``variables`` -- Tuple of variables of ``G`` and ``H``, followed
-      by ``lambda_, t, u_``
+    * ``variables`` -- List of variables of ``G`` and ``H``
     * ``r`` -- (Optional) Length ``d`` vector of positive integers
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions
@@ -1150,20 +1141,19 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=N
         sage: pts = MinimalCriticalCombinatorial(
         ....:     1,
         ....:     (1-(2*x+y)/3)*(1-(3*x+y)/4),
-        ....:     ([x, y], lambda_, t, u_)
+        ....:     [x, y],
         ....: )
         sage: sorted(pts)
         [[3/4, 3/2], [1, 1]]
 
     """
-    vs, _, _, _ = variables
     (
         expanded_R,
         vs,
         (t, lambda_, u_),
         r,
         r_variable_values,
-    ) = _prepare_expanded_polynomial_ring(vs, direction=r)
+    ) = _prepare_expanded_polynomial_ring(variables, direction=r)
     H = expanded_R(H)
 
     vsT = vs + list(r_variable_values) + [t, lambda_]
@@ -1272,8 +1262,7 @@ def CriticalPoints(G, H, variables, r=None, linear_form=None, m2=None, whitney_s
     INPUT:
 
     * ``G, H`` -- Coprime polynomials with ``F = G/H``
-    * ``variables`` -- Tuple of variables of ``G`` and ``H``, followed
-      by ``t`` and ``u_``
+    * ``variables`` -- List of variables of ``G`` and ``H``
     * ``r`` -- (Optional) Length ``d`` vector of positive integers
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions
@@ -1302,23 +1291,22 @@ def CriticalPoints(G, H, variables, r=None, linear_form=None, m2=None, whitney_s
         sage: pts = CriticalPoints(
         ....:     1,
         ....:     (1-(2*x+y)/3)*(1-(3*x+y)/4),
-        ....:     ([x, y], lambda_, u_)
+        ....:     [x, y],
         ....: )
         sage: sorted(pts)
         [[2/3, 2], [3/4, 3/2], [1, 1]]
 
     """
-    vs, _, _ = variables
     (
         expanded_R,
         vs,
         (lambda_, u_),
         r,
         r_variable_values,
-    ) = _prepare_expanded_polynomial_ring(vs, direction=r, include_t=False)
+    ) = _prepare_expanded_polynomial_ring(variables, direction=r, include_t=False)
     H = expanded_R(H)
 
-    vsT = vs + list(r_variable_values.keys())+ [lambda_]
+    vsT = vs + list(r_variable_values.keys()) + [lambda_]
 
     # Compute the critical point system for each stratum
     pure_H = PolynomialRing(QQ, vs)
@@ -1411,7 +1399,7 @@ def _prepare_expanded_polynomial_ring(variables, direction=None, include_t=True)
     # create the expanded polynomial ring
     expanded_ring = PolynomialRing(
         QQ,
-        variables + list(direction_variable_values) + auxiliary_variables
+        list(variables) + list(direction_variable_values) + auxiliary_variables
     )
     variables = [expanded_ring(v) for v in variables]
     auxiliary_variables = [
