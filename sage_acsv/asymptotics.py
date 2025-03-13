@@ -50,18 +50,20 @@ def _diagonal_asy_smooth(
     INPUT:
 
     * ``G`` -- The numerator of the rational function ``F``.
-    * ``H`` -- The numerator of the rational function ``F``.
-    * ``r`` -- A vector of length d of positive algebraic numbers (generally integers).
-      Defaults to the appropriate vector of all 1's if not specified.
+    * ``H`` -- The denominator of the rational function ``F``.
+    * ``r`` -- A vector of positive algebraic numbers (generally integers),
+      one entry per variable of `F`. Defaults to the appropriate vector of
+      all 1's if not specified.
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions.
-    * ``expansion_precision`` -- A positive integer value. This is the number of terms to
-      compute in the asymptotic expansion. Defaults to 1, which only computes the leading
-      term.
+    * ``expansion_precision`` -- A positive integer value. This is the number
+      of terms to compute in the asymptotic expansion. Defaults to 1, which
+      only computes the leading term.
     * ``return_points`` -- If ``True``, also returns the coordinates of
       minimal critical points. By default ``False``.
-    * ``output_format`` -- (Optional) A string or :class:`.ACSVSettings.Output` specifying
-      the way the asymptotic growth is returned. Allowed values currently are:
+    * ``output_format`` -- (Optional) A string or :class:`.ACSVSettings.Output`
+      specifying the way the asymptotic growth is returned. Allowed values
+      currently are:
       - ``"tuple"``: the growth is returned as a list of
         tuples of the form ``(a, n^b, pi^c, d)`` such that the `r`-diagonal of `F`
         is the sum of ``a^n n^b pi^c d + O(a^n n^{b-1})`` over these tuples.
@@ -69,16 +71,17 @@ def _diagonal_asy_smooth(
         ring ``SR`` in the variable ``n``.
       - ``"asymptotic"``: the growth is returned as an expression from an appropriate
         ``AsymptoticRing`` in the variable ``n``.
-      - ``None``: the default, which uses the default set for :class:`.ACSVSettings.Output`
-        itself via :meth:`.ACSVSettings.set_default_output_format`. The default behavior
+      - ``None``: the default, which uses the default set for
+        :class:`.ACSVSettings.Output` itself via 
+        :meth:`.ACSVSettings.set_default_output_format`. The default behavior
         is asymptotic output.
     * ``as_symbolic`` -- deprecated in favor of the equivalent
       ``output_format="symbolic"``. Will be removed in a future release.
 
     OUTPUT:
 
-    A representation of the asymptotic main term, either as a list of tuples,
-    or as a symbolic expression.
+    A representation of the asymptotic behavior of the coefficient sequence,
+    either as a list of tuples, or as a symbolic expression.
 
     See also:
 
@@ -229,44 +232,49 @@ def diagonal_asy(
     whitney_strat=None,
     as_symbolic=False
 ):
-    r"""Asymptotics in a given direction `r` of the multivariate rational function `F`.
+    r"""Asymptotic behavior of the coefficient array of a multivariate rational
+    function `F` along a given direction `r`.
 
     INPUT:
 
-    * ``F`` -- The rational function ``G/H`` in ``d`` variables. This function is
+    * ``F`` -- The rational function `G/H` in `d` variables. This function is
       assumed to have a combinatorial expansion.
-    * ``r`` -- A vector of length d of positive algebraic numbers (generally integers).
+    * ``r`` -- A vector of length `d` of positive algebraic numbers.
       Defaults to the appropriate vector of all 1's if not specified.
     * ``linear_form`` -- (Optional) A linear combination of the input
-      variables that separates the critical point solutions.
-    * ``expansion_precision`` -- A positive integer value. This is the number of terms to
-      compute in the asymptotic expansion. Defaults to 1, which only computes the leading
-      term.
+      variables that separates the critical point solutions. Is generated
+      randomly if not specified.
+    * ``expansion_precision`` -- A positive integer, the number of terms to
+      compute in the asymptotic expansion. Defaults to 1, which only computes
+      the leading term.
     * ``return_points`` -- If ``True``, also returns the coordinates of
       minimal critical points. By default ``False``.
-    * ``output_format`` -- (Optional) A string or :class:`.ACSVSettings.Output` specifying
-      the way the asymptotic growth is returned. Allowed values currently are:
+    * ``output_format`` -- (Optional) A string or
+      :class:`.ACSVSettings.Output` specifying the way the asymptotic growth
+      is returned. Allowed values currently are:
       - ``"tuple"``: the growth is returned as a list of
         tuples of the form ``(a, n^b, pi^c, d)`` such that the `r`-diagonal of `F`
-        is the sum of ``a^n n^b pi^c d + O(a^n n^{b-1})`` over these tuples.
+        behaves like the sum of ``a^n n^b pi^c d + O(a^n n^{b-1})`` over these tuples.
       - ``"symbolic"``: the growth is returned as an expression from the symbolic
         ring ``SR`` in the variable ``n``.
       - ``"asymptotic"``: the growth is returned as an expression from an appropriate
         ``AsymptoticRing`` in the variable ``n``.
-      - ``None``: the default, which uses the default set for :class:`.ACSVSettings.Output`
-        itself via :meth:`.ACSVSettings.set_default_output_format`. The default behavior
-        is symbolic output.
+      - ``None``: the default, which uses the default set for
+        :class:`.ACSVSettings.Output` itself via
+        :meth:`.ACSVSettings.set_default_output_format`. The default behavior
+        is asymptotic output.
     * ``as_symbolic`` -- deprecated in favor of the equivalent
       ``output_format="symbolic"``. Will be removed in a future release.
-    * ``whitney_strat`` -- (Optional) The user can pass in a Whitney Stratification of V(H)
-        to save computation time. The program will not check if this stratification is correct.
-        The whitney_strat should be an array of length ``d``, with the ``k``-th entry a list of
-        tuples of ideal generators representing a component of the ``k``-dimensional stratum.
+    * ``whitney_strat`` -- (Optional) If known / precomputed, a 
+      Whitney Stratification of `V(H)`. The program will not check if
+      this stratification is correct. Should be a list of length ``d``, where
+      the ``k``-th entry is a list of tuples of ideas generators representing
+      a component of the ``k``-dimensional stratum.
 
     OUTPUT:
 
-    A representation of the asymptotic main term, either as a list of tuples,
-    or as a symbolic expression.
+    A representation of the asymptotic behavior of the coefficient array of `F` along
+    the specified direction.
 
     NOTE:
 
@@ -749,8 +757,8 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision):
 
 def ContributingCombinatorialSmooth(G, H, variables, r=None, linear_form=None):
     r"""Compute contributing points of a combinatorial multivariate
-    rational function F=G/H admitting a finite number of critical points.
-    Assumes the singular variety of F is smooth.
+    rational function `F=G/H` admitting a finite number of critical points.
+    Assumes the singular variety of `F` is smooth.
 
     Typically, this function is called as a subroutine of :func:`._diagonal_asy_smooth`.
 
@@ -903,7 +911,7 @@ def _find_contributing_points_combinatorial(
     whitney_strat=None,
 ):
     r"""Compute contributing points of a combinatorial multivariate
-    rational function F=G/H admitting a finite number of critical points.
+    rational function `F=G/H` admitting a finite number of critical points.
 
     Typically, this function is called as a subroutine of :func:`.diagonal_asy`.
 
@@ -916,14 +924,15 @@ def _find_contributing_points_combinatorial(
       variables that separates the critical point solutions
     * ``m2`` -- (Optional) The option to pass in a SageMath Macaulay2 interface for
         computing primary decompositions. Macaulay2 must be installed by the user
-    * ``whitney_strat`` -- (Optional) The user can pass in a Whitney Stratification of V(H)
-        to save computation time. The program will not check if this stratification is correct.
-        The whitney_strat should be an array of length ``d``, with the ``k``-th entry a list of
-        tuples of ideal generators representing a component of the ``k``-dimensional stratum.
+    * ``whitney_strat`` -- (Optional) If known / precomputed, a 
+      Whitney Stratification of `V(H)`. The program will not check if
+      this stratification is correct. Should be a list of length ``d``, where
+      the ``k``-th entry is a list of tuples of ideas generators representing
+      a component of the ``k``-dimensional stratum.
 
     OUTPUT:
 
-    A list of minimal contributing points of `F` in the direction `r`,
+    A list of minimal contributing points of `F` in the direction `r`.
 
     NOTE:
 
@@ -1099,14 +1108,15 @@ def ContributingCombinatorial(
       variables that separates the critical point solutions
     * ``m2`` -- (Optional) The option to pass in a SageMath Macaulay2 interface for
         computing primary decompositions. Macaulay2 must be installed by the user
-    * ``whitney_strat`` -- (Optional) The user can pass in a Whitney Stratification of V(H)
-        to save computation time. The program will not check if this stratification is correct.
-        The whitney_strat should be an array of length ``d``, with the ``k``-th entry a list of
-        tuples of ideal generators representing a component of the ``k``-dimensional stratum.
+    * ``whitney_strat`` -- (Optional) If known / precomputed, a 
+      Whitney Stratification of `V(H)`. The program will not check if
+      this stratification is correct. Should be a list of length ``d``, where
+      the ``k``-th entry is a list of tuples of ideas generators representing
+      a component of the ``k``-dimensional stratum.
 
     OUTPUT:
 
-    A list of minimal contributing points of `F` in the direction `r`,
+    A list of minimal contributing points of `F` in the direction `r`.
 
     NOTE:
 
@@ -1151,27 +1161,25 @@ def ContributingCombinatorial(
 
 def MinimalCriticalCombinatorial(F, r=None, linear_form=None, m2=None, whitney_strat=None):
     r"""Compute nonzero minimal critical points of a combinatorial multivariate
-    rational function F=G/H admitting a finite number of critical points.
-
-    Typically, this function is called as a subroutine of :func:`.diagonal_asy`.
+    rational function `F=G/H` admitting a finite number of critical points.
 
     INPUT:
 
-    * ``G, H`` -- Coprime polynomials with ``F = G/H``
-    * ``variables`` -- List of variables of ``G`` and ``H``
+    * ``F`` -- Symbolic fraction, the rational function of interest.
     * ``r`` -- (Optional) Length ``d`` vector of positive integers
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions
     * ``m2`` -- (Optional) The option to pass in a SageMath Macaulay2 interface for
         computing primary decompositions. Macaulay2 must be installed by the user
-    * ``whitney_strat`` -- (Optional) The user can pass in a Whitney Stratification of V(H)
-        to save computation time. The program will not check if this stratification is correct.
-        The whitney_strat should be an array of length ``d``, with the ``k``-th entry a list of
-        tuples of ideal generators representing a component of the ``k``-dimensional stratum.
+    * ``whitney_strat`` -- (Optional) If known / precomputed, a 
+      Whitney Stratification of `V(H)`. The program will not check if
+      this stratification is correct. Should be a list of length ``d``, where
+      the ``k``-th entry is a list of tuples of ideas generators representing
+      a component of the ``k``-dimensional stratum.
 
     OUTPUT:
 
-    A list of minimal contributing points of `F` in the direction `r`,
+    A list of minimal contributing points of `F` in the direction `r`.
 
     NOTE:
 
@@ -1316,17 +1324,17 @@ def CriticalPoints(F, r=None, linear_form=None, m2=None, whitney_strat=None):
 
     INPUT:
 
-    * ``G, H`` -- Coprime polynomials with ``F = G/H``
-    * ``variables`` -- List of variables of ``G`` and ``H``
+    * ``F`` -- Symbolic fraction, the rational function of interest.
     * ``r`` -- (Optional) Length ``d`` vector of positive integers
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions
     * ``m2`` -- (Optional) The option to pass in a SageMath Macaulay2 interface for
         computing primary decompositions. Macaulay2 must be installed by the user
-    * ``whitney_strat`` -- (Optional) The user can pass in a Whitney Stratification of V(H)
-        to save computation time. The program will not check if this stratification is correct.
-        The whitney_strat should be an array of length ``d``, with the ``k``-th entry a list of
-        tuples of ideal generators representing a component of the ``k``-dimensional stratum.
+    * ``whitney_strat`` -- (Optional) If known / precomputed, a 
+      Whitney Stratification of `V(H)`. The program will not check if
+      this stratification is correct. Should be a list of length ``d``, where
+      the ``k``-th entry is a list of tuples of ideas generators representing
+      a component of the ``k``-dimensional stratum.
 
     OUTPUT:
 
