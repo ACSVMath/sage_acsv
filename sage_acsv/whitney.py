@@ -103,7 +103,7 @@ def WhitneyStrat(IX, R):
         sage: from sage_acsv.whitney import WhitneyStrat
         sage: R.<x,y,z> = PolynomialRing(QQ, 3)
         sage: WhitneyStrat(Ideal(y^2+x^3-y^2*z^2), R)
-        [Ideal (z^2 - 1, y^2, x^2) of Multivariate Polynomial Ring in x, y, z over Rational Field,
+        [Ideal (y, x, z^2 - 1) of Multivariate Polynomial Ring in x, y, z over Rational Field,
          Ideal (y, x) of Multivariate Polynomial Ring in x, y, z over Rational Field,
          Ideal (y^2*z^2 - x^3 - y^2) of Multivariate Polynomial Ring in x, y, z over Rational Field]
     """
