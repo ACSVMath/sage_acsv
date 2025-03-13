@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
 
 from sage.rings.asymptotic.asymptotic_ring import AsymptoticRing, AsymptoticExpansion
 from sage.rings.qqbar import AlgebraicNumber, QQbar
@@ -40,19 +39,6 @@ class Term:
 
     def __lt__(self, other):
         return (self.base, self.power) < (other.base, other.power)
-
-class OutputFormat(Enum):
-    """Output options for displaying the asymptotic behavior determined
-    by :func:`.diagonal_asy`.
-
-    See also:
-
-    - :func:`.diagonal_asy`
-    """
-    ASYMPTOTIC = "asymptotic"
-    SYMBOLIC = "symbolic"
-    TUPLE = "tuple"
-    
 
 
 def RationalFunctionReduce(G, H):
