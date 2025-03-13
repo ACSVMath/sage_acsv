@@ -396,7 +396,7 @@ def diagonal_asy(
     Check that the workaround for the AsymptoticRing swallowing
     the modulus works as intended::
 
-        sage: diagonal_asy(1/(1 - x^4 - y^4))
+        sage: diagonal_asy(1/(1 - x^4 - y^4))  # long time
         1/2/sqrt(pi)*1.414213562373095?^n*n^(-1/2) + 1/2/sqrt(pi)*1.414213562373095?^n*n^(-1/2)*(e^(I*arg(-1)))^n + 1/2/sqrt(pi)*1.414213562373095?^n*n^(-1/2)*(e^(I*arg(-I)))^n + 1/2/sqrt(pi)*1.414213562373095?^n*n^(-1/2)*(e^(I*arg(I)))^n + O(1.414213562373095?^n*n^(-3/2))
 
     Check that there are no prohibited variable names::
