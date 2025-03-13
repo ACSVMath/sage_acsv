@@ -799,43 +799,17 @@ def ContributingCombinatorialSmooth(G, H, variables, r=None, linear_form=None):
     """
 
     timer = Timer()
-
-    # Fetch the variables we need
-    vs, lambda_, t, u_ = variables
-    vsT = vs + [t, lambda_]
-
-    # If direction r is not given, default to the diagonal
-    if r is None:
-        r = [1 for _ in vs]
-
-    # Make copy of r so they don't get mutated outside of function
-    r = copy(r)
-
-    # Replace irrational r with variable ri, add min poly to system
-    r_variable_values = {}
-    r_subs = []
-    for idx, direction in enumerate(r):
-        r_i = direction
-        if AA(direction).minpoly().degree() > 1:
-            r_i = SR.var(f"r{idx}")
-            r_variable_values[r_i] = AA(direction)
-        r_subs.append(r_i)
     
-    r = r_subs
+    vs, _, _, _ = variables
+    (
+        expanded_R,
+        vs,
+        (t, lambda_, u_),
+        r,
+        r_variable_values,
+    ) = _prepare_expanded_polynomial_ring(vs, direction=r)
 
-    # variables need to be ordered in this particular way
-    expanded_R_variables = vs + list(r_variable_values.keys()) + [t, lambda_, u_]
-    expanded_R = PolynomialRing(QQ, expanded_R_variables)
-
-    vs = [expanded_R(v) for v in vs]
-    t, lambda_, u_ = expanded_R(t), expanded_R(lambda_), expanded_R(u_)
     G, H = expanded_R(G), expanded_R(H)
-
-    r_variable_values = {
-        expanded_R(ri): val for (ri, val) in r_variable_values.items()
-    }
-    r = [expanded_R(ri) for ri in r]
-
     vsT = vs + list(r_variable_values.keys()) + [t, lambda_]
 
     # Create the critical point equations system
@@ -988,42 +962,17 @@ def ContributingCombinatorial(
     #####
     timer = Timer()
 
-    # Fetch the variables we need
-    vs, lambda_, t, u_ = variables
-    vsT = vs + [t, lambda_]
+    vs, _, _, _ = variables
+    (
+        expanded_R,
+        vs,
+        (t, lambda_, u_),
+        r,
+        r_variable_values,
+    ) = _prepare_expanded_polynomial_ring(vs, direction=r)
 
-    # If direction r is not given, default to the diagonal
-    if r is None:
-        r = [1 for _ in range(len(vs))]
-
-    # Make copies of r so they don't get mutated outside of function
-    r_copy = copy(r)
-
-    # Replace irrational r with variable ri, add min poly to system
-    r_variable_values = {}
-    r_subs = []
-    for idx, direction in enumerate(r):
-        r_i = direction
-        if AA(direction).minpoly().degree() > 1:
-            r_i = SR.var(f"r{idx}")
-            r_variable_values[r_i] = AA(direction)
-        r_subs.append(r_i)
-
-    r = r_subs
-
-    expanded_R_variables = vs + list(r_variable_values.keys()) + [t, lambda_, u_]
-    expanded_R = PolynomialRing(QQ, expanded_R_variables)
-
-    vs = [expanded_R(v) for v in vs]
-    t, lambda_, u_ = expanded_R(t), expanded_R(lambda_), expanded_R(u_)
     G, H = expanded_R(G), expanded_R(H)
-
-    r_variable_values = {
-        expanded_R(ri):val for (ri, val) in r_variable_values.items()
-    }
-    r = [expanded_R(ri) for ri in r]
-
-    vsT = vs + list(r_variable_values.keys())+ [t, lambda_]
+    vsT = vs + list(r_variable_values.keys()) + [t, lambda_]
 
     # Compute the critical point system for each stratum
     pure_H = PolynomialRing(QQ, vs)
@@ -1129,7 +1078,7 @@ def ContributingCombinatorial(
     # Refine positive minimal critical points to those that are contributing
     contributing_pos_minimals = []
     all_factors = list(factor[0] for factor in H.factor())
-    r = r_copy
+    r = [QQbar(r_variable_values.get(ri, ri)) for ri in r]
     for d in reversed(range(len(critical_point_ideals))):
         pos_minimals = pos_minimals_by_stratum[d]
         if len(contributing_pos_minimals) > 0:
@@ -1196,42 +1145,28 @@ def MinimalCriticalCombinatorial(G, H, variables, r=None, linear_form=None, m2=N
 
     Examples::
 
+        sage: from sage_acsv import MinimalCriticalCombinatorial
+        sage: R.<x, y, lambda_, t, u_> = QQ[]
+        sage: pts = MinimalCriticalCombinatorial(
+        ....:     1,
+        ....:     (1-(2*x+y)/3)*(1-(3*x+y)/4),
+        ....:     ([x, y], lambda_, t, u_)
+        ....: )
+        sage: sorted(pts)
+        [[3/4, 3/2], [1, 1]]
+
     """
+    vs, _, _, _ = variables
+    (
+        expanded_R,
+        vs,
+        (t, lambda_, u_),
+        r,
+        r_variable_values,
+    ) = _prepare_expanded_polynomial_ring(vs, direction=r)
+    H = expanded_R(H)
 
-    #####
-    # Fetch the variables we need
-    vs, lambda_, t, u_ = variables
-    vsT = vs + [t, lambda_]
-
-    # If direction r is not given, default to the diagonal
-    if r is None:
-        r = [1 for _ in range(len(vs))]
-
-    # Replace irrational r with variable ri, add min poly to system
-    r_variable_values = {}
-    r_subs = []
-    for idx, direction in enumerate(r):
-        r_i = direction
-        if AA(direction).minpoly().degree() > 1:
-            r_i = SR.var(f"r{idx}")
-            r_variable_values[r_i] = AA(direction)
-        r_subs.append(r_i)
-
-    r = r_subs
-
-    expanded_R_variables = vs + list(r_variable_values.keys()) + [t, lambda_, u_]
-    expanded_R = PolynomialRing(QQ, expanded_R_variables)
-
-    vs = [expanded_R(v) for v in vs]
-    t, lambda_, u_ = expanded_R(t), expanded_R(lambda_), expanded_R(u_)
-    G, H = expanded_R(G), expanded_R(H)
-
-    r_variable_values = {
-        expanded_R(ri):val for (ri, val) in r_variable_values.items()
-    }
-    r = [expanded_R(ri) for ri in r]
-
-    vsT = vs + list(r_variable_values.keys())+ [t, lambda_]
+    vsT = vs + list(r_variable_values) + [t, lambda_]
 
     # Compute the critical point system for each stratum
     pure_H = PolynomialRing(QQ, vs)
@@ -1362,41 +1297,26 @@ def CriticalPoints(G, H, variables, r=None, linear_form=None, m2=None, whitney_s
 
     Examples::
 
+        sage: from sage_acsv import CriticalPoints
+        sage: R.<x, y, lambda_, u_> = QQ[]
+        sage: pts = CriticalPoints(
+        ....:     1,
+        ....:     (1-(2*x+y)/3)*(1-(3*x+y)/4),
+        ....:     ([x, y], lambda_, u_)
+        ....: )
+        sage: sorted(pts)
+        [[2/3, 2], [3/4, 3/2], [1, 1]]
+
     """
-
-    #####
-
-    # Fetch the variables we need
-    vs, lambda_, u_ = variables
-    vsT = vs + [lambda_]
-
-    # If direction r is not given, default to the diagonal
-    if r is None:
-        r = [1 for _ in range(len(vs))]
-
-    # Replace irrational r with variable ri, add min poly to system
-    r_variable_values = {}
-    r_subs = []
-    for idx, direction in enumerate(r):
-        r_i = direction
-        if AA(direction).minpoly().degree() > 1:
-            r_i = SR.var(f"r{idx}")
-            r_variable_values[r_i] = AA(direction)
-        r_subs.append(r_i)
-
-    r = r_subs
-
-    expanded_R_variables = vs + list(r_variable_values.keys()) + [lambda_, u_]
-    expanded_R = PolynomialRing(QQ, expanded_R_variables)
-
-    vs = [expanded_R(v) for v in vs]
-    lambda_, u_ = expanded_R(lambda_), expanded_R(u_)
-    G, H = expanded_R(G), expanded_R(H)
-
-    r_variable_values = {
-        expanded_R(ri):val for (ri, val) in r_variable_values.items()
-    }
-    r = [expanded_R(ri) for ri in r]
+    vs, _, _ = variables
+    (
+        expanded_R,
+        vs,
+        (lambda_, u_),
+        r,
+        r_variable_values,
+    ) = _prepare_expanded_polynomial_ring(vs, direction=r, include_t=False)
+    H = expanded_R(H)
 
     vsT = vs + list(r_variable_values.keys())+ [lambda_]
 
@@ -1452,3 +1372,60 @@ def CriticalPoints(G, H, variables, r=None, linear_form=None, m2=None, whitney_s
                 critical_points.append(w)
 
     return critical_points
+
+
+
+def _prepare_expanded_polynomial_ring(variables, direction=None, include_t=True):
+    r"""Prepare an auxiliary polynomial ring for the diagonal asymptotics.
+    
+    INPUT:
+
+    * ``variables`` -- variables in the rational function `F`
+    * ``direction`` -- direction vector `r` for the asymptotics,
+      defaults to the diagonal (all ones).
+    * ``include_t`` -- whether to include the auxiliary variable `t`
+      in the expanded ring.
+    """
+    # if direction r is not given, default to the diagonal
+    if direction is None:
+        direction = [1 for _ in variables]
+
+    replaced_direction = copy(direction)
+
+    # in case there are irrational numbers in the direction vector,
+    # replace them with polynomial variables
+    direction_variable_values = {}
+    for idx, dir_entry in enumerate(replaced_direction):
+        if AA(dir_entry).minpoly().degree() > 1:
+            dir_var = SR.var(f"r{idx}")
+            direction_variable_values[dir_var] = AA(dir_entry)
+            replaced_direction[idx] = dir_var
+    
+    # auxiliary variables
+    auxiliary_variables = []
+    if include_t:
+        auxiliary_variables.append(SR.var('t'))
+    auxiliary_variables.append(SR.var('lambda_'))
+    auxiliary_variables.append(SR.var('u_'))
+
+    # create the expanded polynomial ring
+    expanded_ring = PolynomialRing(
+        QQ,
+        variables + list(direction_variable_values) + auxiliary_variables
+    )
+    variables = [expanded_ring(v) for v in variables]
+    auxiliary_variables = [
+        expanded_ring(v) for v in auxiliary_variables
+    ]
+    replaced_direction = [expanded_ring(ri) for ri in replaced_direction]
+    direction_variable_values = {
+        expanded_ring(ri): val
+        for (ri, val) in direction_variable_values.items()
+    }
+    return (
+        expanded_ring,
+        variables,
+        auxiliary_variables,
+        replaced_direction,
+        direction_variable_values,
+    )
