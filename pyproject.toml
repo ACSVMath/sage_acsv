@@ -1,24 +1,31 @@
-[tool.poetry]
+[project]
 name = "sage-acsv"
 version = "0.1.1"
 description = "A SageMath package with algorithms for analytic combinatorics in several variables."
 authors = [
-  "Benjamin Hackl <devel@benjamin-hackl.at>",
-  "Andrew Luo <j92luo@uwaterloo.ca>",
-  "Stephen Melczer <steve.melczer@uwaterloo.ca>",
-  "Jesse Selover <jselover@umass.edu>",
-  "Elaine Wong <elaine.wong@ricam.oeaw.ac.at>",
+  {name = "Benjamin Hackl", email = "devel@benjamin-hackl.at"},
+  {name = "Andrew Luo", email = "j92luo@uwaterloo.ca"},
+  {name = "Stephen Melczer", email = "steve.melczer@uwaterloo.ca"},
+  {name = "Jesse Selover", email = "jselover@umass.edu"},
+  {name = "Elaine Wong", email = "elaine.wong@ricam.oeaw.ac.at"},
 ]
-license = "MIT"
 readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.9"
+dependencies = []
+
+[project.urls]
 repository = "https://github.com/ACSVMath/sage_acsv"
 
-[tool.poetry.dependencies]
-python = "^3.8"
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+    "ruff>=0.10.0",
+]
 
-[tool.poetry.dev-dependencies]
-pytest = "^5.2"
+[tool.ruff.lint]
+exclude = ["*.ipynb"]
+ignore = ["F821"]
 
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "F403"]
