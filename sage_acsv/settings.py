@@ -5,6 +5,9 @@ from __future__ import annotations
 from enum import Enum
 
 
+from sage_acsv.debug import acsv_logger
+
+
 class OutputFormat(Enum):
     """Output options for displaying the asymptotic behavior determined
     by :func:`.diagonal_asy`.
@@ -75,3 +78,29 @@ class ACSVSettings:
         specifying one.
         """
         return cls._default_output_format
+
+    @classmethod
+    def get_logging_level(cls) -> int:
+        """Get the logging level for the package."""
+        return acsv_logger.level
+
+    @classmethod
+    def set_logging_level(cls, level: int) -> None:
+        """Set the logging level for the package.
+
+        INPUT:
+
+        * ``level`` -- a logging level.
+
+        EXAMPLES::
+
+            sage: from sage_acsv import ACSVSettings
+            sage: import logging
+            sage: ACSVSettings.set_logging_level(logging.DEBUG)
+            sage: ACSVSettings.get_logging_level()
+            10
+            sage: ACSVSettings.set_logging_level(logging.INFO)
+            sage: ACSVSettings.get_logging_level()
+            20
+        """
+        acsv_logger.setLevel(level)

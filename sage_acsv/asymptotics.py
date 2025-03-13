@@ -308,8 +308,10 @@ def diagonal_asy_smooth(
         from sage.all import AsymptoticRing
         AR = AsymptoticRing('QQbar^n * n^QQ', QQbar)
         n = AR.gen()
-        result = sum([
-            constant * pi**exponent * base**n * n**exponent * AR(expansion) 
+        result = sum([ # bug in AsymptoticRing requires splitting out modulus manually
+            constant * pi**exponent 
+            * abs(base)**n * (base/abs(base))**n
+            * n**exponent * AR(expansion) 
             + (abs(base)**n * n**(exponent - expansion_precision)).O()
             for (base, exponent, constant, expansion) in asm_vals
         ])
@@ -401,10 +403,43 @@ def diagonal_asy(
         sage: diagonal_asy(G/H, r = [1,1,1], output_format = 'asymptotic', whitney_strat = strat)
         0.866025403784439?/sqrt(pi)*3^n*n^(-1/2) + O(3^n*n^(-3/2))
 
+    TESTS:
+
+    Check that the workaround for the AsymptoticRing swallowing
+    the modulus works as intended::
+
+        sage: diagonal_asy(1/(1 - x^4 - y^4))
+        1/2/sqrt(pi)*1.414213562373095?^n*n^(-1/2) + 1/2/sqrt(pi)*1.414213562373095?^n*n^(-1/2)*(e^(I*arg(-1)))^n + 1/2/sqrt(pi)*1.414213562373095?^n*n^(-1/2)*(e^(I*arg(0.?e-... + 1.000000000000000?*I)))^n + 1/2/sqrt(pi)*1.414213562373095?^n*n^(-1/2)*(e^(I*arg(0.?e-... - 1.000000000000000?*I)))^n + O(1.414213562373095?^n*n^(-3/2))
+
+    Check that there are no prohibited variable names::
+
+        sage: var('n t u_')
+        (n, t, u_)
+        sage: diagonal_asy(1/(1 - n - t - u_))
+        0.866025403784439?/pi*27^n*n^(-1) + O(27^n*n^(-2))
+
     """
     G, H = F.numerator(), F.denominator()
     # Initialize variables
-    vs = list(H.variables())
+    original_variables = H.variables()
+    if any(v not in original_variables for v in G.variables()):
+        raise ValueError("Numerator cannot contain variables not occurring in denominator.")
+    vs = list(SR.var('acsvvar', len(original_variables)))
+    var_subs = {hvar: acsvvar for hvar, acsvvar in zip(original_variables, vs)}
+    G = G.subs(var_subs)
+    H = H.subs(var_subs)
+    F = G / H
+    if whitney_strat is not None:
+        whitney_strat = [
+            [
+                tuple(SR(gen).subs(var_subs) for gen in component)
+                for component in stratum
+            ] 
+            for stratum in whitney_strat
+        ]
+    if linear_form is not None:
+        linear_form = SR(linear_form).subs(var_subs)
+
     R = PolynomialRing(QQ, vs, len(vs))
     H_sing = Ideal([R(H)] + [R(H.derivative(v)) for v in vs])
     if H_sing.dimension() < 0:
@@ -600,8 +635,10 @@ def diagonal_asy(
         from sage.all import AsymptoticRing
         AR = AsymptoticRing('QQbar^n * n^QQ', QQbar)
         n = AR.gen()
-        result = sum([
-            constant * (pi**(s-d)).sqrt() * base**n * n**exponent * AR(expansion)
+        result = sum([ # bug in AsymptoticRing requires splitting out modulus manually
+            constant * (pi**(s-d)).sqrt()
+            * abs(base)**n * (base / abs(base))**n
+            * n**exponent * AR(expansion)
             + (abs(base)**n * n**(exponent - expansion_precision)).O()
             for (base, exponent, constant, expansion, s) in asm_vals
         ])
