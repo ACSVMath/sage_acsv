@@ -1,7 +1,52 @@
 from __future__ import annotations
 
-from sage.all import AA, QQ, SR, Ideal, Polyhedron, ceil, gcd, matrix, randint, vector, kronecker_delta
+from dataclasses import dataclass
 
+from sage.rings.asymptotic.asymptotic_ring import AsymptoticRing, AsymptoticExpansion
+from sage.rings.qqbar import AlgebraicNumber, QQbar
+from sage.symbolic.expression import Expression
+from sage.symbolic.ring import SymbolicRing
+from sage.symbolic.operators import add_vararg
+
+from sage.all import AA, QQ, SR, Ideal, Polyhedron, ceil, gcd, matrix, randint, vector, kronecker_delta, prod, pi
+
+
+@dataclass
+class Term:
+    r"""A dataclass for storing the decomposed terms of an asymptotic expression.
+
+    INPUT:
+
+    * ``coefficient`` -- The coefficient of the term
+    * ``pi_factor`` -- The factor of pi in the term
+    * ``base`` -- The base of the term
+    * ``power`` -- The power of the term
+
+    OUTPUT:
+
+    A dataclass with the given attributes.
+
+    EXAMPLES::
+
+        sage: from sage_acsv.helpers import Term
+        sage: Term(1, 1/sqrt(pi), 4, -1/2)
+        Term(coefficient=1, pi_factor=1/sqrt(pi), base=4, power=-1/2)
+    """
+    coefficient: Expression | AlgebraicNumber
+    pi_factor: Expression
+    base: Expression | AlgebraicNumber
+    power: Expression | AlgebraicNumber
+
+    def __lt__(self, other):
+        return (self.base, self.power) < (other.base, other.power)
+
+
+def collapse_zero_part(algebraic_number: AlgebraicNumber) -> AlgebraicNumber:
+    if algebraic_number.real().is_zero():
+        algebraic_number = QQbar(algebraic_number.imag()) * QQbar(-1).sqrt()
+    if algebraic_number.imag().is_zero():
+        algebraic_number = QQbar(algebraic_number.real())
+    return algebraic_number
 
 def RationalFunctionReduce(G, H):
     r"""Reduction of G and H by dividing out their GCD.
@@ -338,6 +383,124 @@ def IsContributing(vs, pt, r, factors, c):
             f"Non-generic critical point found - {pt} is contained in {len(vs)-c}-dimensional stratum"
         )
     return True
+
+def get_coefficients(expr: tuple | list[tuple] | Expression | AsymptoticExpansion) -> list[Term]:
+    r"""Determines coefficients for each n^k that appears in the asymptotic expression.
+    
+    INPUT:
+
+    * ``expr`` -- An asymptotic expression, symbolic expression, ACSV tuple, or list of ACSV tuples
+
+    OUTPUT:
+
+    A list of :class:`.DecomposedTerm` objects (with attributes ``coefficient``, ``pi_factor``,
+    ``base`` and ``power``), each representing a summand in the fully expanded expression.
+
+    EXAMPLES::
+
+        sage: from sage_acsv import diagonal_asy, get_coefficients
+        sage: var('x y z')
+        (x, y, z)
+        sage: res = diagonal_asy(1/(1 - x - y), r=[1,1], expansion_precision=2)
+        sage: coefs = sorted(get_coefficients(res), reverse=True)
+        sage: coefs
+        [Term(coefficient=1, pi_factor=1/sqrt(pi), base=4, power=-1/2),
+         Term(coefficient=-1/8, pi_factor=1/sqrt(pi), base=4, power=-3/2)]
+        sage: res = diagonal_asy(1/(1 - x - y), r=[1,1], expansion_precision=2, output_format="tuple")
+        sage: sorted(get_coefficients(res)) == sorted(coefs)
+        True
+        sage: res = diagonal_asy(1/(1 - x - y), r=[1,1], expansion_precision=2, output_format="symbolic")
+        sage: sorted(get_coefficients(res)) == sorted(coefs)
+        True
+
+    ::
+
+        sage: res = diagonal_asy(1/(1 - x^7))
+        sage: get_coefficients(res)
+        [Term(coefficient=1/7, pi_factor=1, base=e^(I*pi - I*arctan(4.381286267534823?)), power=0),
+         Term(coefficient=1/7, pi_factor=1, base=e^(I*pi - I*arctan(0.4815746188075287?)), power=0),
+         Term(coefficient=1/7, pi_factor=1, base=e^(-I*pi + I*arctan(4.381286267534823?)), power=0),
+         Term(coefficient=1/7, pi_factor=1, base=e^(-I*pi + I*arctan(0.4815746188075287?)), power=0),
+         Term(coefficient=1/7, pi_factor=1, base=e^(I*arctan(1.253960337662704?)), power=0),
+         Term(coefficient=1/7, pi_factor=1, base=e^(-I*arctan(1.253960337662704?)), power=0),
+         Term(coefficient=1/7, pi_factor=1, base=1, power=0)]
+
+    ::
+
+        sage: res = diagonal_asy(1/(1 - x - y^2))
+        sage: coefs = get_coefficients(res); coefs
+        [Term(coefficient=0.6123724356957945?, pi_factor=1/sqrt(pi), base=-2.598076211353316?, power=-1/2),
+         Term(coefficient=0.6123724356957945?, pi_factor=1/sqrt(pi), base=2.598076211353316?, power=-1/2)]
+        sage: coefs[0].coefficient.parent()
+        Algebraic Field
+        sage: coefs[0].coefficient.radical_expression()
+        1/2*sqrt(3/2)
+
+    ::
+
+        sage: F2 = (1+x)*(1+y)/(1-z*x*y*(x+y+1/x+1/y))
+        sage: res = diagonal_asy(F2, expansion_precision=3)
+        sage: coefs = get_coefficients(res); coefs
+        [Term(coefficient=4, pi_factor=1/pi, base=4, power=-1),
+         Term(coefficient=1, pi_factor=1/pi, base=-4, power=-3),
+         Term(coefficient=-6, pi_factor=1/pi, base=4, power=-2),
+         Term(coefficient=19/2, pi_factor=1/pi, base=4, power=-3)]
+    """
+    n = SR.var('n')
+    if isinstance(expr, tuple):
+        expr = SR(expr[0]**n * prod(expr[1:]))
+    elif isinstance(expr, list):
+        expr = SR(sum([tup[0]**n * prod(tup[1:]) for tup in expr]))
+    elif isinstance(expr.parent(), AsymptoticRing):
+        expr = SR(expr.exact_part())
+
+    if not isinstance(expr.parent(), type(SR)):
+        raise ACSVException(f"Cannot deal with expression of type {expr.parent()}")
+    
+    if len(expr.args()) > 1:
+        raise ACSVException("Cannot process multivariate symbolic expression.")
+    n = expr.args()[0]
+
+    # If expression is the sum of a bunch of terms, handle each one separately
+    expr = expr.expand()
+    terms = [expr]
+    if expr.operator() == add_vararg:
+        terms = expr.operands()
+
+    decomposed_terms = []
+    for summand in terms:
+        term = Term(
+            coefficient=QQ.one(),
+            pi_factor=QQ.one(),
+            base=QQ.one(),
+            power=QQ.zero()
+        )
+        if summand in QQbar:
+            term.coefficient = QQbar(summand)
+            decomposed_terms.append(term)
+            continue
+
+        for v in summand.operands():
+            if n in v.args():
+                if v.degree(n) != 0:
+                    term.power += v.degree(n)
+                else:
+                    term.base *= v.operands()[0]
+            elif v.degree(pi) != 0:
+                pi_deg = v.degree(pi)
+                term.pi_factor *= pi**pi_deg
+                term.coefficient *= v.coefficient(pi**pi_deg)
+            else:
+                term.coefficient *= v
+        
+        for attr in ('coefficient', 'base', 'power'):
+            elem = getattr(term, attr)
+            if isinstance(elem.parent(), SymbolicRing) and elem in QQbar:
+                setattr(term, attr, QQbar(elem))
+
+        decomposed_terms.append(term)
+
+    return decomposed_terms
 
 class ACSVException(Exception):
     def __init__(self, message, retry=False):
