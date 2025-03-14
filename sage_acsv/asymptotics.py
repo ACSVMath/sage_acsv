@@ -3,8 +3,8 @@ of multivariate rational functions.
 """
 from copy import copy
 
-from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra, Ideal, Polyhedron
-from sage.all import gcd, prod, pi, matrix, exp, log, add, I, factorial, srange, shuffle, vector
+from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra, Ideal
+from sage.all import gcd, prod, pi, matrix, exp, log, I, factorial, srange, shuffle, vector
 
 from sage_acsv.kronecker import _kronecker_representation
 from sage_acsv.helpers import ACSVException, IsContributing, NewtonSeries, RationalFunctionReduce, GetHessian, ImplicitHessian, collapse_zero_part

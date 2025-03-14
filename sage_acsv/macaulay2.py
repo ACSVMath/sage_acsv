@@ -1,5 +1,5 @@
 # TODO - this should be removed once we have the global configuration settings
-from sage.all import Macaulay2, PolynomialRing, QQ, Hom
+from sage.all import PolynomialRing, QQ, Hom
 from sage_acsv.settings import ACSVSettings
 
 def _construct_m2_morphims(Id):
