@@ -46,6 +46,7 @@ def collapse_zero_part(algebraic_number: AlgebraicNumber) -> AlgebraicNumber:
         algebraic_number = QQbar(algebraic_number.imag()) * QQbar(-1).sqrt()
     if algebraic_number.imag().is_zero():
         algebraic_number = QQbar(algebraic_number.real())
+    algebraic_number.simplify()
     return algebraic_number
 
 def RationalFunctionReduce(G, H):
@@ -446,6 +447,19 @@ def get_coefficients(expr: tuple | list[tuple] | Expression | AsymptoticExpansio
          Term(coefficient=1, pi_factor=1/pi, base=-4, power=-3),
          Term(coefficient=-6, pi_factor=1/pi, base=4, power=-2),
          Term(coefficient=19/2, pi_factor=1/pi, base=4, power=-3)]
+
+    ::
+
+        sage: res = diagonal_asy(3/(1 - x))
+        sage: get_coefficients(res)
+        [Term(coefficient=3, pi_factor=1, base=1, power=0)]
+
+    ::
+
+        sage: res = diagonal_asy((x - y)/(1 - x - y))
+        sage: get_coefficients(res)
+        []
+
     """
     n = SR.var('n')
     if isinstance(expr, tuple):
@@ -460,10 +474,12 @@ def get_coefficients(expr: tuple | list[tuple] | Expression | AsymptoticExpansio
     
     if len(expr.args()) > 1:
         raise ACSVException("Cannot process multivariate symbolic expression.")
-    n = expr.args()[0]
 
     # If expression is the sum of a bunch of terms, handle each one separately
     expr = expr.expand()
+    if expr.is_zero():
+        return []
+
     terms = [expr]
     if expr.operator() == add_vararg:
         terms = expr.operands()
