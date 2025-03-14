@@ -5,6 +5,7 @@ from __future__ import annotations
 from enum import Enum
 
 from sage_acsv.debug import acsv_logger
+from sage.all import Macaulay2
 
 
 class OutputFormat(Enum):
@@ -39,14 +40,12 @@ class KroneckerBackend(Enum):
 
 class GroebnerBackend(Enum):
     """Options for computing Groebner Bases and related ideal functions
-    :func:`.GroebnerBasis`, :func:`.PrimaryDecomposition`, :func:`.Saturate`, and
-    :func:`.CriticalPoints`.
+    :func:`.GroebnerBasis`, :func:`.PrimaryDecomposition`, and :func:`.CriticalPoints`.
 
     See also:
 
     - :func:`.GroebnerBasis`
     - :func:`.PrimaryDecomposition`
-    - :func:`.Saturate`
     - :func:`.Radical`
     - :class:`.ACSVSettings`
 
@@ -90,7 +89,7 @@ class ACSVSettings:
     _default_output_format = DEFAULT_OUTPUT_FORMAT
     _default_kronecker_backend = DEFAULT_KRONECKER_BACKEND
     _default_groebner_backend = DEFAULT_GROEBNER_BACKEND
-    _m2_installation_path = None
+    _m2 = Macaulay2()
 
     MAX_MIN_CRIT_RETRIES = 5  # Maximum number of retries for critical point detection
 
@@ -168,8 +167,7 @@ class ACSVSettings:
     @classmethod
     def set_default_groebner_backend(cls, backend: GroebnerBackend | str | None) -> None:
         """Set the preferred method for performing Groebner Bases and related computations,
-        including :func:`.GroebnerBasis`, :func:`.PrimaryDecomposition`, :func:`.Saturate`,
-        and :func:`.Radical`
+        including :func:`.GroebnerBasis`, :func:`.PrimaryDecomposition`, and :func:`.Radical`
 
         Will default to singular.
 
@@ -196,9 +194,9 @@ class ACSVSettings:
 
         * ``path`` -- a filepath string or `None` to run from anywhere
         """
-        cls._m2_installation_path = path
+        cls._m2 = Macaulay2(command=path)
 
     @classmethod
-    def get_macaulay2_path(cls) -> KroneckerBackend:
+    def get_macaulay2(cls) -> KroneckerBackend:
         """Get the Macaulay2 installation path."""
-        return cls._m2_installation_path
+        return cls._m2

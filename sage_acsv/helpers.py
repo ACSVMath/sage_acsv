@@ -319,7 +319,8 @@ def ImplicitHessian(Hs, vs, r, subs):
     return Hess
 
 def IsContributing(vs, pt, r, factors, c):
-    r"""Determines if critical point `pt` is contributing; that is, `r` is in the interior
+    r"""Determines if minimal critical point `pt` where singular variety has transverse square-free factorization
+    is contributing; that is, whether `r` is in the interior
     of the scaled log-normal cone of `factors` at `pt`
     
     INPUT:
