@@ -386,7 +386,7 @@ def IsContributing(vs, pt, r, factors, c):
         )
     return True
 
-def get_coefficients(expr: tuple | list[tuple] | Expression | AsymptoticExpansion) -> list[Term]:
+def get_expansion_terms(expr: tuple | list[tuple] | Expression | AsymptoticExpansion) -> list[Term]:
     r"""Determines coefficients for each n^k that appears in the asymptotic expression.
     
     INPUT:
@@ -400,25 +400,25 @@ def get_coefficients(expr: tuple | list[tuple] | Expression | AsymptoticExpansio
 
     EXAMPLES::
 
-        sage: from sage_acsv import diagonal_asy, get_coefficients
+        sage: from sage_acsv import diagonal_asy, get_expansion_terms
         sage: var('x y z')
         (x, y, z)
         sage: res = diagonal_asy(1/(1 - x - y), r=[1,1], expansion_precision=2)
-        sage: coefs = sorted(get_coefficients(res), reverse=True)
+        sage: coefs = sorted(get_expansion_terms(res), reverse=True)
         sage: coefs
         [Term(coefficient=1, pi_factor=1/sqrt(pi), base=4, power=-1/2),
          Term(coefficient=-1/8, pi_factor=1/sqrt(pi), base=4, power=-3/2)]
         sage: res = diagonal_asy(1/(1 - x - y), r=[1,1], expansion_precision=2, output_format="tuple")
-        sage: sorted(get_coefficients(res)) == sorted(coefs)
+        sage: sorted(get_expansion_terms(res)) == sorted(coefs)
         True
         sage: res = diagonal_asy(1/(1 - x - y), r=[1,1], expansion_precision=2, output_format="symbolic")
-        sage: sorted(get_coefficients(res)) == sorted(coefs)
+        sage: sorted(get_expansion_terms(res)) == sorted(coefs)
         True
 
     ::
 
         sage: res = diagonal_asy(1/(1 - x^7))
-        sage: get_coefficients(res)
+        sage: get_expansion_terms(res)
         [Term(coefficient=1/7, pi_factor=1, base=e^(I*pi - I*arctan(4.381286267534823?)), power=0),
          Term(coefficient=1/7, pi_factor=1, base=e^(I*pi - I*arctan(0.4815746188075287?)), power=0),
          Term(coefficient=1/7, pi_factor=1, base=e^(-I*pi + I*arctan(4.381286267534823?)), power=0),
@@ -430,7 +430,7 @@ def get_coefficients(expr: tuple | list[tuple] | Expression | AsymptoticExpansio
     ::
 
         sage: res = diagonal_asy(1/(1 - x - y^2))
-        sage: coefs = get_coefficients(res); coefs
+        sage: coefs = get_expansion_terms(res); coefs
         [Term(coefficient=0.6123724356957945?, pi_factor=1/sqrt(pi), base=-2.598076211353316?, power=-1/2),
          Term(coefficient=0.6123724356957945?, pi_factor=1/sqrt(pi), base=2.598076211353316?, power=-1/2)]
         sage: coefs[0].coefficient.parent()
@@ -442,7 +442,7 @@ def get_coefficients(expr: tuple | list[tuple] | Expression | AsymptoticExpansio
 
         sage: F2 = (1+x)*(1+y)/(1-z*x*y*(x+y+1/x+1/y))
         sage: res = diagonal_asy(F2, expansion_precision=3)
-        sage: coefs = get_coefficients(res); coefs
+        sage: coefs = get_expansion_terms(res); coefs
         [Term(coefficient=4, pi_factor=1/pi, base=4, power=-1),
          Term(coefficient=1, pi_factor=1/pi, base=-4, power=-3),
          Term(coefficient=-6, pi_factor=1/pi, base=4, power=-2),
@@ -451,13 +451,13 @@ def get_coefficients(expr: tuple | list[tuple] | Expression | AsymptoticExpansio
     ::
 
         sage: res = diagonal_asy(3/(1 - x))
-        sage: get_coefficients(res)
+        sage: get_expansion_terms(res)
         [Term(coefficient=3, pi_factor=1, base=1, power=0)]
 
     ::
 
         sage: res = diagonal_asy((x - y)/(1 - x - y))
-        sage: get_coefficients(res)
+        sage: get_expansion_terms(res)
         []
 
     """
