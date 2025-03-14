@@ -8,7 +8,7 @@ The public interface of our toolbox is provided by the following
 functions and classes:
 
 - :func:`.diagonal_asy` -- the central function of the package,
-- :func:`.get_coefficients` --
+- :func:`.get_expansion_terms` --
 - :func:`.ContributingCombinatorial` --
 - :func:`.MinimalCriticalCombinatorial` --
 - :func:`.CriticalPoints` -- 
@@ -18,7 +18,7 @@ The following exmples illustrate some typical use cases. We
 first import relevant functions and define the required
 symbolic variables::
 
-    sage: from sage_acsv import diagonal_asy, get_coefficients
+    sage: from sage_acsv import diagonal_asy, get_expansion_terms
     sage: var('w x y z')
     (w, x, y, z)
 
@@ -58,9 +58,9 @@ irrationality of `\zeta(3)`::
 While the representation might suggest otherwise, the numerical
 constants in the expansion are not approximations, but in fact
 explicitly known algebraic numbers. We can use the
-:func:`.get_coefficients` function to inspect them closer::
+:func:`.get_expansion_terms` function to inspect them closer::
 
-    sage: coefs = get_coefficients(apery_expansion); coefs
+    sage: coefs = get_expansion_terms(apery_expansion); coefs
     [Term(coefficient=1.225275868941647?, pi_factor=pi^(-3/2), base=33.97056274847714?, power=-3/2),
      Term(coefficient=-0.5128314911970734?, pi_factor=pi^(-3/2), base=33.97056274847714?, power=-5/2)]
     sage: coefs[0].coefficient.radical_expression()
@@ -115,5 +115,5 @@ very close moduli::
 
 from sage_acsv.asymptotics import *
 from sage_acsv.kronecker import *
-from sage_acsv.helpers import get_coefficients
+from sage_acsv.helpers import get_expansion_terms
 from sage_acsv.settings import ACSVSettings
