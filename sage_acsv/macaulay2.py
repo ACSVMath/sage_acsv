@@ -1,7 +1,6 @@
 # TODO - this should be removed once we have the global configuration settings
 from sage.all import Macaulay2, PolynomialRing, QQ, Hom
 from sage_acsv.settings import ACSVSettings
-m2 = Macaulay2(command='/opt/homebrew/bin/M2')
 
 def _construct_m2_morphims(Id):
     R = Id.gens()[0].parent()
