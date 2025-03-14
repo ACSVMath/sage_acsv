@@ -1067,14 +1067,14 @@ def _find_contributing_points_combinatorial(
                     stratum = whitney_strat[i]
                     if stratum.subs({pure_H(wi):val for wi, val in zip(vs, x)}) == Ideal(pure_H(0)):
                         raise ACSVException(
-                            "Non-generic critical point found - {w} is contained in {dim}-dimensional stratum".format(w = str(x), dim = i)
+                            "Non-generic direction detected - critical point {w} is contained in {dim}-dimensional stratum".format(w = str(x), dim = i)
                         )
 
     if len(contributing_pos_minimals) == 0:
-        raise ACSVException("No smooth minimal critical points found.")
+        raise ACSVException("No contributing points found.")
     if len(contributing_pos_minimals) > 1:
         raise ACSVException(
-            f"More than one minimal point with positive real coordinates found: {contributing_pos_minimals}"
+            f"More than one minimal contributing point with positive real coordinates found: {contributing_pos_minimals}"
         )
     minimal = contributing_pos_minimals[0]
 
