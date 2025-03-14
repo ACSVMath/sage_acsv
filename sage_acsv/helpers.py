@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from sage.functions.other import arg
+from sage.functions.log import exp
+from sage.groups.misc_gps.argument_groups import ArgumentByElementGroup
 from sage.rings.asymptotic.asymptotic_ring import AsymptoticRing, AsymptoticExpansion
+from sage.rings.asymptotic.growth_group import ExponentialGrowthGroup, MonomialGrowthGroup
 from sage.rings.qqbar import AlgebraicNumber, QQbar
 from sage.symbolic.expression import Expression
 from sage.symbolic.ring import SymbolicRing
@@ -419,13 +423,13 @@ def get_expansion_terms(expr: tuple | list[tuple] | Expression | AsymptoticExpan
 
         sage: res = diagonal_asy(1/(1 - x^7))
         sage: get_expansion_terms(res)
-        [Term(coefficient=1/7, pi_factor=1, base=e^(I*pi - I*arctan(4.381286267534823?)), power=0),
-         Term(coefficient=1/7, pi_factor=1, base=e^(I*pi - I*arctan(0.4815746188075287?)), power=0),
-         Term(coefficient=1/7, pi_factor=1, base=e^(-I*pi + I*arctan(4.381286267534823?)), power=0),
-         Term(coefficient=1/7, pi_factor=1, base=e^(-I*pi + I*arctan(0.4815746188075287?)), power=0),
-         Term(coefficient=1/7, pi_factor=1, base=e^(I*arctan(1.253960337662704?)), power=0),
-         Term(coefficient=1/7, pi_factor=1, base=e^(-I*arctan(1.253960337662704?)), power=0),
-         Term(coefficient=1/7, pi_factor=1, base=1, power=0)]
+        [Term(coefficient=1/7, pi_factor=1, base=0.6234898018587335? + 0.7818314824680299?*I, power=0),
+     Term(coefficient=1/7, pi_factor=1, base=0.6234898018587335? - 0.7818314824680299?*I, power=0),
+     Term(coefficient=1/7, pi_factor=1, base=-0.2225209339563144? + 0.9749279121818236?*I, power=0),
+     Term(coefficient=1/7, pi_factor=1, base=-0.2225209339563144? - 0.9749279121818236?*I, power=0),
+     Term(coefficient=1/7, pi_factor=1, base=-0.9009688679024191? + 0.4338837391175582?*I, power=0),
+     Term(coefficient=1/7, pi_factor=1, base=-0.9009688679024191? - 0.4338837391175582?*I, power=0),
+     Term(coefficient=1/7, pi_factor=1, base=1, power=0)]
 
     ::
 
@@ -467,7 +471,20 @@ def get_expansion_terms(expr: tuple | list[tuple] | Expression | AsymptoticExpan
     elif isinstance(expr, list):
         expr = SR(sum([tup[0]**n * prod(tup[1:]) for tup in expr]))
     elif isinstance(expr.parent(), AsymptoticRing):
-        expr = SR(expr.exact_part())
+        expr = expr.exact_part()
+        symbolic_expr = SR.zero()
+        for summand in expr.summands:
+            symbolic_summand = summand.coefficient
+            for factor in summand.growth.value:
+                if isinstance(factor.parent(), MonomialGrowthGroup):
+                    symbolic_summand *= n**factor.exponent
+                elif isinstance(factor.parent(), ExponentialGrowthGroup):
+                    if isinstance(factor.base.parent(), ArgumentByElementGroup):
+                        symbolic_summand *= factor.base._element_**n
+                    else:
+                        symbolic_summand *= factor.base**n
+            symbolic_expr += symbolic_summand
+        expr = symbolic_expr
 
     if not isinstance(expr.parent(), type(SR)):
         raise ACSVException(f"Cannot deal with expression of type {expr.parent()}")
