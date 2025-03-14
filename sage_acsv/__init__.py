@@ -89,7 +89,7 @@ requirements are not met::
     sage: diagonal_asy(F6)  # long time
     Traceback (most recent call last):
     ...
-    ACSVException: No smooth minimal critical points found.
+    ACSVException: No contributing points found.
 
 Here is the asymptotic growth of the Delannoy numbers::
 
