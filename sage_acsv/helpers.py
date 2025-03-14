@@ -424,12 +424,12 @@ def get_expansion_terms(expr: tuple | list[tuple] | Expression | AsymptoticExpan
         sage: res = diagonal_asy(1/(1 - x^7))
         sage: get_expansion_terms(res)
         [Term(coefficient=1/7, pi_factor=1, base=0.6234898018587335? + 0.7818314824680299?*I, power=0),
-     Term(coefficient=1/7, pi_factor=1, base=0.6234898018587335? - 0.7818314824680299?*I, power=0),
-     Term(coefficient=1/7, pi_factor=1, base=-0.2225209339563144? + 0.9749279121818236?*I, power=0),
-     Term(coefficient=1/7, pi_factor=1, base=-0.2225209339563144? - 0.9749279121818236?*I, power=0),
-     Term(coefficient=1/7, pi_factor=1, base=-0.9009688679024191? + 0.4338837391175582?*I, power=0),
-     Term(coefficient=1/7, pi_factor=1, base=-0.9009688679024191? - 0.4338837391175582?*I, power=0),
-     Term(coefficient=1/7, pi_factor=1, base=1, power=0)]
+         Term(coefficient=1/7, pi_factor=1, base=0.6234898018587335? - 0.7818314824680299?*I, power=0),
+         Term(coefficient=1/7, pi_factor=1, base=-0.2225209339563144? + 0.9749279121818236?*I, power=0),
+         Term(coefficient=1/7, pi_factor=1, base=-0.2225209339563144? - 0.9749279121818236?*I, power=0),
+         Term(coefficient=1/7, pi_factor=1, base=-0.9009688679024191? + 0.4338837391175582?*I, power=0),
+         Term(coefficient=1/7, pi_factor=1, base=-0.9009688679024191? - 0.4338837391175582?*I, power=0),
+         Term(coefficient=1/7, pi_factor=1, base=1, power=0)]
 
     ::
 
