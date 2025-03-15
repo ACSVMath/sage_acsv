@@ -18,9 +18,11 @@ class OutputFormat(Enum):
     - :class:`.ACSVSettings`
 
     """
+
     ASYMPTOTIC = "asymptotic"
     SYMBOLIC = "symbolic"
     TUPLE = "tuple"
+
 
 class KroneckerBackend(Enum):
     """Options for computing Kronecker representations determined by
@@ -35,8 +37,10 @@ class KroneckerBackend(Enum):
     - :class:`.ACSVSettings`
 
     """
+
     SAGE_ACSV = "sage_acsv"
     MSOLVE = "msolve"
+
 
 class GroebnerBackend(Enum):
     """Options for computing Groebner Bases and related ideal functions
@@ -50,12 +54,15 @@ class GroebnerBackend(Enum):
     - :class:`.ACSVSettings`
 
     """
+
     SINGULAR = "singular"
     MACAULAY2 = "macaulay2"
+
 
 DEFAULT_OUTPUT_FORMAT = OutputFormat.ASYMPTOTIC
 DEFAULT_KRONECKER_BACKEND = KroneckerBackend.SAGE_ACSV
 DEFAULT_GROEBNER_BACKEND = GroebnerBackend.SINGULAR
+
 
 class ACSVSettings:
     """Global settings for the package.
@@ -83,9 +90,10 @@ class ACSVSettings:
         <OutputFormat.ASYMPTOTIC: 'asymptotic'>
 
     """
+
     Output = OutputFormat
     Kronecker = KroneckerBackend
-    Groebner  = GroebnerBackend
+    Groebner = GroebnerBackend
     _default_output_format = DEFAULT_OUTPUT_FORMAT
     _default_kronecker_backend = DEFAULT_KRONECKER_BACKEND
     _default_groebner_backend = DEFAULT_GROEBNER_BACKEND
@@ -94,7 +102,9 @@ class ACSVSettings:
     MAX_MIN_CRIT_RETRIES = 5  # Maximum number of retries for critical point detection
 
     @classmethod
-    def set_default_output_format(cls, output_format: OutputFormat | str | None = None) -> None:
+    def set_default_output_format(
+        cls, output_format: OutputFormat | str | None = None
+    ) -> None:
         """Set the default output format chosen when not explicitly
         specifying one.
 
@@ -107,7 +117,6 @@ class ACSVSettings:
             cls._default_output_format = DEFAULT_OUTPUT_FORMAT
         else:
             cls._default_output_format = OutputFormat(output_format)
-            
 
     @classmethod
     def get_default_output_format(cls) -> OutputFormat:
@@ -141,12 +150,14 @@ class ACSVSettings:
             20
         """
         acsv_logger.setLevel(level)
-    
+
     @classmethod
-    def set_default_kronecker_backend(cls, backend: KroneckerBackend | str | None) -> None:
+    def set_default_kronecker_backend(
+        cls, backend: KroneckerBackend | str | None
+    ) -> None:
         """Set the preferred method for computing a Kronecker Representation. Will default
         to the sage_acsv implementation if not specified.
-        
+
         See :func:`._kronecker_representation`.
 
         INPUT:
@@ -165,7 +176,9 @@ class ACSVSettings:
         return cls._default_kronecker_backend
 
     @classmethod
-    def set_default_groebner_backend(cls, backend: GroebnerBackend | str | None) -> None:
+    def set_default_groebner_backend(
+        cls, backend: GroebnerBackend | str | None
+    ) -> None:
         """Set the preferred method for performing Groebner Bases and related computations,
         including :func:`.GroebnerBasis`, :func:`.PrimaryDecomposition`, and :func:`.Radical`
 
@@ -185,7 +198,7 @@ class ACSVSettings:
     def get_default_groebner_backend(cls) -> KroneckerBackend:
         """Get the default groebner basis backend."""
         return cls._default_groebner_backend
-    
+
     @classmethod
     def set_macaulay2_path(cls, path: str | None) -> None:
         """Set the path of the Macaulay2 executable.

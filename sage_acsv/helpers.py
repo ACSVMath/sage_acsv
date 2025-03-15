@@ -4,13 +4,30 @@ from dataclasses import dataclass
 
 from sage.groups.misc_gps.argument_groups import ArgumentByElementGroup
 from sage.rings.asymptotic.asymptotic_ring import AsymptoticRing, AsymptoticExpansion
-from sage.rings.asymptotic.growth_group import ExponentialGrowthGroup, MonomialGrowthGroup
+from sage.rings.asymptotic.growth_group import (
+    ExponentialGrowthGroup,
+    MonomialGrowthGroup,
+)
 from sage.rings.qqbar import AlgebraicNumber, QQbar
 from sage.symbolic.expression import Expression
 from sage.symbolic.ring import SymbolicRing
 from sage.symbolic.operators import add_vararg
 
-from sage.all import AA, QQ, SR, Ideal, Polyhedron, ceil, gcd, matrix, randint, vector, kronecker_delta, prod, pi
+from sage.all import (
+    AA,
+    QQ,
+    SR,
+    Ideal,
+    Polyhedron,
+    ceil,
+    gcd,
+    matrix,
+    randint,
+    vector,
+    kronecker_delta,
+    prod,
+    pi,
+)
 
 
 @dataclass
@@ -34,6 +51,7 @@ class Term:
         sage: Term(1, 1/sqrt(pi), 4, -1/2)
         Term(coefficient=1, pi_factor=1/sqrt(pi), base=4, power=-1/2)
     """
+
     coefficient: Expression | AlgebraicNumber
     pi_factor: Expression
     base: Expression | AlgebraicNumber
@@ -51,6 +69,7 @@ def collapse_zero_part(algebraic_number: AlgebraicNumber) -> AlgebraicNumber:
     algebraic_number.simplify()
     return algebraic_number
 
+
 def RationalFunctionReduce(G, H):
     r"""Reduction of G and H by dividing out their GCD.
 
@@ -63,7 +82,7 @@ def RationalFunctionReduce(G, H):
     A tuple ``(G/d, H/d)``, where ``d`` is the GCD of ``G`` and ``H``.
     """
     g = gcd(G, H)
-    return G/g, H/g
+    return G / g, H / g
 
 
 def GenerateLinearForm(system, vsT, u_, linear_form=None):
@@ -89,14 +108,17 @@ def GenerateLinearForm(system, vsT, u_, linear_form=None):
     if linear_form is not None:
         return u_ - linear_form
 
-    maxcoeff = ceil(max([
-        max([abs(x) for x in f.coefficients()]) for f in system if f != 0
-    ]))
+    maxcoeff = ceil(
+        max([max([abs(x) for x in f.coefficients()]) for f in system if f != 0])
+    )
     maxdegree = max([f.degree() for f in system])
-    return u_ - sum([
-        randint(-maxcoeff*maxdegree-31, maxcoeff*maxdegree+31)*z
-        for z in vsT
-    ])
+    return u_ - sum(
+        [
+            randint(-maxcoeff * maxdegree - 31, maxcoeff * maxdegree + 31) * z
+            for z in vsT
+        ]
+    )
+
 
 def GetHessian(H, variables, r, critical_point=None):
     r"""Computes the Hessian of a given map.
@@ -106,13 +128,13 @@ def GetHessian(H, variables, r, critical_point=None):
     .. math::
 
         (z_1, \ldots, z_{d-1}) \mapsto z_1 \cdots z_{d-1} \log(g(z_1, \ldots, z_{d-1})),
-    
+
     with `g` determined via the Implicit Function Theorem for the equation
-    
+
     .. math::
-    
+
         H(z_1,...,z_{d-1}, g(z_1,...,z_{d-1})) = 0`
-    
+
     at a critical point in direction `r`.
 
     INPUT:
@@ -136,32 +158,38 @@ def GetHessian(H, variables, r, critical_point=None):
     U = matrix(
         [
             [
-                v1 * v2 * H.derivative(v1, v2)/(z_d * H.derivative(z_d))
+                v1 * v2 * H.derivative(v1, v2) / (z_d * H.derivative(z_d))
                 for v2 in variables
-            ] for v1 in variables
+            ]
+            for v1 in variables
         ]
     )
 
     try:
         V = [QQ(r[k] / r[-1]) for k in range(d)]
-    except (ValueError, TypeError):    
+    except (ValueError, TypeError):
         V = [AA(r[k] / r[-1]) for k in range(d)]
 
     # Build (d-1) x (d-1) Matrix for Hessian
     hessian = [
         [
-            V[i] * V[j] + U[i][j] - V[j] * U[i][-1] - V[i]*U[j][-1]
+            V[i] * V[j]
+            + U[i][j]
+            - V[j] * U[i][-1]
+            - V[i] * U[j][-1]
             + V[i] * V[j] * U[-1][-1]
-            for j in range(d-1)
-        ] for i in range(d-1)
+            for j in range(d - 1)
+        ]
+        for i in range(d - 1)
     ]
-    for i in range(d-1):
+    for i in range(d - 1):
         hessian[i][i] = hessian[i][i] + V[i]
 
     hessian = matrix(hessian)
     if critical_point is not None:
         hessian = hessian.subs(critical_point)
     return hessian
+
 
 def NewtonSeries(phi, variables, series_precision):
     r"""Computes the series expansion of an implicitly defined function.
@@ -171,7 +199,7 @@ def NewtonSeries(phi, variables, series_precision):
     .. math::
 
         \Phi(x, g(x)) = 0
-    
+
     INPUT:
 
     * ``phi`` -- A polynomial; the equation defining the function that is expanded.
@@ -196,7 +224,7 @@ def NewtonSeries(phi, variables, series_precision):
     Y = variables[-1]
 
     def ModX(F, N):
-        return F.mod(Ideal(X)**N)
+        return F.mod(Ideal(X) ** N)
 
     def ModY(F, N):
         return F.mod(Y**N)
@@ -207,22 +235,23 @@ def NewtonSeries(phi, variables, series_precision):
     def NewtonRecur(H, N):
         if N == 1:
             return 0, 1 / H.derivative(Y).subs({v: 0 for v in variables})
-        F, G = NewtonRecur(H, ceil(N/2))
+        F, G = NewtonRecur(H, ceil(N / 2))
         G = G + (1 - G * H.derivative(Y).subs({Y: F})) * G
-        F = F - G*H.subs({Y: F})
-        return ModX(F, N), ModX(G, ceil(N/2))
-    
+        F = F - G * H.subs({Y: F})
+        return ModX(F, N), ModX(G, ceil(N / 2))
+
     return NewtonRecur(Mod(phi, series_precision), series_precision)[0]
+
 
 def ImplicitHessian(Hs, vs, r, subs):
     r"""Compute the Hessian of an implicitly defined function.
-    
+
     Given a transverse intersection point `w` in `H_1(w),\dots,H_s(w)=0`, we can parametrize `V(H_1,\dots,H_s)`
-    near `w` by writing `z_{d-s+j} = g_j(z_1,\dots,z_{d-s})`. 
-    
+    near `w` by writing `z_{d-s+j} = g_j(z_1,\dots,z_{d-s})`.
+
     Let `h(\theta_1,\dots,\theta_{d-s}) = \sum_{j=1}^s r_{d-s+j}\log g_j({w_1 exp(i\theta_1) \dots w_{d-s} exp(i\theta_{d-s})})`.
     This function returns the Hessian of h.
-    
+
     INPUT:
 
     * ``Hs`` -- A list of polynomials `H`
@@ -251,81 +280,78 @@ def ImplicitHessian(Hs, vs, r, subs):
     s = len(Hs)
     Hs, vs = [SR(H) for H in Hs], [SR(v) for v in vs]
     if subs:
-        subs = {SR(v):val for v, val in subs.items()}
-    dHdg = matrix(
-        [
-            [
-                H.derivative(v) for v in vs[d-s:]
-            ] for H in Hs
-        ]
-    )
-    dHdv = matrix(
-        [
-            [
-                H.derivative(v) for v in vs[:d-s]
-            ] for H in Hs
-        ]
-    )
+        subs = {SR(v): val for v, val in subs.items()}
+    dHdg = matrix([[H.derivative(v) for v in vs[d - s :]] for H in Hs])
+    dHdv = matrix([[H.derivative(v) for v in vs[: d - s]] for H in Hs])
     dgdv = -dHdg.inverse() * dHdv
 
     d2gdv2 = [
-        [ -dHdg.inverse() * (
-            vector([H.derivative(vs[i]).derivative(vs[j]) for H in Hs]) + \
-                matrix(
+        [
+            -dHdg.inverse()
+            * (
+                vector([H.derivative(vs[i]).derivative(vs[j]) for H in Hs])
+                + matrix(
                     [
-                        [
-                            H.derivative(vs[i]).derivative(g) for g in vs[d-s:]
-                        ] for H in Hs
+                        [H.derivative(vs[i]).derivative(g) for g in vs[d - s :]]
+                        for H in Hs
                     ]
-                ) * dgdv.column(j)+ \
-                matrix(
+                )
+                * dgdv.column(j)
+                + matrix(
                     [
-                        [
-                            H.derivative(g).derivative(vs[j]) for g in vs[d-s:]
-                        ] for H in Hs
+                        [H.derivative(g).derivative(vs[j]) for g in vs[d - s :]]
+                        for H in Hs
                     ]
-                ) * dgdv.column(i) + \
-                vector(
+                )
+                * dgdv.column(i)
+                + vector(
                     [
                         matrix(
                             [
-                                [
-                                    H.derivative(g1).derivative(g2) for g1 in vs[d-s:]
-                                ]
-                                for g2 in vs[d-s:]
+                                [H.derivative(g1).derivative(g2) for g1 in vs[d - s :]]
+                                for g2 in vs[d - s :]
                             ]
-                        ) * dgdv.column(i) * dgdv.column(j)
-                     for H in Hs
+                        )
+                        * dgdv.column(i)
+                        * dgdv.column(j)
+                        for H in Hs
                     ]
                 )
-            ) for i in range(d-s)
-        ] for j in range(d-s)
+            )
+            for i in range(d - s)
+        ]
+        for j in range(d - s)
     ]
 
     Hess = matrix(
         [
             [
                 sum(
-                    [
-                        r[k] * (
-                            -vs[i] * vs[j] * d2gdv2[i][j][k-(d-s)]*vs[k] - kronecker_delta(i,j)*dgdv[k-(d-s),j]*vs[k]*vs[i] \
-                                + vs[i]*vs[j]*dgdv[k-(d-s),i]*dgdv[k-(d-s),j]
-                        )/vs[k]**2 for k in range(d-s, d)
-                    ]
-                ) for i in range(d-s)
-            ] for j in range(d-s)
-        ] 
+                    r[k]
+                    * (
+                        -vs[i] * vs[j] * d2gdv2[i][j][k - (d - s)] * vs[k]
+                        - kronecker_delta(i, j) * dgdv[k - (d - s), j] * vs[k] * vs[i]
+                        + vs[i] * vs[j] * dgdv[k - (d - s), i] * dgdv[k - (d - s), j]
+                    )
+                    / vs[k] ** 2
+                    for k in range(d - s, d)
+                )
+                for i in range(d - s)
+            ]
+            for j in range(d - s)
+        ]
     )
     if subs:
         return Hess.subs(subs)
 
     return Hess
 
+
 def IsContributing(vs, pt, r, factors, c):
     r"""Determines if minimal critical point `pt` where singular variety has transverse square-free factorization
     is contributing; that is, whether `r` is in the interior
     of the scaled log-normal cone of `factors` at `pt`
-    
+
     INPUT:
 
     * ``vs`` -- A list of variables
@@ -348,49 +374,57 @@ def IsContributing(vs, pt, r, factors, c):
         False
 
     """
-    critical_subs = {v:point for v, point in zip(vs, pt)}
+    critical_subs = {v: point for v, point in zip(vs, pt)}
     # Compute irreducible components of H that contain the point
-    vanishing_factors = list(
-        f for f in factors
-        if f.subs(critical_subs) == 0
-    )
+    vanishing_factors = list(f for f in factors if f.subs(critical_subs) == 0)
     for f in vanishing_factors:
-        if all([f.derivative(v).subs(critical_subs)==0 for v in vs]):
-            raise ACSVException(f"Critical point {pt} lies in non-smooth part of component {f}")
+        if all([f.derivative(v).subs(critical_subs) == 0 for v in vs]):
+            raise ACSVException(
+                f"Critical point {pt} lies in non-smooth part of component {f}"
+            )
 
     vkjs = []
     for f in vanishing_factors:
         for v in vs:
-            if f.derivative(v).subs(critical_subs)!=0:
+            if f.derivative(v).subs(critical_subs) != 0:
                 vkjs.append(v)
                 break
         else:
             # In theory this shouldn't ever happen, now that we check the condition before
-            raise ACSVException(f"All partials of component {vanishing_factors} vanish at point {pt}")
+            raise ACSVException(
+                f"All partials of component {vanishing_factors} vanish at point {pt}"
+            )
 
     normals = matrix(
         list(
-            [AA(
-                f.derivative(v).subs(critical_subs) * critical_subs[v] / (
-                    critical_subs[vkj] * f.derivative(vkj).subs(critical_subs)
+            [
+                AA(
+                    f.derivative(v).subs(critical_subs)
+                    * critical_subs[v]
+                    / (critical_subs[vkj] * f.derivative(vkj).subs(critical_subs))
                 )
-            ) for v in vs] for vkj, f in zip(vkjs, vanishing_factors)
+                for v in vs
+            ]
+            for vkj, f in zip(vkjs, vanishing_factors)
         )
     )
-    
+
     polytope = Polyhedron(rays=normals)
     if r not in polytope:
         return False
-    elif any([r in f for f in polytope.faces(c-1)]):
+    elif any([r in f for f in polytope.faces(c - 1)]):
         # If r is in the boundary of the log normal cone, point is non-generic
         raise ACSVException(
-            f"Non-generic critical point found - {pt} is contained in {len(vs)-c}-dimensional stratum"
+            f"Non-generic critical point found - {pt} is contained in {len(vs) - c}-dimensional stratum"
         )
     return True
 
-def get_expansion_terms(expr: tuple | list[tuple] | Expression | AsymptoticExpansion) -> list[Term]:
+
+def get_expansion_terms(
+    expr: tuple | list[tuple] | Expression | AsymptoticExpansion,
+) -> list[Term]:
     r"""Determines coefficients for each n^k that appears in the asymptotic expression.
-    
+
     INPUT:
 
     * ``expr`` -- An asymptotic expression, symbolic expression, ACSV tuple, or list of ACSV tuples
@@ -463,11 +497,11 @@ def get_expansion_terms(expr: tuple | list[tuple] | Expression | AsymptoticExpan
         []
 
     """
-    n = SR.var('n')
+    n = SR.var("n")
     if isinstance(expr, tuple):
-        expr = SR(expr[0]**n * prod(expr[1:]))
+        expr = SR(expr[0] ** n * prod(expr[1:]))
     elif isinstance(expr, list):
-        expr = SR(sum([tup[0]**n * prod(tup[1:]) for tup in expr]))
+        expr = SR(sum([tup[0] ** n * prod(tup[1:]) for tup in expr]))
     elif isinstance(expr.parent(), AsymptoticRing):
         expr = expr.exact_part()
         symbolic_expr = SR.zero()
@@ -486,7 +520,7 @@ def get_expansion_terms(expr: tuple | list[tuple] | Expression | AsymptoticExpan
 
     if not isinstance(expr.parent(), type(SR)):
         raise ACSVException(f"Cannot deal with expression of type {expr.parent()}")
-    
+
     if len(expr.args()) > 1:
         raise ACSVException("Cannot process multivariate symbolic expression.")
 
@@ -502,10 +536,7 @@ def get_expansion_terms(expr: tuple | list[tuple] | Expression | AsymptoticExpan
     decomposed_terms = []
     for summand in terms:
         term = Term(
-            coefficient=QQ.one(),
-            pi_factor=QQ.one(),
-            base=QQ.one(),
-            power=QQ.zero()
+            coefficient=QQ.one(), pi_factor=QQ.one(), base=QQ.one(), power=QQ.zero()
         )
         if summand in QQbar:
             term.coefficient = QQbar(summand)
@@ -524,8 +555,8 @@ def get_expansion_terms(expr: tuple | list[tuple] | Expression | AsymptoticExpan
                 term.coefficient *= v.coefficient(pi**pi_deg)
             else:
                 term.coefficient *= v
-        
-        for attr in ('coefficient', 'base', 'power'):
+
+        for attr in ("coefficient", "base", "power"):
             elem = getattr(term, attr)
             if isinstance(elem.parent(), SymbolicRing) and elem in QQbar:
                 setattr(term, attr, QQbar(elem))
@@ -533,6 +564,7 @@ def get_expansion_terms(expr: tuple | list[tuple] | Expression | AsymptoticExpan
         decomposed_terms.append(term)
 
     return decomposed_terms
+
 
 class ACSVException(Exception):
     def __init__(self, message, retry=False):
