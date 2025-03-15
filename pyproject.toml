@@ -1,6 +1,6 @@
 [project]
 name = "sage-acsv"
-version = "0.1.1"
+version = "0.2.0"
 description = "A SageMath package with algorithms for analytic combinatorics in several variables."
 authors = [
   {name = "Benjamin Hackl", email = "devel@benjamin-hackl.at"},
