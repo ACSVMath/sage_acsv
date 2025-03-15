@@ -1,19 +1,7 @@
 from sage.all import Ideal, PolynomialRing, ProjectiveSpace, QQ
 from sage.all import Combinations, matrix
 
-def PrimaryDecomposition(Id, m2=None):
-    """Return the primary decomposition of an ideal.
-
-    If a Macaulay2 interface is provided, it will be used instead
-    of Sage's default implementation.
-    
-    INPUT:
-
-    * ``Id`` - A polynomial ideal
-    """
-    if m2 is not None:
-        return iter(J.sage() for J in m2.ideal(Id).decompose())
-    return Id.primary_decomposition()
+from sage_acsv.macaulay2 import PrimaryDecomposition, GroebnerBasis, Saturate, Radical
 
 def Con(X, P, RZ):
     r"""Compute the ideal associated with the map sending `X` to its conormal space.
@@ -24,14 +12,14 @@ def Con(X, P, RZ):
     vzs = tuple(v for v in RZ.gens() if v not in vs)
     c = X.codimension()
 
-    X = P.subscheme(X.defining_ideal().radical())
+    X = P.subscheme(Radical(X.defining_ideal()))
     M = X.Jacobian_matrix()
     Jac = X.Jacobian()
     JacZ = Ideal(matrix([list(vzs)] + list(M)).minors(c+1))
     
-    return (X.defining_ideal().change_ring(RZ)+JacZ).saturation(Jac.change_ring(RZ))[0]
+    return Saturate(X.defining_ideal().change_ring(RZ)+JacZ, Jac.change_ring(RZ))
 
-def Decompose(Y,X,P,R,RZ, m2=None):
+def Decompose(Y,X,P,R,RZ):
     r"""Given varieties `X` and `Y`, return the points in `Y` that fail
     Whitney's condition `B` with respect to `X`.
     """
@@ -40,8 +28,8 @@ def Decompose(Y,X,P,R,RZ, m2=None):
     Ys[-1] = Y
     
     J = Con(X, P, RZ) + Y.defining_ideal().change_ring(RZ)
-    J = Ideal(J.groebner_basis())
-    for IQ in PrimaryDecomposition(J, m2):
+    J = Ideal(GroebnerBasis(J))
+    for IQ in PrimaryDecomposition(J):
         K = IQ.elimination_ideal([v for v in RZ.gens() if v not in R.gens()]).change_ring(R)
         W = P.subscheme(K)
         if W.dimension() < Y.dimension():
@@ -64,11 +52,11 @@ def merge_stratifications(Xs, Ys):
         
     return res
     
-def WhitneyStratProjective(X, P, m2=None):
+def WhitneyStratProjective(X, P):
     r"""
     Computes a WhitneyStratification of projective variety X in the ring P
     """
-    X = P.subscheme(X.defining_ideal().radical())
+    X = P.subscheme(Radical(X.defining_ideal()))
     vs = P.gens()
     k = X.dimension()
 
@@ -81,7 +69,7 @@ def WhitneyStratProjective(X, P, m2=None):
     X_sing = X.intersection(P.subscheme(X.Jacobian()))
     mu = X_sing.dimension()
     
-    for IZ in PrimaryDecomposition(X_sing.defining_ideal(), m2):
+    for IZ in PrimaryDecomposition(X_sing.defining_ideal()):
         Z = P.subscheme(IZ)
         i = Z.dimension()
         Xs[i] = Xs[i].union(Z)
@@ -90,12 +78,12 @@ def WhitneyStratProjective(X, P, m2=None):
         Xd = Xs[d]
         if Xd.dimension() < d:
             continue
-        Xs = merge_stratifications(Xs, Decompose(Xd, X, P, R, RZ, m2))
-        Xs = merge_stratifications(Xs, WhitneyStratProjective(Xd, P, m2))
+        Xs = merge_stratifications(Xs, Decompose(Xd, X, P, R, RZ))
+        Xs = merge_stratifications(Xs, WhitneyStratProjective(Xd, P))
         
     return Xs
 
-def WhitneyStrat(IX, R, m2=None):
+def WhitneyStrat(IX, R):
     r"""Computes the Whitney Stratification of a pure-dimensional algebraic variety.
 
     Uses an algorithm developed by Helmer and Nanda (2022).
@@ -104,8 +92,6 @@ def WhitneyStrat(IX, R, m2=None):
 
     * ``IX`` -- A `k`-dimensional polynomial ideal representation of the algebraic variety `X`
     * ``R`` -- Base ring of the ideal. Should be a PolynomialRing object
-    * ``m2`` -- (Optional) The option to pass in a SageMath Macaulay2 interface for
-        computing primary decompositions. Macaulay2 must be installed by the user
 
     OUTPUT:
 
@@ -117,8 +103,8 @@ def WhitneyStrat(IX, R, m2=None):
         sage: from sage_acsv.whitney import WhitneyStrat
         sage: R.<x,y,z> = PolynomialRing(QQ, 3)
         sage: WhitneyStrat(Ideal(y^2+x^3-y^2*z^2), R)
-        [Ideal (z^2 - 1, y^2, x^2) of Multivariate Polynomial Ring in x, y, z over Rational Field,
-         Ideal (y^2, x^2, y*z^2 - y) of Multivariate Polynomial Ring in x, y, z over Rational Field,
+        [Ideal (y, x, z^2 - 1) of Multivariate Polynomial Ring in x, y, z over Rational Field,
+         Ideal (y, x) of Multivariate Polynomial Ring in x, y, z over Rational Field,
          Ideal (y^2*z^2 - x^3 - y^2) of Multivariate Polynomial Ring in x, y, z over Rational Field]
     """
     vs = R.gens()
@@ -141,23 +127,23 @@ def WhitneyStrat(IX, R, m2=None):
                         ] for f in strat[k].gens()
                     ]
                 )
-                sing = Ideal(Jac.minors(d-k) + strat[k].gens()).radical()
+                sing = Radical(Ideal(Jac.minors(d-k) + strat[k].gens()))
                 for i in range(max(sing.dimension(),0), k):
-                    strat[i] = (sing.intersection(strat[i])).radical()
+                    strat[i] = Radical(sing.intersection(strat[i]))
             return strat
 
     P, vsP = ProjectiveSpace(QQ, len(vs), list(vs)+['z0']).objgens()
     
     z0 = vsP[-1]
     R_hom = z0.parent()
-    proj_strat = WhitneyStratProjective(P.subscheme(IX.change_ring(R_hom).homogenize(z0)), P, m2)
+    proj_strat = WhitneyStratProjective(P.subscheme(IX.change_ring(R_hom).homogenize(z0)), P)
     
     
     strat = [Ideal(R(1)) for _ in range(len(proj_strat))]
     for stratum in proj_strat:
-        for Id in PrimaryDecomposition(stratum.defining_ideal(), m2):
+        for Id in PrimaryDecomposition(stratum.defining_ideal()):
             newId = Id.subs({z0:1}).change_ring(R)
             for k in range(newId.dimension(), len(strat)):
-                strat[k] = strat[k].intersection(newId)
+                strat[k] = Radical(strat[k].intersection(newId))
             
     return strat

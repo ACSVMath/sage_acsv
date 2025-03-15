@@ -4,9 +4,11 @@ from sage.rings.polynomial.multi_polynomial_ideal import MPolynomialIdeal
 from sage_acsv.helpers import ACSVException, GenerateLinearForm
 from sage_acsv.debug import acsv_logger
 from sage_acsv.msolve import get_parametrization
+from sage_acsv.macaulay2 import GroebnerBasis, Radical
+from sage_acsv.settings import ACSVSettings
 
 
-def _kronecker_representation(system, u_, vs, lambda_=None, linear_form=None):
+def _kronecker_representation_sage(system, u_, vs, linear_form=None):
     r"""Computes the Kronecker Representation of a system of polynomials.
 
     This method is intended for internal use and requires a consistent
@@ -18,7 +20,6 @@ def _kronecker_representation(system, u_, vs, lambda_=None, linear_form=None):
     * ``system`` -- A system of polynomials in ``d`` variables
     * ``u_`` -- Variable not contained in the variables in system
     * ``vs`` -- Variables of the system
-    * ``lambda_``: (Optional) Parameter introduced for critical point computation
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions
 
@@ -54,29 +55,24 @@ def _kronecker_representation(system, u_, vs, lambda_=None, linear_form=None):
     )
     u_ = rabinowitsch_R(u_)
 
-    if lambda_:
-        lambda_ = rabinowitsch_R(lambda_)
-
     rabinowitsch_system = [rabinowitsch_R(f) for f in system]
     rabinowitsch_system.append(rabinowitsch_R(linear_form))
 
     # Compute Grobner basis for ordered system of polynomials
     ideal = MPolynomialIdeal(rabinowitsch_R, rabinowitsch_system)
     try:
-        ideal = MPolynomialIdeal(rabinowitsch_R, ideal.groebner_basis())
+        ideal = MPolynomialIdeal(rabinowitsch_R, GroebnerBasis(ideal))
     except Exception:
         raise ACSVException("Trouble computing Groebner basis. System may be too large.")
     
     if ideal.dimension() != 0:
         raise ACSVException(f"Ideal {ideal} is not 0-dimensional. Cannot compute Kronecker representation.")
 
-    ideal = ideal.radical()
+    ideal = Radical(ideal)
     gb = ideal.transformed_basis('fglm')
 
     rabinowitsch_R = rabinowitsch_R.change_ring(order="lex")
     u_ = rabinowitsch_R(u_)
-    if lambda_:
-        lambda_ = rabinowitsch_R(lambda_)
 
     Ps = [
         p for p in gb
@@ -134,7 +130,7 @@ def _kronecker_representation(system, u_, vs, lambda_=None, linear_form=None):
 
     return P, Qs
 
-def _msolve_kronecker_representation(system, u_, vs):
+def _kronecker_representation_msolve(system, u_, vs):
     result = get_parametrization(vs, system)
     _, nvars, _, msvars, _, param = result[1]
 
@@ -165,7 +161,29 @@ def _msolve_kronecker_representation(system, u_, vs):
 
     return P, Qs
 
-def kronecker(system, vs, linear_form=None, use_msolve=False):
+def _kronecker_representation(system, u_, vs, linear_form=None):
+    r"""Computes the Kronecker Representation of a system of polynomials
+
+    Internal intermediate function for choosing the Kronecker backend implementation
+
+    INPUT:
+
+    * ``system`` -- A system of polynomials in ``d`` variables
+    * ``u_`` -- Variable not contained in the variables in system
+    * ``vs`` -- Variables of the system
+    * ``linear_form`` -- (Optional) A linear combination of the
+      input variables that separates the critical point solutions
+
+    OUTPUT:
+
+    A polynomial ``P`` and ``d`` polynomials ``Q1, ..., Q_d`` such that
+    ``z_i = Q_i(u)/P'(u)`` for ``u`` ranging over the roots of ``P``.
+    """
+    if ACSVSettings.get_default_kronecker_backend() == ACSVSettings.Kronecker.MSOLVE:
+        return _kronecker_representation_msolve(system, u_, vs)
+    return _kronecker_representation_sage(system, u_, vs, linear_form=linear_form)
+
+def kronecker(system, vs, linear_form=None):
     r"""Computes the Kronecker Representation of a system of polynomials
 
     INPUT:
@@ -181,7 +199,7 @@ def kronecker(system, vs, linear_form=None, use_msolve=False):
     ``z_i = Q_i(u)/P'(u)`` for ``u`` ranging over the roots of ``P``.
 
     Examples::
-        sage: from sage_acsv import kronecker
+        sage: from sage_acsv.kronecker import kronecker
         sage: var('x,y')
         (x, y)
         sage: kronecker([x**3+y**3-10, y**2-2], [x,y], x+y)
@@ -193,6 +211,5 @@ def kronecker(system, vs, linear_form=None, use_msolve=False):
     system = [R(f) for f in system]
     vs = [R(v) for v in vs]
     u_ = R(u_)
-    if use_msolve:
-        return _msolve_kronecker_representation(system, u_, vs)
-    return _kronecker_representation(system, u_, vs, linear_form=linear_form)
+    return _kronecker_representation(system, u_, vs, linear_form)
+    

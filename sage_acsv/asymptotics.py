@@ -10,7 +10,8 @@ from sage_acsv.kronecker import _kronecker_representation
 from sage_acsv.helpers import ACSVException, IsContributing, NewtonSeries, RationalFunctionReduce, GetHessian, ImplicitHessian, collapse_zero_part
 from sage_acsv.debug import Timer, acsv_logger
 from sage_acsv.settings import ACSVSettings
-from sage_acsv.whitney import WhitneyStrat, PrimaryDecomposition
+from sage_acsv.whitney import WhitneyStrat
+from sage_acsv.macaulay2 import PrimaryDecomposition, Saturate
 
 
 # we need to monkeypatch a function from the asymptotics module such that creating
@@ -820,7 +821,7 @@ def ContributingCombinatorialSmooth(G, H, variables, r=None, linear_form=None):
     # Compute the Kronecker representation of our system
     timer.checkpoint()
 
-    P, Qs = _kronecker_representation(system, u_, vsT, lambda_, linear_form)
+    P, Qs = _kronecker_representation(system, u_, vsT, linear_form)
     timer.checkpoint("Kronecker")
 
     Qt = Qs[-2]  # Qs ordering is H.variables() + rvars + [t, lambda_]
@@ -904,7 +905,6 @@ def _find_contributing_points_combinatorial(
     variables,
     r=None,
     linear_form=None,
-    m2=None,
     whitney_strat=None,
 ):
     r"""Compute contributing points of a combinatorial multivariate
@@ -919,8 +919,6 @@ def _find_contributing_points_combinatorial(
     * ``r`` -- (Optional) Length ``d`` vector of positive integers
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions
-    * ``m2`` -- (Optional) The option to pass in a SageMath Macaulay2 interface for
-        computing primary decompositions. Macaulay2 must be installed by the user
     * ``whitney_strat`` -- (Optional) If known / precomputed, a 
       Whitney Stratification of `V(H)`. The program will not check if
       this stratification is correct. Should be a list of length ``d``, where
@@ -952,7 +950,7 @@ def _find_contributing_points_combinatorial(
     pure_H = PolynomialRing(QQ, vs)
 
     if whitney_strat is None:
-        whitney_strat = WhitneyStrat(Ideal(pure_H(H)), pure_H, m2)
+        whitney_strat = WhitneyStrat(Ideal(pure_H(H)), pure_H)
     else:
         # Cast symbolic generators for provided stratification into the correct ring
         whitney_strat = [prod([Ideal([pure_H(f) for f in comp]) for comp in stratum]) for stratum in whitney_strat]
@@ -960,7 +958,7 @@ def _find_contributing_points_combinatorial(
     critical_point_ideals = []
     for d, stratum in enumerate(whitney_strat):
         critical_point_ideals.append([])
-        for P in PrimaryDecomposition(stratum, m2):
+        for P in PrimaryDecomposition(stratum):
             c = len(vs) - d
             P_ext = P.change_ring(expanded_R)
             M = matrix(
@@ -977,7 +975,7 @@ def _find_contributing_points_combinatorial(
             cpid = P_ext + Ideal(M.minors(c+1) + [H.subs({v:v*t for v in vs}), (prod(vs)*lambda_ - 1)] + r_polys)
             # Saturate cpid by lower dimension stratum, if d > 0
             if d > 0:
-                cpid = cpid.saturation(whitney_strat[d-1].change_ring(expanded_R))[0]
+                cpid = Saturate(cpid, whitney_strat[d-1].change_ring(expanded_R))
             
             critical_point_ideals[-1].append((P, cpid))
 
@@ -992,7 +990,7 @@ def _find_contributing_points_combinatorial(
         for _, ideal in ideals:
             if ideal.dimension() < 0:
                 continue
-            P, Qs = _kronecker_representation(ideal.gens(), u_, vsT, lambda_, linear_form)
+            P, Qs = _kronecker_representation(ideal.gens(), u_, vsT, linear_form)
 
             Qt = Qs[-2]  # Qs ordering is H.variables() + rvars + [t, lambda_]
             Pd = P.derivative()
@@ -1065,14 +1063,14 @@ def _find_contributing_points_combinatorial(
                     stratum = whitney_strat[i]
                     if stratum.subs({pure_H(wi):val for wi, val in zip(vs, x)}) == Ideal(pure_H(0)):
                         raise ACSVException(
-                            "Non-generic critical point found - {w} is contained in {dim}-dimensional stratum".format(w = str(x), dim = i)
+                            "Non-generic direction detected - critical point {w} is contained in {dim}-dimensional stratum".format(w = str(x), dim = i)
                         )
 
     if len(contributing_pos_minimals) == 0:
-        raise ACSVException("No smooth minimal critical points found.")
+        raise ACSVException("No contributing points found.")
     if len(contributing_pos_minimals) > 1:
         raise ACSVException(
-            f"More than one minimal point with positive real coordinates found: {contributing_pos_minimals}"
+            f"More than one minimal contributing point with positive real coordinates found: {contributing_pos_minimals}"
         )
     minimal = contributing_pos_minimals[0]
 
@@ -1089,7 +1087,6 @@ def ContributingCombinatorial(
     F,
     r=None,
     linear_form=None,
-    m2=None,
     whitney_strat=None,
 ):
     r"""Compute contributing points of a combinatorial multivariate
@@ -1102,8 +1099,6 @@ def ContributingCombinatorial(
     * ``r`` -- (Optional) Length ``d`` vector of positive integers
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions
-    * ``m2`` -- (Optional) The option to pass in a SageMath Macaulay2 interface for
-        computing primary decompositions. Macaulay2 must be installed by the user
     * ``whitney_strat`` -- (Optional) If known / precomputed, a 
       Whitney Stratification of `V(H)`. The program will not check if
       this stratification is correct. Should be a list of length ``d``, where
@@ -1150,12 +1145,11 @@ def ContributingCombinatorial(
         variables,
         r=r,
         linear_form=linear_form,
-        m2=m2,
         whitney_strat=whitney_strat,
     )
 
 
-def MinimalCriticalCombinatorial(F, r=None, linear_form=None, m2=None, whitney_strat=None):
+def MinimalCriticalCombinatorial(F, r=None, linear_form=None, whitney_strat=None):
     r"""Compute nonzero minimal critical points of a combinatorial multivariate
     rational function `F=G/H` admitting a finite number of critical points.
 
@@ -1165,8 +1159,6 @@ def MinimalCriticalCombinatorial(F, r=None, linear_form=None, m2=None, whitney_s
     * ``r`` -- (Optional) Length ``d`` vector of positive integers
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions
-    * ``m2`` -- (Optional) The option to pass in a SageMath Macaulay2 interface for
-        computing primary decompositions. Macaulay2 must be installed by the user
     * ``whitney_strat`` -- (Optional) If known / precomputed, a 
       Whitney Stratification of `V(H)`. The program will not check if
       this stratification is correct. Should be a list of length ``d``, where
@@ -1221,7 +1213,7 @@ def MinimalCriticalCombinatorial(F, r=None, linear_form=None, m2=None, whitney_s
     pure_H = PolynomialRing(QQ, vs)
 
     if whitney_strat is None:
-        whitney_strat = WhitneyStrat(Ideal(pure_H(H)), pure_H, m2)
+        whitney_strat = WhitneyStrat(Ideal(pure_H(H)), pure_H)
     else:
         # Cast symbolic generators for provided stratification into the correct ring
         whitney_strat = [prod([Ideal([pure_H(f) for f in comp]) for comp in stratum]) for stratum in whitney_strat]
@@ -1229,7 +1221,7 @@ def MinimalCriticalCombinatorial(F, r=None, linear_form=None, m2=None, whitney_s
     critical_points = []
     pos_minimals = []
     for d, stratum in enumerate(whitney_strat):
-        for P_comp in PrimaryDecomposition(stratum, m2):
+        for P_comp in PrimaryDecomposition(stratum):
             c = len(vs) - d
             P_ext = P_comp.change_ring(expanded_R)
             M = matrix(
@@ -1246,11 +1238,11 @@ def MinimalCriticalCombinatorial(F, r=None, linear_form=None, m2=None, whitney_s
             ideal = P_ext + Ideal(M.minors(c+1) + [H.subs({v:v*t for v in vs}), (prod(vs)*lambda_ - 1)] + r_polys)
             # Saturate cpid by lower dimension stratum, if d > 0
             if d > 0:
-                ideal = ideal.saturation(whitney_strat[d-1].change_ring(expanded_R))[0]
+                ideal = Saturate(ideal, whitney_strat[d-1].change_ring(expanded_R))
         
             if ideal.dimension() < 0:
                 continue
-            P, Qs = _kronecker_representation(ideal.gens(), u_, vsT, lambda_, linear_form)
+            P, Qs = _kronecker_representation(ideal.gens(), u_, vsT, linear_form)
 
             Qt = Qs[-2]  # Qs ordering is H.variables() + rvars + [t, lambda_]
             Pd = P.derivative()
@@ -1312,7 +1304,7 @@ def MinimalCriticalCombinatorial(F, r=None, linear_form=None, m2=None, whitney_s
     ]
     return minimal_criticals
 
-def CriticalPoints(F, r=None, linear_form=None, m2=None, whitney_strat=None):
+def CriticalPoints(F, r=None, linear_form=None, whitney_strat=None):
     r"""Compute critical points of a multivariate
     rational function `F=G/H` admitting a finite number of critical points.
 
@@ -1324,8 +1316,6 @@ def CriticalPoints(F, r=None, linear_form=None, m2=None, whitney_strat=None):
     * ``r`` -- (Optional) Length ``d`` vector of positive integers
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions
-    * ``m2`` -- (Optional) The option to pass in a SageMath Macaulay2 interface for
-        computing primary decompositions. Macaulay2 must be installed by the user
     * ``whitney_strat`` -- (Optional) If known / precomputed, a 
       Whitney Stratification of `V(H)`. The program will not check if
       this stratification is correct. Should be a list of length ``d``, where
@@ -1380,14 +1370,14 @@ def CriticalPoints(F, r=None, linear_form=None, m2=None, whitney_strat=None):
     pure_H = PolynomialRing(QQ, vs)
 
     if whitney_strat is None:
-        whitney_strat = WhitneyStrat(Ideal(pure_H(H)), pure_H, m2)
+        whitney_strat = WhitneyStrat(Ideal(pure_H(H)), pure_H)
     else:
         # Cast symbolic generators for provided stratification into the correct ring
         whitney_strat = [prod([Ideal([pure_H(f) for f in comp]) for comp in stratum]) for stratum in whitney_strat]
 
     critical_points = []
     for d, stratum in enumerate(whitney_strat):
-        for P_comp in PrimaryDecomposition(stratum, m2):
+        for P_comp in PrimaryDecomposition(stratum):
             c = len(vs) - d
             P_ext = P_comp.change_ring(expanded_R)
             M = matrix(
@@ -1404,11 +1394,12 @@ def CriticalPoints(F, r=None, linear_form=None, m2=None, whitney_strat=None):
             ideal = P_ext + Ideal(M.minors(c+1) + [(prod(vs)*lambda_ - 1)] + r_polys)
             # Saturate cpid by lower dimension stratum, if d > 0
             if d > 0:
-                ideal = ideal.saturation(whitney_strat[d-1].change_ring(expanded_R))[0]
+                ideal = Saturate(ideal, whitney_strat[d-1].change_ring(expanded_R))
         
             if ideal.dimension() < 0:
                 continue
-            P, Qs = _kronecker_representation(ideal.gens(), u_, vsT, lambda_, linear_form)
+            P, Qs = _kronecker_representation(ideal.gens(), u_, vsT, linear_form)
+
             Pd = P.derivative()
 
             # Characterize all complex critical points in each stratum
