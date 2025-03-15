@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from sage.functions.other import arg
-from sage.functions.log import exp
 from sage.groups.misc_gps.argument_groups import ArgumentByElementGroup
 from sage.rings.asymptotic.asymptotic_ring import AsymptoticRing, AsymptoticExpansion
 from sage.rings.asymptotic.growth_group import ExponentialGrowthGroup, MonomialGrowthGroup
