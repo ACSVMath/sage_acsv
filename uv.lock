@@ -91,7 +91,7 @@ wheels = [
 [[package]]
 name = "sage-acsv"
 version = "0.1.1"
-source = { virtual = "." }
+source = { editable = "." }
 
 [package.dev-dependencies]
 dev = [
