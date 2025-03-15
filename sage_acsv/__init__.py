@@ -8,11 +8,17 @@ The public interface of our toolbox is provided by the following
 functions and classes:
 
 - :func:`.diagonal_asy` -- the central function of the package,
-- :func:`.get_expansion_terms` --
-- :func:`.ContributingCombinatorial` --
-- :func:`.MinimalCriticalCombinatorial` --
-- :func:`.CriticalPoints` -- 
-- :class:`.ACSVSettings` -- 
+- :func:`.get_expansion_terms` -- helper function for extracting
+  the terms in the output expansion with more structure,
+- :func:`.ContributingCombinatorial` -- computes all contributing
+  points of a combinatorial multivariate rational function,
+- :func:`.MinimalCriticalCombinatorial` -- computes all non-zero minimal
+  critical points of a combinatorial multivariate rational function,
+- :func:`.CriticalPoints` -- compute all critical points of a combinatorial
+  multivariate rational function,
+- :class:`.ACSVSettings` -- a class for managing several package-global
+  settings (like the default output format for :func:`.diagonal_asy`,
+  or the backend used for Gröbner basis computations).
 
 The following exmples illustrate some typical use cases. We
 first import relevant functions and define the required

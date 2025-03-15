@@ -2,21 +2,23 @@
 from sage.all import PolynomialRing, QQ, Hom
 from sage_acsv.settings import ACSVSettings
 
+
 def _construct_m2_morphims(ideal):
     R = ideal.gens()[0].parent()
     n = len(R.gens())
-    RM2 = PolynomialRing(QQ, n, [f'x{i}' for i in range(n)])
+    RM2 = PolynomialRing(QQ, n, [f"x{i}" for i in range(n)])
     vs = list(RM2.gens())
     mor = Hom(R, RM2)(vs)
     inv = mor.inverse()
     return mor, inv
+
 
 def PrimaryDecomposition(ideal):
     """Return the primary decomposition of an ideal.
 
     If a Macaulay2 interface is provided, it will be used instead
     of Sage's default implementation.
-    
+
     INPUT:
 
     * ``ideal`` - A polynomial ideal
@@ -28,9 +30,10 @@ def PrimaryDecomposition(ideal):
         return iter(J.sage().apply_morphism(inv) for J in m2.decompose(ideal))
     return ideal.primary_decomposition()
 
+
 def Saturate(ideal_I, ideal_J):
     """Return the saturation of ideal I with respect to ideal J.
-    
+
     INPUT:
 
     * ``ideal_I`` - A polynomial ideal
@@ -38,12 +41,13 @@ def Saturate(ideal_I, ideal_J):
     """
     return ideal_I.saturation(ideal_J)[0]
 
+
 def GroebnerBasis(ideal):
     """Return a Groebner Basis of an ideal.
 
     If a Macaulay2 interface is provided, it will be used instead
     of Sage's default implementation.
-    
+
     INPUT:
 
     * ``ideal`` - A polynomial ideal
@@ -57,12 +61,13 @@ def GroebnerBasis(ideal):
         return m2.ideal(m2.gb(ideal).generators()).sage().apply_morphism(inv).gens()
     return ideal.groebner_basis()
 
+
 def Radical(ideal):
     """Return the radical of an ideal.
 
     If a Macaulay2 interface is provided, it will be used instead
     of Sage's default implementation.
-    
+
     INPUT:
 
     * ``ideal`` - A polynomial ideal

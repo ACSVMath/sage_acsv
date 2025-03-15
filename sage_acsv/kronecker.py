@@ -48,10 +48,7 @@ def _kronecker_representation_sage(system, u_, vs, linear_form=None):
     expanded_R = u_.parent()
 
     rabinowitsch_R = PolynomialRing(
-        QQ,
-        list(expanded_R.gens()),
-        len(expanded_R.gens()),
-        order="degrevlex"
+        QQ, list(expanded_R.gens()), len(expanded_R.gens()), order="degrevlex"
     )
     u_ = rabinowitsch_R(u_)
 
@@ -63,31 +60,32 @@ def _kronecker_representation_sage(system, u_, vs, linear_form=None):
     try:
         ideal = MPolynomialIdeal(rabinowitsch_R, GroebnerBasis(ideal))
     except Exception:
-        raise ACSVException("Trouble computing Groebner basis. System may be too large.")
-    
+        raise ACSVException(
+            "Trouble computing Groebner basis. System may be too large."
+        )
+
     if ideal.dimension() != 0:
-        raise ACSVException(f"Ideal {ideal} is not 0-dimensional. Cannot compute Kronecker representation.")
+        raise ACSVException(
+            f"Ideal {ideal} is not 0-dimensional. Cannot compute Kronecker representation."
+        )
 
     ideal = Radical(ideal)
-    gb = ideal.transformed_basis('fglm')
+    gb = ideal.transformed_basis("fglm")
 
     rabinowitsch_R = rabinowitsch_R.change_ring(order="lex")
     u_ = rabinowitsch_R(u_)
 
     Ps = [
-        p for p in gb
-        if len(p.variables()) != 0
-        and not any([z in vs for z in p.variables()])
+        p
+        for p in gb
+        if len(p.variables()) != 0 and not any([z in vs for z in p.variables()])
     ]
     if len(Ps) != 1:
         acsv_logger.debug(
-            f"Rabinowitsch system: {rabinowitsch_system}\n"
-            f"Ps: {Ps}\n"
-            f"basis: {gb}"
+            f"Rabinowitsch system: {rabinowitsch_system}\nPs: {Ps}\nbasis: {gb}"
         )
         raise ACSVException(
-            "No P polynomial found for Kronecker Representation.",
-            retry=True
+            "No P polynomial found for Kronecker Representation.", retry=True
         )
     u_ = Ps[0].variables()[0]
     R = PolynomialRing(QQ, u_)
@@ -101,27 +99,14 @@ def _kronecker_representation_sage(system, u_, vs, linear_form=None):
         z = rabinowitsch_R(z)
         eqns = [f for f in gb if z in f.variables()]
         if len(eqns) != 1:
-            acsv_logger.debug(
-                f"equations: {eqns}\n"
-                f"z: {z}\n"
-                f"vs: {vs}"
-            )
-            raise ACSVException(
-                "Linear form does not separate the roots.",
-                retry=True
-            )
+            acsv_logger.debug(f"equations: {eqns}\nz: {z}\nvs: {vs}")
+            raise ACSVException("Linear form does not separate the roots.", retry=True)
 
         eq = eqns[0].polynomial(z)
 
         if eq.degree() != 1:
-            acsv_logger.debug(
-                f"eq: {eq}\n"
-                f"z: {z}"
-            )
-            raise ACSVException(
-                "Linear form does not separate the roots.",
-                retry=True
-            )
+            acsv_logger.debug(f"eq: {eq}\nz: {z}")
+            raise ACSVException("Linear form does not separate the roots.", retry=True)
         _, rem = (Pd * eq.roots()[0][0]).quo_rem(P)
         Qs.append(rem)
 
@@ -129,6 +114,7 @@ def _kronecker_representation_sage(system, u_, vs, linear_form=None):
     Qs = [R(Q) for Q in Qs]
 
     return P, Qs
+
 
 def _kronecker_representation_msolve(system, u_, vs):
     result = get_parametrization(vs, system)
@@ -156,10 +142,11 @@ def _kronecker_representation_msolve(system, u_, vs):
     for Q_param in Qparams:
         Q_coeffs = Q_param[0][1]
         c_div = Q_param[1]
-        Q = -sum([c * u_**i for (i, c) in enumerate(Q_coeffs)])/c_div
+        Q = -sum([c * u_**i for (i, c) in enumerate(Q_coeffs)]) / c_div
         Qs.append(Q)
 
     return P, Qs
+
 
 def _kronecker_representation(system, u_, vs, linear_form=None):
     r"""Computes the Kronecker Representation of a system of polynomials
@@ -182,6 +169,7 @@ def _kronecker_representation(system, u_, vs, linear_form=None):
     if ACSVSettings.get_default_kronecker_backend() == ACSVSettings.Kronecker.MSOLVE:
         return _kronecker_representation_msolve(system, u_, vs)
     return _kronecker_representation_sage(system, u_, vs, linear_form=linear_form)
+
 
 def kronecker(system, vs, linear_form=None):
     r"""Computes the Kronecker Representation of a system of polynomials
@@ -206,10 +194,9 @@ def kronecker(system, vs, linear_form=None):
         (u_^6 - 6*u_^4 - 20*u_^3 + 36*u_^2 - 120*u_ + 100,
          [60*u_^3 - 72*u_^2 + 360*u_ - 600, 12*u_^4 - 72*u_^2 + 240*u_])
     """
-    R, u_ = PolynomialRing(QQ, 'u_').objgen()
+    R, u_ = PolynomialRing(QQ, "u_").objgen()
     R = PolynomialRing(QQ, len(vs) + 1, vs + [u_])
     system = [R(f) for f in system]
     vs = [R(v) for v in vs]
     u_ = R(u_)
     return _kronecker_representation(system, u_, vs, linear_form)
-    
