@@ -1173,7 +1173,7 @@ def _find_contributing_points_combinatorial(
     return contributing_points
 
 
-def ContributingCombinatorial(
+def contributing_points_combinatorial(
     F,
     r=None,
     linear_form=None,
@@ -1208,10 +1208,10 @@ def ContributingCombinatorial(
 
     Examples::
 
-        sage: from sage_acsv import ContributingCombinatorial
+        sage: from sage_acsv import contributing_points_combinatorial
         sage: var('x y')
         (x, y)
-        sage: pts = ContributingCombinatorial(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)))
+        sage: pts = contributing_points_combinatorial(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)))
         sage: sorted(pts)
         [[3/4, 3/2]]
 

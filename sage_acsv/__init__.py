@@ -10,7 +10,7 @@ functions and classes:
 - :func:`.diagonal_asymptotics_combinatorial` -- the central function of the package,
 - :func:`.get_expansion_terms` -- helper function for extracting
   the terms in the output expansion with more structure,
-- :func:`.ContributingCombinatorial` -- computes all contributing
+- :func:`.contributing_points_combinatorial` -- computes all contributing
   points of a combinatorial multivariate rational function,
 - :func:`.minimal_critical_points_combinatorial` -- computes all non-zero minimal
   critical points of a combinatorial multivariate rational function,
