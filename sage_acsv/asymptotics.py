@@ -150,7 +150,7 @@ def _diagonal_asymptotics_combinatorial_smooth(
     for _ in range(ACSVSettings.MAX_MIN_CRIT_RETRIES):
         try:
             # Find minimal critical points in Kronecker Representation
-            min_crit_pts = ContributingCombinatorialSmooth(
+            min_crit_pts = contributing_points_combinatorial_smooth(
                 G, H, vs, r=r, linear_form=linear_form
             )
             break
@@ -822,7 +822,7 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision):
     return res
 
 
-def ContributingCombinatorialSmooth(G, H, variables, r=None, linear_form=None):
+def contributing_points_combinatorial_smooth(G, H, variables, r=None, linear_form=None):
     r"""Compute contributing points of a combinatorial multivariate
     rational function `F=G/H` admitting a finite number of critical points.
     Assumes the singular variety of `F` is smooth.
@@ -852,9 +852,9 @@ def ContributingCombinatorialSmooth(G, H, variables, r=None, linear_form=None):
 
     Examples::
 
-        sage: from sage_acsv import ContributingCombinatorialSmooth
+        sage: from sage_acsv import contributing_points_combinatorial_smooth
         sage: R.<x, y, w, lambda_, t, u_> = QQ[]
-        sage: pts = ContributingCombinatorialSmooth(
+        sage: pts = contributing_points_combinatorial_smooth(
         ....:     1,
         ....:     1 - w*(y + x + x^2*y + x*y^2),
         ....:     [w, x, y],
