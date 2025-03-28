@@ -22,11 +22,11 @@ from sage.all import (
 from sage_acsv.kronecker import _kronecker_representation
 from sage_acsv.helpers import (
     ACSVException,
-    IsContributing,
-    NewtonSeries,
-    RationalFunctionReduce,
-    GetHessian,
-    ImplicitHessian,
+    is_contributing,
+    newton_series,
+    rational_function_reduce,
+    compute_hessian,
+    compute_implicit_hessian,
     collapse_zero_part,
 )
 from sage_acsv.debug import Timer, acsv_logger
@@ -169,7 +169,7 @@ def _diagonal_asymptotics_combinatorial_smooth(
     timer = Timer()
 
     # Find det(zH_z Hess) where Hess is the Hessian of z_1...z_n * log(g(z_1, ..., z_n))
-    Det = GetHessian(H, vsT[0:-2], r).determinant()
+    Det = compute_hessian(H, vsT[0:-2], r).determinant()
 
     # Find exponential growth
     T = prod([SR(vs[i]) ** r[i] for i in range(d)])
@@ -510,7 +510,7 @@ def diagonal_asymptotics_combinatorial(
     d = len(vs)
 
     # Make sure G and H are coprime, and that H does not vanish at 0
-    G, H = RationalFunctionReduce(G, H)
+    G, H = rational_function_reduce(G, H)
     G, H = expanded_R(G), expanded_R(H)
     if H.subs({v: 0 for v in H.variables()}) == 0:
         raise ValueError("Denominator vanishes at 0.")
@@ -611,7 +611,7 @@ def diagonal_asymptotics_combinatorial(
                     _general_term_asymptotics(G, H, r, vs, cp, expansion_precision)
                 )
             )
-            Det = GetHessian(H, vs, r).determinant()
+            Det = compute_hessian(H, vs, r).determinant()
             B = SR(1 / Det.subs(subs_dict) / r[-1] ** (d - 1) / 2 ** (d - 1))
         else:
             # Higher order expansions not currently supported for non-smooth critical points
@@ -621,7 +621,7 @@ def diagonal_asymptotics_combinatorial(
                 )
             # For non-complete intersections, we must compute the parametrized Hessian matrix
             if s != d:
-                Qw = ImplicitHessian(factors, vs, r, subs=subs_dict)
+                Qw = compute_implicit_hessian(factors, vs, r, subs=subs_dict)
                 expansion = SR(G.subs(subs_dict) / abs(Gamma.determinant()) / unit)
                 B = SR(
                     prod([v for v in vs[: d - s]]).subs(subs_dict)
@@ -762,7 +762,7 @@ def _general_term_asymptotics(G, H, r, vs, cp, expansion_precision):
                 [prod([factorial(k) for k in E[0][1]]) * E[1] * f[E[0][1]] for E in dop]
             )
 
-    Hess = GetHessian(H, vs, r, cp)
+    Hess = compute_hessian(H, vs, r, cp)
     Hessinv = Hess.inverse()
     v = matrix(W, [D[: d - 1]])
     Epsilon = -(v * Hessinv.change_ring(W) * v.transpose())[0, 0]
@@ -772,7 +772,7 @@ def _general_term_asymptotics(G, H, r, vs, cp, expansion_precision):
 
     # Find series expansion of function g given implicitly by
     # H(w_1, ..., w_{d-1}, g(w_1, ..., w_{d-1})) = 0 up to needed order
-    g = NewtonSeries(H.subs({v: v + cp[v] for v in vs}), vs, N)
+    g = newton_series(H.subs({v: v + cp[v] for v in vs}), vs, N)
     g = g.subs({v: v - cp[v] for v in vs}) + cp[vd]
 
     # Polar change of coordinates
@@ -1140,7 +1140,7 @@ def _find_contributing_points_combinatorial(
             break
 
         for x in pos_minimals:
-            if IsContributing(vs, x, r, all_factors, len(vs) - d):
+            if is_contributing(vs, x, r, all_factors, len(vs) - d):
                 contributing_pos_minimals.append(x)
                 for i in range(d):
                     stratum = whitney_strat[i]
@@ -1167,7 +1167,7 @@ def _find_contributing_points_combinatorial(
         for w in critical_points_by_stratum[d]:
             if all(
                 [abs(w_i) == abs(min_i) for w_i, min_i in zip(w, minimal)]
-            ) and IsContributing(vs, w, r, all_factors, len(vs) - d):
+            ) and is_contributing(vs, w, r, all_factors, len(vs) - d):
                 contributing_points.append(w)
 
     return contributing_points

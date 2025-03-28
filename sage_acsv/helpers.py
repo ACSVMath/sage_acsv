@@ -70,7 +70,7 @@ def collapse_zero_part(algebraic_number: AlgebraicNumber) -> AlgebraicNumber:
     return algebraic_number
 
 
-def RationalFunctionReduce(G, H):
+def rational_function_reduce(G, H):
     r"""Reduction of G and H by dividing out their GCD.
 
     INPUT:
@@ -85,7 +85,7 @@ def RationalFunctionReduce(G, H):
     return G / g, H / g
 
 
-def GenerateLinearForm(system, vsT, u_, linear_form=None):
+def generate_linear_form(system, vsT, u_, linear_form=None):
     r"""Generate a linear form of the input system.
 
     This is an integer linear combination of the variables that
@@ -120,7 +120,7 @@ def GenerateLinearForm(system, vsT, u_, linear_form=None):
     )
 
 
-def GetHessian(H, variables, r, critical_point=None):
+def compute_hessian(H, variables, r, critical_point=None):
     r"""Computes the Hessian of a given map.
 
     The map underlying `Hess` is defined as
@@ -191,7 +191,7 @@ def GetHessian(H, variables, r, critical_point=None):
     return hessian
 
 
-def NewtonSeries(phi, variables, series_precision):
+def newton_series(phi, variables, series_precision):
     r"""Computes the series expansion of an implicitly defined function.
 
     The function `g(x)` for which a series expansion is computed satisfies
@@ -213,9 +213,9 @@ def NewtonSeries(phi, variables, series_precision):
 
     EXAMPLES::
 
-        sage: from sage_acsv.helpers import NewtonSeries
+        sage: from sage_acsv.helpers import newton_series
         sage: R.<x, T> = QQ[]
-        sage: NewtonSeries(x*T^2 - T + 1, [x, T], 7)
+        sage: newton_series(x*T^2 - T + 1, [x, T], 7)
         132*x^6 + 42*x^5 + 14*x^4 + 5*x^3 + 2*x^2 + x + 1
 
     """
@@ -243,7 +243,7 @@ def NewtonSeries(phi, variables, series_precision):
     return NewtonRecur(Mod(phi, series_precision), series_precision)[0]
 
 
-def ImplicitHessian(Hs, vs, r, subs):
+def compute_implicit_hessian(Hs, vs, r, subs):
     r"""Compute the Hessian of an implicitly defined function.
 
     Given a transverse intersection point `w` in `H_1(w),\dots,H_s(w)=0`, we can parametrize `V(H_1,\dots,H_s)`
@@ -265,13 +265,13 @@ def ImplicitHessian(Hs, vs, r, subs):
 
     EXAMPLES::
 
-        sage: from sage_acsv.helpers import ImplicitHessian
+        sage: from sage_acsv.helpers import compute_implicit_hessian
         sage: R.<x,y,z,w> = PolynomialRing(QQ,4)
         sage: Hs = [
         ....:     z^2+z*w+x*y-4,
         ....:     w^3+z*x-y
         ....: ]
-        sage: ImplicitHessian(Hs, [x,y,z,w], [1,1,1,1], {x:1,y:1,z:1,w:1})
+        sage: compute_implicit_hessian(Hs, [x,y,z,w], [1,1,1,1], {x:1,y:1,z:1,w:1})
         [21/32     0]
         [    0   7/8]
     """
@@ -347,7 +347,7 @@ def ImplicitHessian(Hs, vs, r, subs):
     return Hess
 
 
-def IsContributing(vs, pt, r, factors, c):
+def is_contributing(vs, pt, r, factors, c):
     r"""Determines if minimal critical point `pt` where singular variety has transverse square-free factorization
     is contributing; that is, whether `r` is in the interior
     of the scaled log-normal cone of `factors` at `pt`
@@ -366,11 +366,11 @@ def IsContributing(vs, pt, r, factors, c):
 
     EXAMPLES::
 
-        sage: from sage_acsv.helpers import IsContributing
+        sage: from sage_acsv.helpers import is_contributing
         sage: R.<x,y> = PolynomialRing(QQ, 2)
-        sage: IsContributing([x,y], [1,1], [17/24, 7/24], [1-(2*x+y)/3,1-(3*x+y)/4], 2)
+        sage: is_contributing([x,y], [1,1], [17/24, 7/24], [1-(2*x+y)/3,1-(3*x+y)/4], 2)
         True
-        sage: IsContributing([x,y], [1,1], [1, 1], [1-(2*x+y)/3,1-(3*x+y)/4], 2)
+        sage: is_contributing([x,y], [1,1], [1, 1], [1-(2*x+y)/3,1-(3*x+y)/4], 2)
         False
 
     """

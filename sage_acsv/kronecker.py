@@ -1,7 +1,7 @@
 from sage.all import PolynomialRing, QQ, gcd
 from sage.rings.polynomial.multi_polynomial_ideal import MPolynomialIdeal
 
-from sage_acsv.helpers import ACSVException, GenerateLinearForm
+from sage_acsv.helpers import ACSVException, generate_linear_form
 from sage_acsv.debug import acsv_logger
 from sage_acsv.msolve import get_parametrization
 from sage_acsv.macaulay2 import GroebnerBasis, Radical
@@ -43,7 +43,7 @@ def _kronecker_representation_sage(system, u_, vs, linear_form=None):
     """
 
     # Generate a linear form
-    linear_form = GenerateLinearForm(system, vs, u_, linear_form)
+    linear_form = generate_linear_form(system, vs, u_, linear_form)
 
     expanded_R = u_.parent()
 
