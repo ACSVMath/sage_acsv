@@ -12,7 +12,7 @@ functions and classes:
   the terms in the output expansion with more structure,
 - :func:`.ContributingCombinatorial` -- computes all contributing
   points of a combinatorial multivariate rational function,
-- :func:`.MinimalCriticalCombinatorial` -- computes all non-zero minimal
+- :func:`.minimal_critical_points_combinatorial` -- computes all non-zero minimal
   critical points of a combinatorial multivariate rational function,
 - :func:`.critical_points` -- compute all critical points of a combinatorial
   multivariate rational function,

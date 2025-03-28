@@ -1239,7 +1239,12 @@ def ContributingCombinatorial(
     )
 
 
-def MinimalCriticalCombinatorial(F, r=None, linear_form=None, whitney_strat=None):
+def minimal_critical_points_combinatorial(
+        F,
+        r=None,
+        linear_form=None,
+        whitney_strat=None
+    ):
     r"""Compute nonzero minimal critical points of a combinatorial multivariate
     rational function `F=G/H` admitting a finite number of critical points.
 
@@ -1268,10 +1273,10 @@ def MinimalCriticalCombinatorial(F, r=None, linear_form=None, whitney_strat=None
 
     Examples::
 
-        sage: from sage_acsv import MinimalCriticalCombinatorial
+        sage: from sage_acsv import minimal_critical_points_combinatorial
         sage: var('x y')
         (x, y)
-        sage: pts = MinimalCriticalCombinatorial(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)))
+        sage: pts = minimal_critical_points_combinatorial(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)))
         sage: sorted(pts)
         [[3/4, 3/2], [1, 1]]
 

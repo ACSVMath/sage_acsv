@@ -26,13 +26,13 @@ class OutputFormat(Enum):
 
 class KroneckerBackend(Enum):
     """Options for computing Kronecker representations determined by
-    :func:`.ContributingCombinatorial`, :func:`.MinimalCriticalCombinatorial`, and
+    :func:`.ContributingCombinatorial`, :func:`.minimal_critical_points_combinatorial`, and
     :func:`.critical_points`.
 
     See also:
 
     - :func:`.ContributingCombinatorial`
-    - :func:`.MinimalCriticalCombinatorial`
+    - :func:`.minimal_critical_points_combinatorial`
     - :func:`.critical_points`
     - :class:`.ACSVSettings`
 
