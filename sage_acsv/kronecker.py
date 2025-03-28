@@ -30,10 +30,10 @@ def _kronecker_representation_sage(system, u_, vs, linear_form=None):
 
     Examples::
 
-        sage: from sage_acsv.kronecker import kronecker
+        sage: from sage_acsv.kronecker import kronecker_representation
         sage: var('x, y')
         (x, y)
-        sage: kronecker(
+        sage: kronecker_representation(
         ....:     [x**3+y**3-10, y**2-2],
         ....:     [x, y],
         ....:     linear_form=x + y
@@ -170,8 +170,19 @@ def _kronecker_representation(system, u_, vs, linear_form=None):
         return _kronecker_representation_msolve(system, u_, vs)
     return _kronecker_representation_sage(system, u_, vs, linear_form=linear_form)
 
-
 def kronecker(system, vs, linear_form=None):
+    from warnings import warn
+    warn(
+        "The kronecker function has been deprecated and will "
+        "be removed in a future version. Please use the "
+        "kronecker_representation function (same signature) instead",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return kronecker_representation(system, vs, linear_form=linear_form)
+
+
+def kronecker_representation(system, vs, linear_form=None):
     r"""Computes the Kronecker Representation of a system of polynomials
 
     INPUT:
@@ -190,7 +201,7 @@ def kronecker(system, vs, linear_form=None):
         sage: from sage_acsv.kronecker import kronecker
         sage: var('x,y')
         (x, y)
-        sage: kronecker([x**3+y**3-10, y**2-2], [x,y], x+y)
+        sage: kronecker_representation([x**3+y**3-10, y**2-2], [x,y], x+y)
         (u_^6 - 6*u_^4 - 20*u_^3 + 36*u_^2 - 120*u_ + 100,
          [60*u_^3 - 72*u_^2 + 360*u_ - 600, 12*u_^4 - 72*u_^2 + 240*u_])
     """
