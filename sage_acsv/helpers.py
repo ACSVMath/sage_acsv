@@ -431,7 +431,7 @@ def get_expansion_terms(
 
     OUTPUT:
 
-    A list of :class:`.DecomposedTerm` objects (with attributes ``coefficient``, ``pi_factor``,
+    A list of :class:`.Term` objects (with attributes ``coefficient``, ``pi_factor``,
     ``base`` and ``power``), each representing a summand in the fully expanded expression.
 
     EXAMPLES::
