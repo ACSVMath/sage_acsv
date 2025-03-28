@@ -4,7 +4,7 @@ from sage.all import Combinations, matrix
 from sage_acsv.macaulay2 import compute_primary_decomposition, compute_groebner_basis, compute_saturation, compute_radical
 
 
-def Con(X, P, RZ):
+def conormal_ideal(X, P, RZ):
     r"""Compute the ideal associated with the map sending `X` to its conormal space.
 
     The map is also denoted as `\operatorname{Con}(X)`.
@@ -21,7 +21,7 @@ def Con(X, P, RZ):
     return compute_saturation(X.defining_ideal().change_ring(RZ) + JacZ, Jac.change_ring(RZ))
 
 
-def Decompose(Y, X, P, R, RZ):
+def decompose_variety(Y, X, P, R, RZ):
     r"""Given varieties `X` and `Y`, return the points in `Y` that fail
     Whitney's condition `B` with respect to `X`.
     """
@@ -29,7 +29,7 @@ def Decompose(Y, X, P, R, RZ):
     Ys = [P.subscheme(1) for _ in range(d + 1)]
     Ys[-1] = Y
 
-    J = Con(X, P, RZ) + Y.defining_ideal().change_ring(RZ)
+    J = conormal_ideal(X, P, RZ) + Y.defining_ideal().change_ring(RZ)
     J = Ideal(compute_groebner_basis(J))
     for IQ in compute_primary_decomposition(J):
         K = IQ.elimination_ideal(
@@ -57,7 +57,7 @@ def merge_stratifications(Xs, Ys):
     return res
 
 
-def WhitneyStratProjective(X, P):
+def whitney_stratification_projective(X, P):
     r"""
     Computes a Whitney stratification of projective variety X in the ring P
     """
@@ -83,8 +83,8 @@ def WhitneyStratProjective(X, P):
         Xd = Xs[d]
         if Xd.dimension() < d:
             continue
-        Xs = merge_stratifications(Xs, Decompose(Xd, X, P, R, RZ))
-        Xs = merge_stratifications(Xs, WhitneyStratProjective(Xd, P))
+        Xs = merge_stratifications(Xs, decompose_variety(Xd, X, P, R, RZ))
+        Xs = merge_stratifications(Xs, whitney_stratification_projective(Xd, P))
 
     return Xs
 
@@ -140,7 +140,7 @@ def whitney_stratification(IX, R):
 
     z0 = vsP[-1]
     R_hom = z0.parent()
-    proj_strat = WhitneyStratProjective(
+    proj_strat = whitney_stratification_projective(
         P.subscheme(IX.change_ring(R_hom).homogenize(z0)), P
     )
 
