@@ -1,7 +1,7 @@
 from sage.all import Ideal, PolynomialRing, ProjectiveSpace, QQ
 from sage.all import Combinations, matrix
 
-from sage_acsv.macaulay2 import PrimaryDecomposition, GroebnerBasis, Saturate, Radical
+from sage_acsv.macaulay2 import compute_primary_decomposition, compute_groebner_basis, compute_saturation, compute_radical
 
 
 def Con(X, P, RZ):
@@ -13,12 +13,12 @@ def Con(X, P, RZ):
     vzs = tuple(v for v in RZ.gens() if v not in vs)
     c = X.codimension()
 
-    X = P.subscheme(Radical(X.defining_ideal()))
+    X = P.subscheme(compute_radical(X.defining_ideal()))
     M = X.Jacobian_matrix()
     Jac = X.Jacobian()
     JacZ = Ideal(matrix([list(vzs)] + list(M)).minors(c + 1))
 
-    return Saturate(X.defining_ideal().change_ring(RZ) + JacZ, Jac.change_ring(RZ))
+    return compute_saturation(X.defining_ideal().change_ring(RZ) + JacZ, Jac.change_ring(RZ))
 
 
 def Decompose(Y, X, P, R, RZ):
@@ -30,8 +30,8 @@ def Decompose(Y, X, P, R, RZ):
     Ys[-1] = Y
 
     J = Con(X, P, RZ) + Y.defining_ideal().change_ring(RZ)
-    J = Ideal(GroebnerBasis(J))
-    for IQ in PrimaryDecomposition(J):
+    J = Ideal(compute_groebner_basis(J))
+    for IQ in compute_primary_decomposition(J):
         K = IQ.elimination_ideal(
             [v for v in RZ.gens() if v not in R.gens()]
         ).change_ring(R)
@@ -61,7 +61,7 @@ def WhitneyStratProjective(X, P):
     r"""
     Computes a Whitney stratification of projective variety X in the ring P
     """
-    X = P.subscheme(Radical(X.defining_ideal()))
+    X = P.subscheme(compute_radical(X.defining_ideal()))
     vs = P.gens()
     k = X.dimension()
 
@@ -74,7 +74,7 @@ def WhitneyStratProjective(X, P):
     X_sing = X.intersection(P.subscheme(X.Jacobian()))
     mu = X_sing.dimension()
 
-    for IZ in PrimaryDecomposition(X_sing.defining_ideal()):
+    for IZ in compute_primary_decomposition(X_sing.defining_ideal()):
         Z = P.subscheme(IZ)
         i = Z.dimension()
         Xs[i] = Xs[i].union(Z)
@@ -131,9 +131,9 @@ def whitney_stratification(IX, R):
             strat[-1] = Ideal(IX.gens())
             for k in reversed(range(1, d)):
                 Jac = matrix([[f.derivative(v) for v in vs] for f in strat[k].gens()])
-                sing = Radical(Ideal(Jac.minors(d - k) + strat[k].gens()))
+                sing = compute_radical(Ideal(Jac.minors(d - k) + strat[k].gens()))
                 for i in range(max(sing.dimension(), 0), k):
-                    strat[i] = Radical(sing.intersection(strat[i]))
+                    strat[i] = compute_radical(sing.intersection(strat[i]))
             return strat
 
     P, vsP = ProjectiveSpace(QQ, len(vs), list(vs) + ["z0"]).objgens()
@@ -146,9 +146,9 @@ def whitney_stratification(IX, R):
 
     strat = [Ideal(R(1)) for _ in range(len(proj_strat))]
     for stratum in proj_strat:
-        for Id in PrimaryDecomposition(stratum.defining_ideal()):
+        for Id in compute_primary_decomposition(stratum.defining_ideal()):
             newId = Id.subs({z0: 1}).change_ring(R)
             for k in range(newId.dimension(), len(strat)):
-                strat[k] = Radical(strat[k].intersection(newId))
+                strat[k] = compute_radical(strat[k].intersection(newId))
 
     return strat

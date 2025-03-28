@@ -32,7 +32,7 @@ from sage_acsv.helpers import (
 from sage_acsv.debug import Timer, acsv_logger
 from sage_acsv.settings import ACSVSettings
 from sage_acsv.whitney import whitney_stratification
-from sage_acsv.macaulay2 import PrimaryDecomposition, Saturate
+from sage_acsv.macaulay2 import compute_primary_decomposition, compute_saturation
 
 
 # we need to monkeypatch a function from the asymptotics module such that creating
@@ -1033,7 +1033,7 @@ def _find_contributing_points_combinatorial(
     critical_point_ideals = []
     for d, stratum in enumerate(whitney_strat):
         critical_point_ideals.append([])
-        for P in PrimaryDecomposition(stratum):
+        for P in compute_primary_decomposition(stratum):
             c = len(vs) - d
             P_ext = P.change_ring(expanded_R)
             M = matrix([[v * f.derivative(v) for v in vs] for f in P_ext.gens()] + [r])
@@ -1050,7 +1050,7 @@ def _find_contributing_points_combinatorial(
             )
             # Saturate cpid by lower dimension stratum, if d > 0
             if d > 0:
-                cpid = Saturate(cpid, whitney_strat[d - 1].change_ring(expanded_R))
+                cpid = compute_saturation(cpid, whitney_strat[d - 1].change_ring(expanded_R))
 
             critical_point_ideals[-1].append((P, cpid))
 
@@ -1319,7 +1319,7 @@ def minimal_critical_points_combinatorial(
     critical_points = []
     pos_minimals = []
     for d, stratum in enumerate(whitney_strat):
-        for P_comp in PrimaryDecomposition(stratum):
+        for P_comp in compute_primary_decomposition(stratum):
             c = len(vs) - d
             P_ext = P_comp.change_ring(expanded_R)
             M = matrix([[v * f.derivative(v) for v in vs] for f in P_ext.gens()] + [r])
@@ -1336,7 +1336,7 @@ def minimal_critical_points_combinatorial(
             )
             # Saturate cpid by lower dimension stratum, if d > 0
             if d > 0:
-                ideal = Saturate(ideal, whitney_strat[d - 1].change_ring(expanded_R))
+                ideal = compute_saturation(ideal, whitney_strat[d - 1].change_ring(expanded_R))
 
             if ideal.dimension() < 0:
                 continue
@@ -1485,7 +1485,7 @@ def critical_points(F, r=None, linear_form=None, whitney_strat=None):
 
     critical_points = []
     for d, stratum in enumerate(whitney_strat):
-        for P_comp in PrimaryDecomposition(stratum):
+        for P_comp in compute_primary_decomposition(stratum):
             c = len(vs) - d
             P_ext = P_comp.change_ring(expanded_R)
             M = matrix([[v * f.derivative(v) for v in vs] for f in P_ext.gens()] + [r])
@@ -1500,7 +1500,7 @@ def critical_points(F, r=None, linear_form=None, whitney_strat=None):
             )
             # Saturate cpid by lower dimension stratum, if d > 0
             if d > 0:
-                ideal = Saturate(ideal, whitney_strat[d - 1].change_ring(expanded_R))
+                ideal = compute_saturation(ideal, whitney_strat[d - 1].change_ring(expanded_R))
 
             if ideal.dimension() < 0:
                 continue

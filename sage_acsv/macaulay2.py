@@ -13,7 +13,7 @@ def _construct_m2_morphims(ideal):
     return mor, inv
 
 
-def PrimaryDecomposition(ideal):
+def compute_primary_decomposition(ideal):
     """Return the primary decomposition of an ideal.
 
     If a Macaulay2 interface is provided, it will be used instead
@@ -31,7 +31,7 @@ def PrimaryDecomposition(ideal):
     return ideal.primary_decomposition()
 
 
-def Saturate(ideal_I, ideal_J):
+def compute_saturation(ideal_I, ideal_J):
     """Return the saturation of ideal I with respect to ideal J.
 
     INPUT:
@@ -42,7 +42,7 @@ def Saturate(ideal_I, ideal_J):
     return ideal_I.saturation(ideal_J)[0]
 
 
-def GroebnerBasis(ideal):
+def compute_groebner_basis(ideal):
     """Return a Groebner Basis of an ideal.
 
     If a Macaulay2 interface is provided, it will be used instead
@@ -62,7 +62,7 @@ def GroebnerBasis(ideal):
     return ideal.groebner_basis()
 
 
-def Radical(ideal):
+def compute_radical(ideal):
     """Return the radical of an ideal.
 
     If a Macaulay2 interface is provided, it will be used instead

@@ -44,13 +44,13 @@ class KroneckerBackend(Enum):
 
 class GroebnerBackend(Enum):
     """Options for computing Groebner Bases and related ideal functions
-    :func:`.GroebnerBasis`, :func:`.PrimaryDecomposition`, and :func:`.critical_points`.
+    :func:`.compute_groebner_basis`, :func:`.compute_primary_decomposition`, and :func:`.critical_points`.
 
     See also:
 
-    - :func:`.GroebnerBasis`
-    - :func:`.PrimaryDecomposition`
-    - :func:`.Radical`
+    - :func:`.compute_groebner_basis`
+    - :func:`.compute_primary_decomposition`
+    - :func:`.compute_radical`
     - :class:`.ACSVSettings`
 
     """
@@ -180,7 +180,7 @@ class ACSVSettings:
         cls, backend: GroebnerBackend | str | None
     ) -> None:
         """Set the preferred method for performing Groebner Bases and related computations,
-        including :func:`.GroebnerBasis`, :func:`.PrimaryDecomposition`, and :func:`.Radical`
+        including :func:`.compute_groebner_basis`, :func:`.compute_primary_decomposition`, and :func:`.compute_radical`.
 
         Will default to singular.
 
