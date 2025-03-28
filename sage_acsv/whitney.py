@@ -59,7 +59,7 @@ def merge_stratifications(Xs, Ys):
 
 def WhitneyStratProjective(X, P):
     r"""
-    Computes a WhitneyStratification of projective variety X in the ring P
+    Computes a Whitney stratification of projective variety X in the ring P
     """
     X = P.subscheme(Radical(X.defining_ideal()))
     vs = P.gens()
@@ -89,7 +89,7 @@ def WhitneyStratProjective(X, P):
     return Xs
 
 
-def WhitneyStrat(IX, R):
+def whitney_stratification(IX, R):
     r"""Computes the Whitney Stratification of a pure-dimensional algebraic variety.
 
     Uses an algorithm developed by Helmer and Nanda (2022).
@@ -106,9 +106,9 @@ def WhitneyStrat(IX, R):
 
     EXAMPLES::
 
-        sage: from sage_acsv.whitney import WhitneyStrat
+        sage: from sage_acsv.whitney import whitney_stratification
         sage: R.<x,y,z> = PolynomialRing(QQ, 3)
-        sage: WhitneyStrat(Ideal(y^2+x^3-y^2*z^2), R)
+        sage: whitney_stratification(Ideal(y^2+x^3-y^2*z^2), R)
         [Ideal (y, x, z^2 - 1) of Multivariate Polynomial Ring in x, y, z over Rational Field,
          Ideal (y, x) of Multivariate Polynomial Ring in x, y, z over Rational Field,
          Ideal (y^2*z^2 - x^3 - y^2) of Multivariate Polynomial Ring in x, y, z over Rational Field]

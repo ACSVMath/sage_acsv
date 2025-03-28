@@ -31,7 +31,7 @@ from sage_acsv.helpers import (
 )
 from sage_acsv.debug import Timer, acsv_logger
 from sage_acsv.settings import ACSVSettings
-from sage_acsv.whitney import WhitneyStrat
+from sage_acsv.whitney import whitney_stratification
 from sage_acsv.macaulay2 import PrimaryDecomposition, Saturate
 
 
@@ -1022,7 +1022,7 @@ def _find_contributing_points_combinatorial(
     pure_H = PolynomialRing(QQ, vs)
 
     if whitney_strat is None:
-        whitney_strat = WhitneyStrat(Ideal(pure_H(H)), pure_H)
+        whitney_strat = whitney_stratification(Ideal(pure_H(H)), pure_H)
     else:
         # Cast symbolic generators for provided stratification into the correct ring
         whitney_strat = [
@@ -1308,7 +1308,7 @@ def minimal_critical_points_combinatorial(
     pure_H = PolynomialRing(QQ, vs)
 
     if whitney_strat is None:
-        whitney_strat = WhitneyStrat(Ideal(pure_H(H)), pure_H)
+        whitney_strat = whitney_stratification(Ideal(pure_H(H)), pure_H)
     else:
         # Cast symbolic generators for provided stratification into the correct ring
         whitney_strat = [
@@ -1475,7 +1475,7 @@ def critical_points(F, r=None, linear_form=None, whitney_strat=None):
     pure_H = PolynomialRing(QQ, vs)
 
     if whitney_strat is None:
-        whitney_strat = WhitneyStrat(Ideal(pure_H(H)), pure_H)
+        whitney_strat = whitney_stratification(Ideal(pure_H(H)), pure_H)
     else:
         # Cast symbolic generators for provided stratification into the correct ring
         whitney_strat = [
