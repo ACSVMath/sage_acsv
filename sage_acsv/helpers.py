@@ -436,24 +436,24 @@ def get_expansion_terms(
 
     EXAMPLES::
 
-        sage: from sage_acsv import diagonal_asy, get_expansion_terms
+        sage: from sage_acsv import diagonal_asymptotics_combinatorial, get_expansion_terms
         sage: var('x y z')
         (x, y, z)
-        sage: res = diagonal_asy(1/(1 - x - y), r=[1,1], expansion_precision=2)
+        sage: res = diagonal_asymptotics_combinatorial(1/(1 - x - y), r=[1,1], expansion_precision=2)
         sage: coefs = sorted(get_expansion_terms(res), reverse=True)
         sage: coefs
         [Term(coefficient=1, pi_factor=1/sqrt(pi), base=4, power=-1/2),
          Term(coefficient=-1/8, pi_factor=1/sqrt(pi), base=4, power=-3/2)]
-        sage: res = diagonal_asy(1/(1 - x - y), r=[1,1], expansion_precision=2, output_format="tuple")
+        sage: res = diagonal_asymptotics_combinatorial(1/(1 - x - y), r=[1,1], expansion_precision=2, output_format="tuple")
         sage: sorted(get_expansion_terms(res)) == sorted(coefs)
         True
-        sage: res = diagonal_asy(1/(1 - x - y), r=[1,1], expansion_precision=2, output_format="symbolic")
+        sage: res = diagonal_asymptotics_combinatorial(1/(1 - x - y), r=[1,1], expansion_precision=2, output_format="symbolic")
         sage: sorted(get_expansion_terms(res)) == sorted(coefs)
         True
 
     ::
 
-        sage: res = diagonal_asy(1/(1 - x^7))
+        sage: res = diagonal_asymptotics_combinatorial(1/(1 - x^7))
         sage: get_expansion_terms(res)
         [Term(coefficient=1/7, pi_factor=1, base=0.6234898018587335? + 0.7818314824680299?*I, power=0),
          Term(coefficient=1/7, pi_factor=1, base=0.6234898018587335? - 0.7818314824680299?*I, power=0),
@@ -465,7 +465,7 @@ def get_expansion_terms(
 
     ::
 
-        sage: res = diagonal_asy(1/(1 - x - y^2))
+        sage: res = diagonal_asymptotics_combinatorial(1/(1 - x - y^2))
         sage: coefs = get_expansion_terms(res); coefs
         [Term(coefficient=0.6123724356957945?, pi_factor=1/sqrt(pi), base=-2.598076211353316?, power=-1/2),
          Term(coefficient=0.6123724356957945?, pi_factor=1/sqrt(pi), base=2.598076211353316?, power=-1/2)]
@@ -477,7 +477,7 @@ def get_expansion_terms(
     ::
 
         sage: F2 = (1+x)*(1+y)/(1-z*x*y*(x+y+1/x+1/y))
-        sage: res = diagonal_asy(F2, expansion_precision=3)
+        sage: res = diagonal_asymptotics_combinatorial(F2, expansion_precision=3)
         sage: coefs = get_expansion_terms(res); coefs
         [Term(coefficient=4, pi_factor=1/pi, base=4, power=-1),
          Term(coefficient=1, pi_factor=1/pi, base=-4, power=-3),
@@ -486,13 +486,13 @@ def get_expansion_terms(
 
     ::
 
-        sage: res = diagonal_asy(3/(1 - x))
+        sage: res = diagonal_asymptotics_combinatorial(3/(1 - x))
         sage: get_expansion_terms(res)
         [Term(coefficient=3, pi_factor=1, base=1, power=0)]
 
     ::
 
-        sage: res = diagonal_asy((x - y)/(1 - x - y))
+        sage: res = diagonal_asymptotics_combinatorial((x - y)/(1 - x - y))
         sage: get_expansion_terms(res)
         []
 

@@ -10,11 +10,11 @@ from sage.all import Macaulay2
 
 class OutputFormat(Enum):
     """Output options for displaying the asymptotic behavior determined
-    by :func:`.diagonal_asy`.
+    by :func:`.diagonal_asymptotics_combinatorial`.
 
     See also:
 
-    - :func:`.diagonal_asy`
+    - :func:`.diagonal_asymptotics_combinatorial`
     - :class:`.ACSVSettings`
 
     """
