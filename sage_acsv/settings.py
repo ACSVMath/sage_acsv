@@ -27,13 +27,13 @@ class OutputFormat(Enum):
 class KroneckerBackend(Enum):
     """Options for computing Kronecker representations determined by
     :func:`.ContributingCombinatorial`, :func:`.MinimalCriticalCombinatorial`, and
-    :func:`.CriticalPoints`.
+    :func:`.critical_points`.
 
     See also:
 
     - :func:`.ContributingCombinatorial`
     - :func:`.MinimalCriticalCombinatorial`
-    - :func:`.CriticalPoints`
+    - :func:`.critical_points`
     - :class:`.ACSVSettings`
 
     """
@@ -44,7 +44,7 @@ class KroneckerBackend(Enum):
 
 class GroebnerBackend(Enum):
     """Options for computing Groebner Bases and related ideal functions
-    :func:`.GroebnerBasis`, :func:`.PrimaryDecomposition`, and :func:`.CriticalPoints`.
+    :func:`.GroebnerBasis`, :func:`.PrimaryDecomposition`, and :func:`.critical_points`.
 
     See also:
 

@@ -14,7 +14,7 @@ functions and classes:
   points of a combinatorial multivariate rational function,
 - :func:`.MinimalCriticalCombinatorial` -- computes all non-zero minimal
   critical points of a combinatorial multivariate rational function,
-- :func:`.CriticalPoints` -- compute all critical points of a combinatorial
+- :func:`.critical_points` -- compute all critical points of a combinatorial
   multivariate rational function,
 - :class:`.ACSVSettings` -- a class for managing several package-global
   settings (like the default output format for :func:`.diagonal_asymptotics_combinatorial`,

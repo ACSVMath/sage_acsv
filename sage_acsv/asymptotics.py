@@ -1404,7 +1404,7 @@ def MinimalCriticalCombinatorial(F, r=None, linear_form=None, whitney_strat=None
     return minimal_criticals
 
 
-def CriticalPoints(F, r=None, linear_form=None, whitney_strat=None):
+def critical_points(F, r=None, linear_form=None, whitney_strat=None):
     r"""Compute critical points of a multivariate
     rational function `F=G/H` admitting a finite number of critical points.
 
@@ -1435,10 +1435,10 @@ def CriticalPoints(F, r=None, linear_form=None, whitney_strat=None):
 
     Examples::
 
-        sage: from sage_acsv import CriticalPoints
+        sage: from sage_acsv import critical_points
         sage: var('x y')
         (x, y)
-        sage: pts = CriticalPoints(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)))
+        sage: pts = critical_points(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)))
         sage: sorted(pts)
         [[2/3, 2], [3/4, 3/2], [1, 1]]
 
