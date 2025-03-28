@@ -198,7 +198,7 @@ def kronecker_representation(system, vs, linear_form=None):
     ``z_i = Q_i(u)/P'(u)`` for ``u`` ranging over the roots of ``P``.
 
     Examples::
-        sage: from sage_acsv.kronecker import kronecker
+        sage: from sage_acsv.kronecker import kronecker_representation
         sage: var('x,y')
         (x, y)
         sage: kronecker_representation([x**3+y**3-10, y**2-2], [x,y], x+y)
