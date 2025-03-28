@@ -187,7 +187,7 @@ def _diagonal_asymptotics_combinatorial_smooth(
             [
                 term / (rd * n) ** (term_order)
                 for term_order, term in enumerate(
-                    GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision)
+                    _general_term_asymptotics(G, H, r, vs, cp, expansion_precision)
                 )
             ]
         )
@@ -608,7 +608,7 @@ def diagonal_asymptotics_combinatorial(
             expansion = sum(
                 term / (r[-1] * n) ** (term_order)
                 for term_order, term in enumerate(
-                    GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision)
+                    _general_term_asymptotics(G, H, r, vs, cp, expansion_precision)
                 )
             )
             Det = GetHessian(H, vs, r).determinant()
@@ -696,7 +696,7 @@ def diagonal_asymptotics_combinatorial(
     return result
 
 
-def GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision):
+def _general_term_asymptotics(G, H, r, vs, cp, expansion_precision):
     r"""
     Compute coefficients of general (not necessarily leading) terms of
     the asymptotic expansion for a given critical
@@ -721,11 +721,11 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision):
 
     EXAMPLES::
 
-        sage: from sage_acsv import GeneralTermAsymptotics
+        sage: from sage_acsv import _general_term_asymptotics
         sage: R.<x, y, z> = QQ[]
-        sage: GeneralTermAsymptotics(1, 1 - x - y, [1, 1], [x, y], [1/2, 1/2], 5)
+        sage: _general_term_asymptotics(1, 1 - x - y, [1, 1], [x, y], [1/2, 1/2], 5)
         [2, -1/4, 1/64, 5/512, -21/16384]
-        sage: GeneralTermAsymptotics(1, 1 - x - y - z, [1, 1, 1], [x, y, z], [1/3, 1/3, 1/3], 4)
+        sage: _general_term_asymptotics(1, 1 - x - y - z, [1, 1, 1], [x, y, z], [1/3, 1/3, 1/3], 4)
         [3, -2/3, 2/27, 14/729]
     """
 
