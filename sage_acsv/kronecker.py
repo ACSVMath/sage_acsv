@@ -12,7 +12,7 @@ def _kronecker_representation_sage(system, u_, vs, linear_form=None):
     r"""Computes the Kronecker Representation of a system of polynomials.
 
     This method is intended for internal use and requires a consistent
-    setup of parameters. Use the :func:`.kronecker` wrapper function
+    setup of parameters. Use the :func:`.kronecker_representation` wrapper function
     to avoid doing the setup yourself.
 
     INPUT:
