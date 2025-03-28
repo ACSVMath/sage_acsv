@@ -721,7 +721,7 @@ def _general_term_asymptotics(G, H, r, vs, cp, expansion_precision):
 
     EXAMPLES::
 
-        sage: from sage_acsv import _general_term_asymptotics
+        sage: from sage_acsv.asymptotics import _general_term_asymptotics
         sage: R.<x, y, z> = QQ[]
         sage: _general_term_asymptotics(1, 1 - x - y, [1, 1], [x, y], [1/2, 1/2], 5)
         [2, -1/4, 1/64, 5/512, -21/16384]
