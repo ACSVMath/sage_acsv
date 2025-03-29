@@ -70,7 +70,7 @@ def collapse_zero_part(algebraic_number: AlgebraicNumber) -> AlgebraicNumber:
     return algebraic_number
 
 
-def RationalFunctionReduce(G, H):
+def rational_function_reduce(G, H):
     r"""Reduction of G and H by dividing out their GCD.
 
     INPUT:
@@ -85,7 +85,7 @@ def RationalFunctionReduce(G, H):
     return G / g, H / g
 
 
-def GenerateLinearForm(system, vsT, u_, linear_form=None):
+def generate_linear_form(system, vsT, u_, linear_form=None):
     r"""Generate a linear form of the input system.
 
     This is an integer linear combination of the variables that
@@ -120,7 +120,7 @@ def GenerateLinearForm(system, vsT, u_, linear_form=None):
     )
 
 
-def GetHessian(H, variables, r, critical_point=None):
+def compute_hessian(H, variables, r, critical_point=None):
     r"""Computes the Hessian of a given map.
 
     The map underlying `Hess` is defined as
@@ -191,7 +191,7 @@ def GetHessian(H, variables, r, critical_point=None):
     return hessian
 
 
-def NewtonSeries(phi, variables, series_precision):
+def compute_newton_series(phi, variables, series_precision):
     r"""Computes the series expansion of an implicitly defined function.
 
     The function `g(x)` for which a series expansion is computed satisfies
@@ -213,9 +213,9 @@ def NewtonSeries(phi, variables, series_precision):
 
     EXAMPLES::
 
-        sage: from sage_acsv.helpers import NewtonSeries
+        sage: from sage_acsv.helpers import compute_newton_series
         sage: R.<x, T> = QQ[]
-        sage: NewtonSeries(x*T^2 - T + 1, [x, T], 7)
+        sage: compute_newton_series(x*T^2 - T + 1, [x, T], 7)
         132*x^6 + 42*x^5 + 14*x^4 + 5*x^3 + 2*x^2 + x + 1
 
     """
@@ -243,7 +243,7 @@ def NewtonSeries(phi, variables, series_precision):
     return NewtonRecur(Mod(phi, series_precision), series_precision)[0]
 
 
-def ImplicitHessian(Hs, vs, r, subs):
+def compute_implicit_hessian(Hs, vs, r, subs):
     r"""Compute the Hessian of an implicitly defined function.
 
     Given a transverse intersection point `w` in `H_1(w),\dots,H_s(w)=0`, we can parametrize `V(H_1,\dots,H_s)`
@@ -265,13 +265,13 @@ def ImplicitHessian(Hs, vs, r, subs):
 
     EXAMPLES::
 
-        sage: from sage_acsv.helpers import ImplicitHessian
+        sage: from sage_acsv.helpers import compute_implicit_hessian
         sage: R.<x,y,z,w> = PolynomialRing(QQ,4)
         sage: Hs = [
         ....:     z^2+z*w+x*y-4,
         ....:     w^3+z*x-y
         ....: ]
-        sage: ImplicitHessian(Hs, [x,y,z,w], [1,1,1,1], {x:1,y:1,z:1,w:1})
+        sage: compute_implicit_hessian(Hs, [x,y,z,w], [1,1,1,1], {x:1,y:1,z:1,w:1})
         [21/32     0]
         [    0   7/8]
     """
@@ -347,7 +347,7 @@ def ImplicitHessian(Hs, vs, r, subs):
     return Hess
 
 
-def IsContributing(vs, pt, r, factors, c):
+def is_contributing(vs, pt, r, factors, c):
     r"""Determines if minimal critical point `pt` where singular variety has transverse square-free factorization
     is contributing; that is, whether `r` is in the interior
     of the scaled log-normal cone of `factors` at `pt`
@@ -366,11 +366,11 @@ def IsContributing(vs, pt, r, factors, c):
 
     EXAMPLES::
 
-        sage: from sage_acsv.helpers import IsContributing
+        sage: from sage_acsv.helpers import is_contributing
         sage: R.<x,y> = PolynomialRing(QQ, 2)
-        sage: IsContributing([x,y], [1,1], [17/24, 7/24], [1-(2*x+y)/3,1-(3*x+y)/4], 2)
+        sage: is_contributing([x,y], [1,1], [17/24, 7/24], [1-(2*x+y)/3,1-(3*x+y)/4], 2)
         True
-        sage: IsContributing([x,y], [1,1], [1, 1], [1-(2*x+y)/3,1-(3*x+y)/4], 2)
+        sage: is_contributing([x,y], [1,1], [1, 1], [1-(2*x+y)/3,1-(3*x+y)/4], 2)
         False
 
     """
@@ -431,29 +431,29 @@ def get_expansion_terms(
 
     OUTPUT:
 
-    A list of :class:`.DecomposedTerm` objects (with attributes ``coefficient``, ``pi_factor``,
+    A list of :class:`.Term` objects (with attributes ``coefficient``, ``pi_factor``,
     ``base`` and ``power``), each representing a summand in the fully expanded expression.
 
     EXAMPLES::
 
-        sage: from sage_acsv import diagonal_asy, get_expansion_terms
+        sage: from sage_acsv import diagonal_asymptotics_combinatorial, get_expansion_terms
         sage: var('x y z')
         (x, y, z)
-        sage: res = diagonal_asy(1/(1 - x - y), r=[1,1], expansion_precision=2)
+        sage: res = diagonal_asymptotics_combinatorial(1/(1 - x - y), r=[1,1], expansion_precision=2)
         sage: coefs = sorted(get_expansion_terms(res), reverse=True)
         sage: coefs
         [Term(coefficient=1, pi_factor=1/sqrt(pi), base=4, power=-1/2),
          Term(coefficient=-1/8, pi_factor=1/sqrt(pi), base=4, power=-3/2)]
-        sage: res = diagonal_asy(1/(1 - x - y), r=[1,1], expansion_precision=2, output_format="tuple")
+        sage: res = diagonal_asymptotics_combinatorial(1/(1 - x - y), r=[1,1], expansion_precision=2, output_format="tuple")
         sage: sorted(get_expansion_terms(res)) == sorted(coefs)
         True
-        sage: res = diagonal_asy(1/(1 - x - y), r=[1,1], expansion_precision=2, output_format="symbolic")
+        sage: res = diagonal_asymptotics_combinatorial(1/(1 - x - y), r=[1,1], expansion_precision=2, output_format="symbolic")
         sage: sorted(get_expansion_terms(res)) == sorted(coefs)
         True
 
     ::
 
-        sage: res = diagonal_asy(1/(1 - x^7))
+        sage: res = diagonal_asymptotics_combinatorial(1/(1 - x^7))
         sage: get_expansion_terms(res)
         [Term(coefficient=1/7, pi_factor=1, base=0.6234898018587335? + 0.7818314824680299?*I, power=0),
          Term(coefficient=1/7, pi_factor=1, base=0.6234898018587335? - 0.7818314824680299?*I, power=0),
@@ -465,7 +465,7 @@ def get_expansion_terms(
 
     ::
 
-        sage: res = diagonal_asy(1/(1 - x - y^2))
+        sage: res = diagonal_asymptotics_combinatorial(1/(1 - x - y^2))
         sage: coefs = get_expansion_terms(res); coefs
         [Term(coefficient=0.6123724356957945?, pi_factor=1/sqrt(pi), base=-2.598076211353316?, power=-1/2),
          Term(coefficient=0.6123724356957945?, pi_factor=1/sqrt(pi), base=2.598076211353316?, power=-1/2)]
@@ -477,7 +477,7 @@ def get_expansion_terms(
     ::
 
         sage: F2 = (1+x)*(1+y)/(1-z*x*y*(x+y+1/x+1/y))
-        sage: res = diagonal_asy(F2, expansion_precision=3)
+        sage: res = diagonal_asymptotics_combinatorial(F2, expansion_precision=3)
         sage: coefs = get_expansion_terms(res); coefs
         [Term(coefficient=4, pi_factor=1/pi, base=4, power=-1),
          Term(coefficient=1, pi_factor=1/pi, base=-4, power=-3),
@@ -486,13 +486,13 @@ def get_expansion_terms(
 
     ::
 
-        sage: res = diagonal_asy(3/(1 - x))
+        sage: res = diagonal_asymptotics_combinatorial(3/(1 - x))
         sage: get_expansion_terms(res)
         [Term(coefficient=3, pi_factor=1, base=1, power=0)]
 
     ::
 
-        sage: res = diagonal_asy((x - y)/(1 - x - y))
+        sage: res = diagonal_asymptotics_combinatorial((x - y)/(1 - x - y))
         sage: get_expansion_terms(res)
         []
 

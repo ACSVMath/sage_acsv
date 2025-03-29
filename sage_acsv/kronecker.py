@@ -1,10 +1,10 @@
 from sage.all import PolynomialRing, QQ, gcd
 from sage.rings.polynomial.multi_polynomial_ideal import MPolynomialIdeal
 
-from sage_acsv.helpers import ACSVException, GenerateLinearForm
+from sage_acsv.helpers import ACSVException, generate_linear_form
 from sage_acsv.debug import acsv_logger
 from sage_acsv.msolve import get_parametrization
-from sage_acsv.macaulay2 import GroebnerBasis, Radical
+from sage_acsv.macaulay2 import compute_groebner_basis, compute_radical
 from sage_acsv.settings import ACSVSettings
 
 
@@ -12,7 +12,7 @@ def _kronecker_representation_sage(system, u_, vs, linear_form=None):
     r"""Computes the Kronecker Representation of a system of polynomials.
 
     This method is intended for internal use and requires a consistent
-    setup of parameters. Use the :func:`.kronecker` wrapper function
+    setup of parameters. Use the :func:`.kronecker_representation` wrapper function
     to avoid doing the setup yourself.
 
     INPUT:
@@ -30,10 +30,10 @@ def _kronecker_representation_sage(system, u_, vs, linear_form=None):
 
     Examples::
 
-        sage: from sage_acsv.kronecker import kronecker
+        sage: from sage_acsv.kronecker import kronecker_representation
         sage: var('x, y')
         (x, y)
-        sage: kronecker(
+        sage: kronecker_representation(
         ....:     [x**3+y**3-10, y**2-2],
         ....:     [x, y],
         ....:     linear_form=x + y
@@ -43,7 +43,7 @@ def _kronecker_representation_sage(system, u_, vs, linear_form=None):
     """
 
     # Generate a linear form
-    linear_form = GenerateLinearForm(system, vs, u_, linear_form)
+    linear_form = generate_linear_form(system, vs, u_, linear_form)
 
     expanded_R = u_.parent()
 
@@ -58,7 +58,7 @@ def _kronecker_representation_sage(system, u_, vs, linear_form=None):
     # Compute Grobner basis for ordered system of polynomials
     ideal = MPolynomialIdeal(rabinowitsch_R, rabinowitsch_system)
     try:
-        ideal = MPolynomialIdeal(rabinowitsch_R, GroebnerBasis(ideal))
+        ideal = MPolynomialIdeal(rabinowitsch_R, compute_groebner_basis(ideal))
     except Exception:
         raise ACSVException(
             "Trouble computing Groebner basis. System may be too large."
@@ -69,7 +69,7 @@ def _kronecker_representation_sage(system, u_, vs, linear_form=None):
             f"Ideal {ideal} is not 0-dimensional. Cannot compute Kronecker representation."
         )
 
-    ideal = Radical(ideal)
+    ideal = compute_radical(ideal)
     gb = ideal.transformed_basis("fglm")
 
     rabinowitsch_R = rabinowitsch_R.change_ring(order="lex")
@@ -170,9 +170,20 @@ def _kronecker_representation(system, u_, vs, linear_form=None):
         return _kronecker_representation_msolve(system, u_, vs)
     return _kronecker_representation_sage(system, u_, vs, linear_form=linear_form)
 
-
 def kronecker(system, vs, linear_form=None):
-    r"""Computes the Kronecker Representation of a system of polynomials
+    from warnings import warn
+    warn(
+        "The kronecker function has been deprecated and will "
+        "be removed in a future version. Please use the "
+        "kronecker_representation function (same signature) instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return kronecker_representation(system, vs, linear_form=linear_form)
+
+
+def kronecker_representation(system, vs, linear_form=None):
+    r"""Computes the Kronecker Representation of a system of polynomials.
 
     INPUT:
 
@@ -187,10 +198,10 @@ def kronecker(system, vs, linear_form=None):
     ``z_i = Q_i(u)/P'(u)`` for ``u`` ranging over the roots of ``P``.
 
     Examples::
-        sage: from sage_acsv.kronecker import kronecker
+        sage: from sage_acsv.kronecker import kronecker_representation
         sage: var('x,y')
         (x, y)
-        sage: kronecker([x**3+y**3-10, y**2-2], [x,y], x+y)
+        sage: kronecker_representation([x**3+y**3-10, y**2-2], [x,y], x+y)
         (u_^6 - 6*u_^4 - 20*u_^3 + 36*u_^2 - 120*u_ + 100,
          [60*u_^3 - 72*u_^2 + 360*u_ - 600, 12*u_^4 - 72*u_^2 + 240*u_])
     """

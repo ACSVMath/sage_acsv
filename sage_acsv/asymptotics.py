@@ -22,17 +22,17 @@ from sage.all import (
 from sage_acsv.kronecker import _kronecker_representation
 from sage_acsv.helpers import (
     ACSVException,
-    IsContributing,
-    NewtonSeries,
-    RationalFunctionReduce,
-    GetHessian,
-    ImplicitHessian,
+    is_contributing,
+    compute_newton_series,
+    rational_function_reduce,
+    compute_hessian,
+    compute_implicit_hessian,
     collapse_zero_part,
 )
 from sage_acsv.debug import Timer, acsv_logger
 from sage_acsv.settings import ACSVSettings
-from sage_acsv.whitney import WhitneyStrat
-from sage_acsv.macaulay2 import PrimaryDecomposition, Saturate
+from sage_acsv.whitney import whitney_stratification
+from sage_acsv.macaulay2 import compute_primary_decomposition, compute_saturation
 
 
 # we need to monkeypatch a function from the asymptotics module such that creating
@@ -56,7 +56,7 @@ def strip_symbolic(expression):
 asy_misc.strip_symbolic = strip_symbolic
 
 
-def _diagonal_asy_smooth(
+def _diagonal_asymptotics_combinatorial_smooth(
     G,
     H,
     r=None,
@@ -109,20 +109,20 @@ def _diagonal_asy_smooth(
 
     See also:
 
-    - :func:`.diagonal_asy`
+    - :func:`.diagonal_asymptotics_combinatorial`
 
     TESTS:
 
     Check that passing a non-supported ``output_format`` errors out::
 
-        sage: from sage_acsv import diagonal_asy
+        sage: from sage_acsv import diagonal_asymptotics_combinatorial
         sage: var('x y')
         (x, y)
-        sage: diagonal_asy(1/(1 - x - y), output_format='hello world')  # indirect doctest
+        sage: diagonal_asymptotics_combinatorial(1/(1 - x - y), output_format='hello world')  # indirect doctest
         Traceback (most recent call last):
         ...
         ValueError: 'hello world' is not a valid OutputFormat
-        sage: diagonal_asy(1/(1 - x - y), output_format=42)  # indirect doctest
+        sage: diagonal_asymptotics_combinatorial(1/(1 - x - y), output_format=42)  # indirect doctest
         Traceback (most recent call last):
         ...
         ValueError: 42 is not a valid OutputFormat
@@ -150,7 +150,7 @@ def _diagonal_asy_smooth(
     for _ in range(ACSVSettings.MAX_MIN_CRIT_RETRIES):
         try:
             # Find minimal critical points in Kronecker Representation
-            min_crit_pts = ContributingCombinatorialSmooth(
+            min_crit_pts = contributing_points_combinatorial_smooth(
                 G, H, vs, r=r, linear_form=linear_form
             )
             break
@@ -169,7 +169,7 @@ def _diagonal_asy_smooth(
     timer = Timer()
 
     # Find det(zH_z Hess) where Hess is the Hessian of z_1...z_n * log(g(z_1, ..., z_n))
-    Det = GetHessian(H, vsT[0:-2], r).determinant()
+    Det = compute_hessian(H, vsT[0:-2], r).determinant()
 
     # Find exponential growth
     T = prod([SR(vs[i]) ** r[i] for i in range(d)])
@@ -187,7 +187,7 @@ def _diagonal_asy_smooth(
             [
                 term / (rd * n) ** (term_order)
                 for term_order, term in enumerate(
-                    GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision)
+                    _general_term_asymptotics(G, H, r, vs, cp, expansion_precision)
                 )
             ]
         )
@@ -250,8 +250,36 @@ def _diagonal_asy_smooth(
 
     return result
 
-
 def diagonal_asy(
+    F,
+    r=None,
+    linear_form=None,
+    expansion_precision=1,
+    return_points=False,
+    output_format=None,
+    whitney_strat=None,
+    as_symbolic=False,
+):
+    from warnings import warn
+    warn(
+        "diagonal_asy is deprecated and will be removed in a future release. "
+        "Please use diagonal_asymptotics_combinatorial (same signature) instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return diagonal_asymptotics_combinatorial(
+        F,
+        r=r,
+        linear_form=linear_form,
+        expansion_precision=expansion_precision,
+        return_points=return_points,
+        output_format=output_format,
+        whitney_strat=whitney_strat,
+        as_symbolic=as_symbolic,
+    )
+
+
+def diagonal_asymptotics_combinatorial(
     F,
     r=None,
     linear_form=None,
@@ -314,20 +342,20 @@ def diagonal_asy(
 
     EXAMPLES:
 
-        sage: from sage_acsv import diagonal_asy
+        sage: from sage_acsv import diagonal_asymptotics_combinatorial
         sage: var('x,y,z,w')
         (x, y, z, w)
-        sage: diagonal_asy(1/(1-x-y))
+        sage: diagonal_asymptotics_combinatorial(1/(1-x-y))
         1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2))
-        sage: diagonal_asy(1/(1-(1+x)*y), r = [1,2], return_points=True)
+        sage: diagonal_asymptotics_combinatorial(1/(1-(1+x)*y), r = [1,2], return_points=True)
         (1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2)), [[1, 1/2]])
-        sage: diagonal_asy(1/(1-(x+y+z)+(3/4)*x*y*z), output_format="symbolic")
+        sage: diagonal_asymptotics_combinatorial(1/(1-(x+y+z)+(3/4)*x*y*z), output_format="symbolic")
         0.840484893481498?*24.68093482214177?^n/(pi*n)
-        sage: diagonal_asy(1/(1-(x+y+z)+(3/4)*x*y*z))
+        sage: diagonal_asymptotics_combinatorial(1/(1-(x+y+z)+(3/4)*x*y*z))
         0.840484893481498?/pi*24.68093482214177?^n*n^(-1) + O(24.68093482214177?^n*n^(-2))
         sage: var('n')
         n
-        sage: asy = diagonal_asy(
+        sage: asy = diagonal_asymptotics_combinatorial(
         ....:     1/(1 - w*(1 + x)*(1 + y)*(1 + z)*(x*y*z + y*z + y + z + 1)),
         ....:     output_format="tuple",
         ....: )
@@ -340,15 +368,15 @@ def diagonal_asy(
     Not specifying any ``output_format`` falls back to the default asymptotic
     representation::
 
-        sage: diagonal_asy(1/(1 - 2*x))
+        sage: diagonal_asymptotics_combinatorial(1/(1 - 2*x))
         2^n + O(2^n*n^(-1))
-        sage: diagonal_asy(1/(1 - 2*x), output_format="tuple")
+        sage: diagonal_asymptotics_combinatorial(1/(1 - 2*x), output_format="tuple")
         [(2, 1, 1, 1)]
 
     Passing ``"symbolic"`` lets the function return an element of the
     symbolic ring in the variable ``n`` that describes the asymptotic growth::
 
-        sage: growth = diagonal_asy(1/(1 - 2*x), output_format="symbolic"); growth
+        sage: growth = diagonal_asymptotics_combinatorial(1/(1 - 2*x), output_format="symbolic"); growth
         2^n
         sage: growth.parent()
         Symbolic Ring
@@ -358,7 +386,7 @@ def diagonal_asy(
     appropriate error term::
 
         sage: assume(SR.an_element() > 0)  # required to make coercions involving SR work properly
-        sage: growth = diagonal_asy(1/(1 - x - y), output_format="asymptotic"); growth
+        sage: growth = diagonal_asymptotics_combinatorial(1/(1 - x - y), output_format="asymptotic"); growth
         1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2))
         sage: growth.parent()
         Asymptotic Ring <(Algebraic Real Field)^n * n^QQ * (Arg_(Algebraic Field))^n> over Symbolic Ring
@@ -366,7 +394,7 @@ def diagonal_asy(
     Increasing the precision of the expansion returns an expansion with more terms
     (works for all available output formats)::
 
-        sage: diagonal_asy(1/(1 - x - y), expansion_precision=3, output_format="asymptotic")
+        sage: diagonal_asymptotics_combinatorial(1/(1 - x - y), expansion_precision=3, output_format="asymptotic")
         1/sqrt(pi)*4^n*n^(-1/2) - 1/8/sqrt(pi)*4^n*n^(-3/2) + 1/128/sqrt(pi)*4^n*n^(-5/2)
         + O(4^n*n^(-7/2))
 
@@ -374,18 +402,18 @@ def diagonal_asy(
     vector of all 1's) if not specified. It also supports passing non-integer values,
     notably rational numbers::
 
-        sage: diagonal_asy(1/(1 - x - y), r=(1, 17/42), output_format="symbolic")
+        sage: diagonal_asymptotics_combinatorial(1/(1 - x - y), r=(1, 17/42), output_format="symbolic")
         1.317305628032865?*2.324541507270374?^n/(sqrt(pi)*sqrt(n))
 
     and even algebraic numbers (note, however, that the performance for complicated
     algebraic numbers is significantly degraded)::
 
-        sage: diagonal_asy(1/(1 - x - y), r=(sqrt(2), 1))
+        sage: diagonal_asymptotics_combinatorial(1/(1 - x - y), r=(sqrt(2), 1))
         0.9238795325112868?/sqrt(pi)*(2.414213562373095?/0.5857864376269049?^1.414213562373095?)^n*n^(-1/2) + O((2.414213562373095?/0.5857864376269049?^1.414213562373095?)^n*n^(-3/2))
 
     ::
 
-        sage: diagonal_asy(1/(1 - x - y*x^2), r=(1, 1/2 - 1/2*sqrt(1/5)), output_format="asymptotic")
+        sage: diagonal_asymptotics_combinatorial(1/(1 - x - y*x^2), r=(1, 1/2 - 1/2*sqrt(1/5)), output_format="asymptotic")
         1.710862642974252?/sqrt(pi)*1.618033988749895?^n*n^(-1/2)
         + O(1.618033988749895?^n*n^(-3/2))
 
@@ -395,7 +423,7 @@ def diagonal_asy(
         sage: import logging
         sage: from sage_acsv import ACSVSettings
         sage: ACSVSettings.set_logging_level(logging.INFO)
-        sage: diagonal_asy(1/(1 - x - y))
+        sage: diagonal_asymptotics_combinatorial(1/(1 - x - y))
         INFO:sage_acsv:... Executed Kronecker in ... seconds.
         INFO:sage_acsv:... Executed Minimal Points in ... seconds.
         INFO:sage_acsv:... Executed Final Asymptotics in ... seconds.
@@ -405,10 +433,10 @@ def diagonal_asy(
     Extraction of coefficient asymptotics even works in cases where the singular variety of `F`
     is not smooth::
 
-        sage: diagonal_asy(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)), r = [17/24, 7/24], output_format = 'asymptotic')
+        sage: diagonal_asymptotics_combinatorial(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)), r = [17/24, 7/24], output_format = 'asymptotic')
         12 + O(n^(-1))
 
-        sage: diagonal_asy(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)), r = [17/24, 7/24], output_format = 'asymptotic')
+        sage: diagonal_asymptotics_combinatorial(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)), r = [17/24, 7/24], output_format = 'asymptotic')
         12 + O(n^(-1))
         sage: G = (1+x)*(1-x*y^2+x^2)
         sage: H = (1-z*(1+x^2+x*y^2))*(1-y)*(1+x^2)
@@ -417,7 +445,7 @@ def diagonal_asy(
         ....:     [(1-z*(1+x^2+x*y^2), 1-y),(1-z*(1+x^2+x*y^2), 1+x^2),(1-y,1+x^2)],
         ....:     [(H,)],
         ....: ]
-        sage: diagonal_asy(G/H, r = [1,1,1], output_format = 'asymptotic', whitney_strat = strat)
+        sage: diagonal_asymptotics_combinatorial(G/H, r = [1,1,1], output_format = 'asymptotic', whitney_strat = strat)
         0.866025403784439?/sqrt(pi)*3^n*n^(-1/2) + O(3^n*n^(-3/2))
 
     TESTS:
@@ -425,14 +453,14 @@ def diagonal_asy(
     Check that the workaround for the AsymptoticRing swallowing
     the modulus works as intended::
 
-        sage: diagonal_asy(1/(1 - x^4 - y^4))  # long time
+        sage: diagonal_asymptotics_combinatorial(1/(1 - x^4 - y^4))  # long time
         1/2/sqrt(pi)*1.414213562373095?^n*n^(-1/2) + 1/2/sqrt(pi)*1.414213562373095?^n*n^(-1/2)*(e^(I*arg(-1)))^n + 1/2/sqrt(pi)*1.414213562373095?^n*n^(-1/2)*(e^(I*arg(-I)))^n + 1/2/sqrt(pi)*1.414213562373095?^n*n^(-1/2)*(e^(I*arg(I)))^n + O(1.414213562373095?^n*n^(-3/2))
 
     Check that there are no prohibited variable names::
 
         sage: var('n t u_')
         (n, t, u_)
-        sage: diagonal_asy(1/(1 - n - t - u_))
+        sage: diagonal_asymptotics_combinatorial(1/(1 - n - t - u_))
         0.866025403784439?/pi*27^n*n^(-1) + O(27^n*n^(-2))
 
     """
@@ -462,7 +490,7 @@ def diagonal_asy(
     R = PolynomialRing(QQ, vs, len(vs))
     H_sing = Ideal([R(H)] + [R(H.derivative(v)) for v in vs])
     if H_sing.dimension() < 0:
-        return _diagonal_asy_smooth(
+        return _diagonal_asymptotics_combinatorial_smooth(
             G,
             H,
             r=r,
@@ -482,7 +510,7 @@ def diagonal_asy(
     d = len(vs)
 
     # Make sure G and H are coprime, and that H does not vanish at 0
-    G, H = RationalFunctionReduce(G, H)
+    G, H = rational_function_reduce(G, H)
     G, H = expanded_R(G), expanded_R(H)
     if H.subs({v: 0 for v in H.variables()}) == 0:
         raise ValueError("Denominator vanishes at 0.")
@@ -580,10 +608,10 @@ def diagonal_asy(
             expansion = sum(
                 term / (r[-1] * n) ** (term_order)
                 for term_order, term in enumerate(
-                    GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision)
+                    _general_term_asymptotics(G, H, r, vs, cp, expansion_precision)
                 )
             )
-            Det = GetHessian(H, vs, r).determinant()
+            Det = compute_hessian(H, vs, r).determinant()
             B = SR(1 / Det.subs(subs_dict) / r[-1] ** (d - 1) / 2 ** (d - 1))
         else:
             # Higher order expansions not currently supported for non-smooth critical points
@@ -593,7 +621,7 @@ def diagonal_asy(
                 )
             # For non-complete intersections, we must compute the parametrized Hessian matrix
             if s != d:
-                Qw = ImplicitHessian(factors, vs, r, subs=subs_dict)
+                Qw = compute_implicit_hessian(factors, vs, r, subs=subs_dict)
                 expansion = SR(G.subs(subs_dict) / abs(Gamma.determinant()) / unit)
                 B = SR(
                     prod([v for v in vs[: d - s]]).subs(subs_dict)
@@ -668,13 +696,13 @@ def diagonal_asy(
     return result
 
 
-def GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision):
+def _general_term_asymptotics(G, H, r, vs, cp, expansion_precision):
     r"""
     Compute coefficients of general (not necessarily leading) terms of
     the asymptotic expansion for a given critical
     point of a rational combinatorial multivariate rational function.
 
-    Typically, this function is called as a subroutine of :func:`.diagonal_asy`.
+    Typically, this function is called as a subroutine of :func:`.diagonal_asymptotics_combinatorial`.
 
     INPUT:
 
@@ -693,11 +721,11 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision):
 
     EXAMPLES::
 
-        sage: from sage_acsv import GeneralTermAsymptotics
+        sage: from sage_acsv.asymptotics import _general_term_asymptotics
         sage: R.<x, y, z> = QQ[]
-        sage: GeneralTermAsymptotics(1, 1 - x - y, [1, 1], [x, y], [1/2, 1/2], 5)
+        sage: _general_term_asymptotics(1, 1 - x - y, [1, 1], [x, y], [1/2, 1/2], 5)
         [2, -1/4, 1/64, 5/512, -21/16384]
-        sage: GeneralTermAsymptotics(1, 1 - x - y - z, [1, 1, 1], [x, y, z], [1/3, 1/3, 1/3], 4)
+        sage: _general_term_asymptotics(1, 1 - x - y - z, [1, 1, 1], [x, y, z], [1/3, 1/3, 1/3], 4)
         [3, -2/3, 2/27, 14/729]
     """
 
@@ -734,7 +762,7 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision):
                 [prod([factorial(k) for k in E[0][1]]) * E[1] * f[E[0][1]] for E in dop]
             )
 
-    Hess = GetHessian(H, vs, r, cp)
+    Hess = compute_hessian(H, vs, r, cp)
     Hessinv = Hess.inverse()
     v = matrix(W, [D[: d - 1]])
     Epsilon = -(v * Hessinv.change_ring(W) * v.transpose())[0, 0]
@@ -744,7 +772,7 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision):
 
     # Find series expansion of function g given implicitly by
     # H(w_1, ..., w_{d-1}, g(w_1, ..., w_{d-1})) = 0 up to needed order
-    g = NewtonSeries(H.subs({v: v + cp[v] for v in vs}), vs, N)
+    g = compute_newton_series(H.subs({v: v + cp[v] for v in vs}), vs, N)
     g = g.subs({v: v - cp[v] for v in vs}) + cp[vd]
 
     # Polar change of coordinates
@@ -794,12 +822,12 @@ def GeneralTermAsymptotics(G, H, r, vs, cp, expansion_precision):
     return res
 
 
-def ContributingCombinatorialSmooth(G, H, variables, r=None, linear_form=None):
+def contributing_points_combinatorial_smooth(G, H, variables, r=None, linear_form=None):
     r"""Compute contributing points of a combinatorial multivariate
     rational function `F=G/H` admitting a finite number of critical points.
     Assumes the singular variety of `F` is smooth.
 
-    Typically, this function is called as a subroutine of :func:`._diagonal_asy_smooth`.
+    Typically, this function is called as a subroutine of :func:`._diagonal_asymptotics_combinatorial_smooth`.
 
     INPUT:
 
@@ -824,9 +852,9 @@ def ContributingCombinatorialSmooth(G, H, variables, r=None, linear_form=None):
 
     Examples::
 
-        sage: from sage_acsv import ContributingCombinatorialSmooth
+        sage: from sage_acsv import contributing_points_combinatorial_smooth
         sage: R.<x, y, w, lambda_, t, u_> = QQ[]
-        sage: pts = ContributingCombinatorialSmooth(
+        sage: pts = contributing_points_combinatorial_smooth(
         ....:     1,
         ....:     1 - w*(y + x + x^2*y + x*y^2),
         ....:     [w, x, y],
@@ -954,7 +982,7 @@ def _find_contributing_points_combinatorial(
     r"""Compute contributing points of a combinatorial multivariate
     rational function `F=G/H` admitting a finite number of critical points.
 
-    Typically, this function is called as a subroutine of :func:`.diagonal_asy`.
+    Typically, this function is called as a subroutine of :func:`.diagonal_asymptotics_combinatorial`.
 
     INPUT:
 
@@ -994,7 +1022,7 @@ def _find_contributing_points_combinatorial(
     pure_H = PolynomialRing(QQ, vs)
 
     if whitney_strat is None:
-        whitney_strat = WhitneyStrat(Ideal(pure_H(H)), pure_H)
+        whitney_strat = whitney_stratification(Ideal(pure_H(H)), pure_H)
     else:
         # Cast symbolic generators for provided stratification into the correct ring
         whitney_strat = [
@@ -1005,7 +1033,7 @@ def _find_contributing_points_combinatorial(
     critical_point_ideals = []
     for d, stratum in enumerate(whitney_strat):
         critical_point_ideals.append([])
-        for P in PrimaryDecomposition(stratum):
+        for P in compute_primary_decomposition(stratum):
             c = len(vs) - d
             P_ext = P.change_ring(expanded_R)
             M = matrix([[v * f.derivative(v) for v in vs] for f in P_ext.gens()] + [r])
@@ -1022,7 +1050,7 @@ def _find_contributing_points_combinatorial(
             )
             # Saturate cpid by lower dimension stratum, if d > 0
             if d > 0:
-                cpid = Saturate(cpid, whitney_strat[d - 1].change_ring(expanded_R))
+                cpid = compute_saturation(cpid, whitney_strat[d - 1].change_ring(expanded_R))
 
             critical_point_ideals[-1].append((P, cpid))
 
@@ -1112,7 +1140,7 @@ def _find_contributing_points_combinatorial(
             break
 
         for x in pos_minimals:
-            if IsContributing(vs, x, r, all_factors, len(vs) - d):
+            if is_contributing(vs, x, r, all_factors, len(vs) - d):
                 contributing_pos_minimals.append(x)
                 for i in range(d):
                     stratum = whitney_strat[i]
@@ -1139,13 +1167,13 @@ def _find_contributing_points_combinatorial(
         for w in critical_points_by_stratum[d]:
             if all(
                 [abs(w_i) == abs(min_i) for w_i, min_i in zip(w, minimal)]
-            ) and IsContributing(vs, w, r, all_factors, len(vs) - d):
+            ) and is_contributing(vs, w, r, all_factors, len(vs) - d):
                 contributing_points.append(w)
 
     return contributing_points
 
 
-def ContributingCombinatorial(
+def contributing_points_combinatorial(
     F,
     r=None,
     linear_form=None,
@@ -1180,10 +1208,10 @@ def ContributingCombinatorial(
 
     Examples::
 
-        sage: from sage_acsv import ContributingCombinatorial
+        sage: from sage_acsv import contributing_points_combinatorial
         sage: var('x y')
         (x, y)
-        sage: pts = ContributingCombinatorial(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)))
+        sage: pts = contributing_points_combinatorial(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)))
         sage: sorted(pts)
         [[3/4, 3/2]]
 
@@ -1212,6 +1240,23 @@ def ContributingCombinatorial(
 
 
 def MinimalCriticalCombinatorial(F, r=None, linear_form=None, whitney_strat=None):
+    from warnings import warn
+
+    warn(
+        "MinimalCriticalCombinatorial is deprecated and will be removed "
+        "in a future release. Please use minimal_critical_points_combinatorial "
+        "(same signature) instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return minimal_critical_points_combinatorial(
+        F, r=r, linear_form=linear_form, whitney_strat=whitney_strat
+    )
+
+
+def minimal_critical_points_combinatorial(
+    F, r=None, linear_form=None, whitney_strat=None
+):
     r"""Compute nonzero minimal critical points of a combinatorial multivariate
     rational function `F=G/H` admitting a finite number of critical points.
 
@@ -1240,10 +1285,10 @@ def MinimalCriticalCombinatorial(F, r=None, linear_form=None, whitney_strat=None
 
     Examples::
 
-        sage: from sage_acsv import MinimalCriticalCombinatorial
+        sage: from sage_acsv import minimal_critical_points_combinatorial
         sage: var('x y')
         (x, y)
-        sage: pts = MinimalCriticalCombinatorial(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)))
+        sage: pts = minimal_critical_points_combinatorial(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)))
         sage: sorted(pts)
         [[3/4, 3/2], [1, 1]]
 
@@ -1275,7 +1320,7 @@ def MinimalCriticalCombinatorial(F, r=None, linear_form=None, whitney_strat=None
     pure_H = PolynomialRing(QQ, vs)
 
     if whitney_strat is None:
-        whitney_strat = WhitneyStrat(Ideal(pure_H(H)), pure_H)
+        whitney_strat = whitney_stratification(Ideal(pure_H(H)), pure_H)
     else:
         # Cast symbolic generators for provided stratification into the correct ring
         whitney_strat = [
@@ -1286,7 +1331,7 @@ def MinimalCriticalCombinatorial(F, r=None, linear_form=None, whitney_strat=None
     critical_points = []
     pos_minimals = []
     for d, stratum in enumerate(whitney_strat):
-        for P_comp in PrimaryDecomposition(stratum):
+        for P_comp in compute_primary_decomposition(stratum):
             c = len(vs) - d
             P_ext = P_comp.change_ring(expanded_R)
             M = matrix([[v * f.derivative(v) for v in vs] for f in P_ext.gens()] + [r])
@@ -1303,7 +1348,7 @@ def MinimalCriticalCombinatorial(F, r=None, linear_form=None, whitney_strat=None
             )
             # Saturate cpid by lower dimension stratum, if d > 0
             if d > 0:
-                ideal = Saturate(ideal, whitney_strat[d - 1].change_ring(expanded_R))
+                ideal = compute_saturation(ideal, whitney_strat[d - 1].change_ring(expanded_R))
 
             if ideal.dimension() < 0:
                 continue
@@ -1376,11 +1421,11 @@ def MinimalCriticalCombinatorial(F, r=None, linear_form=None, whitney_strat=None
     return minimal_criticals
 
 
-def CriticalPoints(F, r=None, linear_form=None, whitney_strat=None):
+def critical_points(F, r=None, linear_form=None, whitney_strat=None):
     r"""Compute critical points of a multivariate
     rational function `F=G/H` admitting a finite number of critical points.
 
-    Typically, this function is called as a subroutine of :func:`.diagonal_asy`.
+    Typically, this function is called as a subroutine of :func:`.diagonal_asymptotics_combinatorial`.
 
     INPUT:
 
@@ -1407,10 +1452,10 @@ def CriticalPoints(F, r=None, linear_form=None, whitney_strat=None):
 
     Examples::
 
-        sage: from sage_acsv import CriticalPoints
+        sage: from sage_acsv import critical_points
         sage: var('x y')
         (x, y)
-        sage: pts = CriticalPoints(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)))
+        sage: pts = critical_points(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)))
         sage: sorted(pts)
         [[2/3, 2], [3/4, 3/2], [1, 1]]
 
@@ -1442,7 +1487,7 @@ def CriticalPoints(F, r=None, linear_form=None, whitney_strat=None):
     pure_H = PolynomialRing(QQ, vs)
 
     if whitney_strat is None:
-        whitney_strat = WhitneyStrat(Ideal(pure_H(H)), pure_H)
+        whitney_strat = whitney_stratification(Ideal(pure_H(H)), pure_H)
     else:
         # Cast symbolic generators for provided stratification into the correct ring
         whitney_strat = [
@@ -1452,7 +1497,7 @@ def CriticalPoints(F, r=None, linear_form=None, whitney_strat=None):
 
     critical_points = []
     for d, stratum in enumerate(whitney_strat):
-        for P_comp in PrimaryDecomposition(stratum):
+        for P_comp in compute_primary_decomposition(stratum):
             c = len(vs) - d
             P_ext = P_comp.change_ring(expanded_R)
             M = matrix([[v * f.derivative(v) for v in vs] for f in P_ext.gens()] + [r])
@@ -1467,7 +1512,7 @@ def CriticalPoints(F, r=None, linear_form=None, whitney_strat=None):
             )
             # Saturate cpid by lower dimension stratum, if d > 0
             if d > 0:
-                ideal = Saturate(ideal, whitney_strat[d - 1].change_ring(expanded_R))
+                ideal = compute_saturation(ideal, whitney_strat[d - 1].change_ring(expanded_R))
 
             if ideal.dimension() < 0:
                 continue

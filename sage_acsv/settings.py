@@ -10,11 +10,11 @@ from sage.all import Macaulay2
 
 class OutputFormat(Enum):
     """Output options for displaying the asymptotic behavior determined
-    by :func:`.diagonal_asy`.
+    by :func:`.diagonal_asymptotics_combinatorial`.
 
     See also:
 
-    - :func:`.diagonal_asy`
+    - :func:`.diagonal_asymptotics_combinatorial`
     - :class:`.ACSVSettings`
 
     """
@@ -26,14 +26,14 @@ class OutputFormat(Enum):
 
 class KroneckerBackend(Enum):
     """Options for computing Kronecker representations determined by
-    :func:`.ContributingCombinatorial`, :func:`.MinimalCriticalCombinatorial`, and
-    :func:`.CriticalPoints`.
+    :func:`.contributing_points_combinatorial`, :func:`.minimal_critical_points_combinatorial`, and
+    :func:`.critical_points`.
 
     See also:
 
-    - :func:`.ContributingCombinatorial`
-    - :func:`.MinimalCriticalCombinatorial`
-    - :func:`.CriticalPoints`
+    - :func:`.contributing_points_combinatorial`
+    - :func:`.minimal_critical_points_combinatorial`
+    - :func:`.critical_points`
     - :class:`.ACSVSettings`
 
     """
@@ -44,13 +44,13 @@ class KroneckerBackend(Enum):
 
 class GroebnerBackend(Enum):
     """Options for computing Groebner Bases and related ideal functions
-    :func:`.GroebnerBasis`, :func:`.PrimaryDecomposition`, and :func:`.CriticalPoints`.
+    :func:`.compute_groebner_basis`, :func:`.compute_primary_decomposition`, and :func:`.critical_points`.
 
     See also:
 
-    - :func:`.GroebnerBasis`
-    - :func:`.PrimaryDecomposition`
-    - :func:`.Radical`
+    - :func:`.compute_groebner_basis`
+    - :func:`.compute_primary_decomposition`
+    - :func:`.compute_radical`
     - :class:`.ACSVSettings`
 
     """
@@ -180,7 +180,7 @@ class ACSVSettings:
         cls, backend: GroebnerBackend | str | None
     ) -> None:
         """Set the preferred method for performing Groebner Bases and related computations,
-        including :func:`.GroebnerBasis`, :func:`.PrimaryDecomposition`, and :func:`.Radical`
+        including :func:`.compute_groebner_basis`, :func:`.compute_primary_decomposition`, and :func:`.compute_radical`.
 
         Will default to singular.
 
