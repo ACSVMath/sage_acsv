@@ -1,4 +1,4 @@
-from importlib.metadata import version
+from sage_acsv.version import version as sage_acsv_version
 from sage_docbuild.conf import html_theme, html_theme_options, pygments_style, pygments_dark_style, html_css_files, skip_TESTS_block, mathjax3_config, default_role
 
 extensions = [
@@ -27,9 +27,9 @@ source_suffix = ".rst"
 master_doc = "index"
 
 # General information about the project.
-project = "sage_acsv"
-copyright = "2025, the sage_acsv authors"
-release = version("sage-acsv")
+project = "sage-acsv"
+copyright = "2025, the sage-acsv authors"
+release = sage_acsv_version
 
 # Allow linking to external projects, e.g., SageMath
 intersphinx_mapping = {"sage": ("https://doc.sagemath.org/html/en/reference", None)}
