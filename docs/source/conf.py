@@ -1,3 +1,5 @@
+import os
+import re
 import importlib.metadata
 from sage_docbuild.conf import html_theme, html_theme_options, pygments_style, pygments_dark_style, html_css_files, skip_TESTS_block, mathjax3_config, default_role
 
@@ -63,3 +65,22 @@ nb_execution_mode = "cache"
 
 def setup(app):
     app.connect('autodoc-process-docstring', skip_TESTS_block)
+
+
+github_ref = os.environ.get('GITHUB_REF', '')
+if github_ref:
+    match = re.search(r'refs/pull/(\d+)/merge', github_ref)
+    if match:
+        pr_number = match.group(1)
+is_for_github_pr = github_ref and match and pr_number
+
+if is_for_github_pr:  # condition for announcement banner
+    pr_url = f'https://github.com/ACSVMath/sage_acsv/pull/{pr_number}'
+    pr_sha = os.environ.get('PR_SHA', '')
+    pr_commit = pr_url + f'/commits/{pr_sha}'
+    banner = (
+        f'This is a documentation preview for sage-acsv version {release} '
+        f'built with GitHub PR <a href="{pr_url}">#{pr_number}</a> '
+        f'on <a href="{pr_commit}">{pr_sha[:7]}</a>.'
+    )
+    html_theme_options.update({ "announcement": banner })
