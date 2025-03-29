@@ -20,10 +20,11 @@ jobs:
           mamba install -n test sagelib=10.5
           mamba install --quiet -n test numpy sympy gap-defaults matplotlib-base maxima ipywidgets
           conda list
-      - name: Install sage-acsv
+      - name: Install sage-acsv and dependencies
         shell: bash -l {0}
         run: |
-          pip install --verbose .
+          sage -pip install uv
+          sage -sh -c "uv sync"
       - name: Build documentation
         shell: bash -l {0}
         run: cd docs && sage -sh -c "make html"
