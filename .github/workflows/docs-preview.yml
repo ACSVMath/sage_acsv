@@ -8,6 +8,8 @@ on:
 jobs:
   preview:
     runs-on: ubuntu-latest
+    env:
+        SAGE_VERSION: "10.5"
     permissions:
       pull-requests: write # allow surge-preview to create/update PR comments
     steps:
@@ -17,17 +19,19 @@ jobs:
       - name: Install dependencies
         shell: bash -l {0}
         run: |
-          mamba install -n test sagelib=10.5
+          mamba install -n test sagelib=${SAGE_VERSION}
           mamba install --quiet -n test numpy sympy gap-defaults matplotlib-base maxima ipywidgets
           conda list
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
       - name: Install sage-acsv and dependencies
         shell: bash -l {0}
         run: |
-          sage -pip install uv
-          sage -sh -c "uv sync"
+          uv sync
+          uv pip install "sage-docbuild==${SAGE_VERSION}"
       - name: Build documentation
         shell: bash -l {0}
-        run: cd docs && sage -sh -c "make html"
+        run: cd docs && uv run make html
       - uses: afc163/surge-preview@v1
         with:
           surge_token: ${{ secrets.SURGE_TOKEN }}
