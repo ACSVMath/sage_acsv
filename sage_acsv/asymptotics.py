@@ -1239,12 +1239,24 @@ def contributing_points_combinatorial(
     )
 
 
+def MinimalCriticalCombinatorial(F, r=None, linear_form=None, whitney_strat=None):
+    from warnings import warn
+
+    warn(
+        "MinimalCriticalCombinatorial is deprecated and will be removed "
+        "in a future release. Please use minimal_critical_points_combinatorial "
+        "(same signature) instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return minimal_critical_points_combinatorial(
+        F, r=r, linear_form=linear_form, whitney_strat=whitney_strat
+    )
+
+
 def minimal_critical_points_combinatorial(
-        F,
-        r=None,
-        linear_form=None,
-        whitney_strat=None
-    ):
+    F, r=None, linear_form=None, whitney_strat=None
+):
     r"""Compute nonzero minimal critical points of a combinatorial multivariate
     rational function `F=G/H` admitting a finite number of critical points.
 
