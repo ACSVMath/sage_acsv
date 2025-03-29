@@ -119,6 +119,9 @@ very close moduli::
 
 """
 
+from importlib.metadata import version
+__version__ = version(__name__)
+
 from sage_acsv.asymptotics import *
 from sage_acsv.kronecker import *
 from sage_acsv.helpers import get_expansion_terms
