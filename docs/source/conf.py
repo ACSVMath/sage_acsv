@@ -76,11 +76,8 @@ is_for_github_pr = github_ref and match and pr_number
 
 if is_for_github_pr:  # condition for announcement banner
     pr_url = f'https://github.com/ACSVMath/sage_acsv/pull/{pr_number}'
-    pr_sha = os.environ.get('PR_SHA', '')
-    pr_commit = pr_url + f'/commits/{pr_sha}'
     banner = (
         f'This is a documentation preview for sage-acsv version {release} '
-        f'built with GitHub PR <a href="{pr_url}">#{pr_number}</a> '
-        f'on <a href="{pr_commit}">{pr_sha[:7]}</a>.'
+        f'built with GitHub PR <a href="{pr_url}">#{pr_number}</a>.'
     )
     html_theme_options.update({ "announcement": banner })
