@@ -22,14 +22,10 @@ jobs:
           mamba install -n test sagelib=${SAGE_VERSION}
           mamba install --quiet -n test numpy sympy gap-defaults matplotlib-base maxima ipywidgets
           conda list
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
       - name: Install sage-acsv and dependencies
         shell: bash -l {0}
         run: |
-          uv sync
-          uv pip install "sage-docbuild==${SAGE_VERSION}"
-          pip install --verbose .
+          pip install --verbose "sage-docbuild==${SAGE_VERSION}" furo .
       - name: Build documentation
         shell: bash -l {0}
         run: cd docs && make html
