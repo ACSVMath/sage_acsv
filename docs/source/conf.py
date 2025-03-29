@@ -29,7 +29,7 @@ master_doc = "index"
 # General information about the project.
 project = "sage_acsv"
 copyright = "2025, the sage_acsv authors"
-release = version("sage_acsv")
+release = version("sage-acsv")
 
 # Allow linking to external projects, e.g., SageMath
 intersphinx_mapping = {"sage": ("https://doc.sagemath.org/html/en/reference", None)}
