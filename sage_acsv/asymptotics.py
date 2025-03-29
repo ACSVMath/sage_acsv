@@ -23,7 +23,7 @@ from sage_acsv.kronecker import _kronecker_representation
 from sage_acsv.helpers import (
     ACSVException,
     is_contributing,
-    newton_series,
+    compute_newton_series,
     rational_function_reduce,
     compute_hessian,
     compute_implicit_hessian,
@@ -772,7 +772,7 @@ def _general_term_asymptotics(G, H, r, vs, cp, expansion_precision):
 
     # Find series expansion of function g given implicitly by
     # H(w_1, ..., w_{d-1}, g(w_1, ..., w_{d-1})) = 0 up to needed order
-    g = newton_series(H.subs({v: v + cp[v] for v in vs}), vs, N)
+    g = compute_newton_series(H.subs({v: v + cp[v] for v in vs}), vs, N)
     g = g.subs({v: v - cp[v] for v in vs}) + cp[vd]
 
     # Polar change of coordinates
