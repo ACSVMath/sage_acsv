@@ -5,7 +5,6 @@ sage-acsv: a SageMath package for Analytic Combinatorics in Several Variables
    :maxdepth: 1
    :hidden:
 
-   examples
    reference
 
 This package provides tools for the study of the asymptotic behavior of
@@ -49,8 +48,9 @@ in a SageMath Jupyter notebook.
 
 The package can be run in an interactive environment in the browser
 using `Binder <https://mybinder.org/v2/gh/ACSVMath/sage_acsv/HEAD>`__.
-See the :doc:`collection of examples <examples>` for a brief tour of
-the capabilities of this package.
+The :mod:`.asymptotics` module includes a collection of examples illustrating
+how this package is used to extract coefficient asymptotics from multivariate
+rational combinatorial generating functions.
 
 An article serving as an introduction to version 0.1.0 of the package
 and its internals can be found at [SageACSV23]_.
