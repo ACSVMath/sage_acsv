@@ -31,7 +31,7 @@ jobs:
           uv pip install "sage-docbuild==${SAGE_VERSION}"
       - name: Build documentation
         shell: bash -l {0}
-        run: cd docs && uv run make html
+        run: cd docs && make html
       - uses: afc163/surge-preview@v1
         with:
           surge_token: ${{ secrets.SURGE_TOKEN }}
