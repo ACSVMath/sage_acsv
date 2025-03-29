@@ -25,6 +25,7 @@ jobs:
         run: |
           pip install --verbose .
       - name: Build documentation
+        shell: bash -l {0}
         run: cd docs && sage -sh -c "make html"
       - uses: afc163/surge-preview@v1
         with:
