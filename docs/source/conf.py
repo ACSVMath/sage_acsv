@@ -33,6 +33,9 @@ project = "sage-acsv"
 copyright = "2025, the sage-acsv authors"
 release = importlib.metadata.version("sage-acsv")
 
+source_repository = 'https://github.com/ACSVMath/sage_acsv/'
+source_branch = 'main'
+
 # Allow linking to external projects, e.g., SageMath
 intersphinx_mapping = {"sage": ("https://doc.sagemath.org/html/en/reference", None)}
 
@@ -51,8 +54,15 @@ html_css_files = [
     "jupyter_execute.css"
 ]
 
-# html_theme_options["light_logo"] = html_theme_options["dark_logo"] = "logo.svg"
+html_theme_options["light_logo"] = html_theme_options["dark_logo"] = "acsv-logo.svg"
 html_static_path = ["_static"]
+
+html_theme_options.update({
+    "source_repository": source_repository,
+    "source_branch": source_branch,
+    'source_view_link': os.path.join(source_repository, 'blob/main/docs/source/{filename}'),
+    'source_edit_link': os.path.join(source_repository, 'edit/main/docs/source/{filename}'),
+})
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = "sage_acsvdoc"
