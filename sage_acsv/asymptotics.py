@@ -622,9 +622,9 @@ def diagonal_asymptotics_combinatorial(
             # For non-complete intersections, we must compute the parametrized Hessian matrix
             if s != d:
                 Qw = compute_implicit_hessian(factors, vs, r, subs=subs_dict)
-                expansion = SR(G.subs(subs_dict) / abs(Gamma.determinant()) / unit)
+                expansion = SR(prod([v for v in vs[: d - s]]).subs(subs_dict) * G.subs(subs_dict) / abs(Gamma.determinant()) / unit)
                 B = SR(
-                    prod([v for v in vs[: d - s]]).subs(subs_dict)
+                    1
                     / (r[-1] * Qw).determinant()
                     / 2 ** (d - s)
                 )
