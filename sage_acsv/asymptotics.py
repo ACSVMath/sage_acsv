@@ -847,10 +847,9 @@ def _general_term_asymptotics(G, Hs, r, vs, cp, expansion_precision):
 
     INPUT:
 
-    * ``G, H`` -- Coprime polynomials with `F = G/H`.
-    * ``vs`` -- Tuple of variables occurring in `G` and `H`.
-    * ``s`` -- The co-dimension of the stratum that `cp` lies in. This function assumes the last `s`
-      entries of `vs` are parametrized by the first `d-s`
+    * ``G`` -- A polynomial in `vs`.
+    * ``Hs`` -- A list of polynomials in `vs` such that `[G,Hs]` have no pairwise common factors.
+    * ``vs`` -- Tuple of variables occurring in `G` and `Hs`.
     * ``r`` -- The direction. A length `d` vector of positive algebraic numbers (usually
       integers).
     * ``cp`` -- A minimal critical point of `F` with coordinates specified in the
@@ -866,10 +865,10 @@ def _general_term_asymptotics(G, Hs, r, vs, cp, expansion_precision):
 
         sage: from sage_acsv.asymptotics import _general_term_asymptotics
         sage: R.<x, y, z> = QQ[]
-        sage: _general_term_asymptotics(1, 1 - x - y, [1, 1], [x, y], [1/2, 1/2], 5)
+        sage: _general_term_asymptotics(1, [1 - x - y], [1, 1], [x, y], [1/2, 1/2], 5)
         [2, -1/4, 1/64, 5/512, -21/16384]
-        sage: _general_term_asymptotics(1, 1 - x - y - z, [1, 1, 1], [x, y, z], [1/3, 1/3, 1/3], 4)
-        [3, -2/3, 2/27, 14/729]
+        sage: _general_term_asymptotics(1, [1-x-2*y-z, 1-2*x-y-z], [1, 1, 1], [x, y,z], [2/9,2/9,1/3], 5)
+        [-27/2, 57/16, -1081/768, 106795/165888, -15808177/47775744]
     """
 
     d = len(vs)
@@ -893,16 +892,9 @@ def _general_term_asymptotics(G, Hs, r, vs, cp, expansion_precision):
     if expansion_precision == 1:
         # If cp lies on a single smooth component, we can compute asymptotics like in the smooth case
         if s == 1:
-            return [
-                term / (r[-1]) ** (term_order)
-                for term_order, term in enumerate(
-                    _general_term_asymptotics_smooth(G, prod(Hs), r, vs, cp, expansion_precision)
-                )
-            ]
+            return _general_term_asymptotics_smooth(G, prod(Hs), r, vs, cp, expansion_precision)
         else:
             return [SR(G.subs(subs_dict) * abs(prod([v for v in vs[: d - s]]).subs(subs_dict)) / abs(Gamma.determinant().subs(subs_dict)))]
-
-    cp = {v: V for (v, V) in zip(vs, cp)}
 
     W = DifferentialWeylAlgebra(PolynomialRing(QQbar, tvars))
     TR = QQbar[[tvars]]
@@ -922,7 +914,7 @@ def _general_term_asymptotics(G, Hs, r, vs, cp, expansion_precision):
                 [prod([factorial(k) for k in E[0][1]]) * E[1] * f[E[0][1]] for E in dop]
             )
 
-    Hess = compute_implicit_hessian(Hs, vs, r, cp)
+    Hess = compute_implicit_hessian(Hs, vs, r, subs_dict)
     Hessinv = Hess.inverse()
     v = matrix(W, [D[: d - s]])
     Epsilon = -(v * Hessinv.change_ring(W) * v.transpose())[0, 0]
@@ -932,15 +924,15 @@ def _general_term_asymptotics(G, Hs, r, vs, cp, expansion_precision):
 
     # Find series expansion of function g given implicitly by
     # H(w_1, ..., w_{d-s}, g_{d-s+1}, ..., g_{d}) = 0 up to needed order
-    Hs_shift = [H.subs({v: v + cp[v] for v in vs}) for H in Hs]
-    gs = [g.subs({v: v-cp[v] for v in vs}) + cp[vs[d-s+i]] for i, g in enumerate(compute_newton_series_general(Hs_shift, vs, N))]
+    Hs_shift = [H.subs({v: v + subs_dict[v] for v in vs}) for H in Hs]
+    gs = [g.subs({v: v-subs_dict[v] for v in vs}) + subs_dict[vs[d-s+i]] for i, g in enumerate(compute_newton_series_general(Hs_shift, vs, N))]
 
     # Polar change of coordinates
-    tsubs = {v: cp[v] * exp(I * t).add_bigoh(N) for v, t in zip(vs, tvars)}
+    tsubs = {v: subs_dict[v] * exp(I * t).add_bigoh(N) for v, t in zip(vs, tvars)}
     for i in range(s):
         tsubs[vs[d-s+i]] = gs[i].subs(tsubs)
 
-    psi = sum([r[d-s+i]*log(g.subs(tsubs)/ g.subs(cp)) for i, g in enumerate(gs)]).add_bigoh(N)
+    psi = sum([r[d-s+i]*log(g.subs(tsubs)/ g.subs(subs_dict)) for i, g in enumerate(gs)]).add_bigoh(N)
     psi += I * sum([r[k] * tvars[k] for k in range(d - s)])
     v = matrix(TR, [tvars[k] for k in range(d - s)])
     psiTilde = psi - (v * Hess.change_ring(TR) * v.transpose())[0, 0] / 2
