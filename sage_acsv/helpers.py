@@ -242,6 +242,36 @@ def compute_newton_series(phi, variables, series_precision):
 
     return NewtonRecur(Mod(phi, series_precision), series_precision)[0]
 
+def compute_newton_series_general(phi, variables, series_precision):
+    s = len(phi)
+    X = variables[:-s]
+    Y = variables[-s:]
+
+    def ModX(Fs, N):
+        return vector([F.mod(Ideal(X) ** N) for F in Fs])
+
+    def ModY(Fs, N):
+        return vector([F.mod(Ideal(Y) ** N) for F in Fs])
+
+    def Mod(Fs, N):
+        return ModX(ModY(Fs, N), N)
+
+    def Jacobian(Fs):
+        return matrix([
+            [F.derivative(v) for v in Y]
+            for F in Fs
+        ])
+
+    def NewtonRecur(Hs, N):
+        if N == 1:
+            return vector([0 for _ in range(s)]), Jacobian(Hs).inverse().subs({v: 0 for v in variables})
+        Fs, Gs = NewtonRecur(Hs, ceil(N / 2))
+        Gs = Gs + (matrix.identity(s) - Gs * Jacobian(Hs).subs({Y[j]:Fs[j] for j in range(s)})) * Gs
+        Fs = Fs - Gs * Hs.subs({Y[j]:Fs[j] for j in range(s)})
+        return ModX(Fs, N), matrix([ModX(G, ceil(N / 2)) for G in Gs])
+
+    return NewtonRecur(Mod(phi, series_precision), series_precision)[0]
+
 
 def compute_implicit_hessian(Hs, vs, r, subs):
     r"""Compute the Hessian of an implicitly defined function.
