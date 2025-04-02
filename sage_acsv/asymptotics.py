@@ -625,7 +625,7 @@ def diagonal_asymptotics_combinatorial(
                 expansion = SR(prod([v for v in vs[: d - s]]).subs(subs_dict) * G.subs(subs_dict) / abs(Gamma.determinant()) / unit)
                 B = SR(
                     1
-                    / (r[-1] * Qw).determinant()
+                    / Qw.determinant()
                     / 2 ** (d - s)
                 )
             else:
