@@ -1,0 +1,57 @@
+name: Deploy documentation to GitHub Pages
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+        SAGE_VERSION: "10.5"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+        with: { mamba-version: "*", channels: "flatsurf,conda-forge", channel-priority: true }
+      - name: Install dependencies
+        shell: bash -l {0}
+        run: |
+          mamba install -n test sagelib=${SAGE_VERSION}
+          mamba install --quiet -n test numpy sympy gap-defaults matplotlib-base maxima ipywidgets
+          conda list
+      - name: Install sage-acsv and dependencies
+        shell: bash -l {0}
+        run: |
+          pip install --verbose "sage-docbuild==${SAGE_VERSION}" furo .
+      - name: Build documentation
+        shell: bash -l {0}
+        run: cd docs && make html
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'docs/build/html'
+  
+  # Deploy job
+  deploy:
+    # Add a dependency to the build job
+    needs: build
+
+    # Deploy to the github-pages environment
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    # Specify runner + deployment step
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4 
+
+      

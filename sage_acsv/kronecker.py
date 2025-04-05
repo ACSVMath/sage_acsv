@@ -187,7 +187,7 @@ def kronecker_representation(system, vs, linear_form=None):
 
     INPUT:
 
-    * ``system`` -- A system of polynomials in ``d`` variables
+    * ``system`` -- A system of polynomials in ``d`` variables defining a zero-dimensional (finite) variety
     * ``vs`` -- Variables of the system
     * ``linear_form`` -- (Optional) A linear combination of the
       input variables that separates the critical point solutions
