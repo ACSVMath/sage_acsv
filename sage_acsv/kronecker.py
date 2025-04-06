@@ -175,7 +175,7 @@ def kronecker(system, vs, linear_form=None):
     warn(
         "The kronecker function has been deprecated and will "
         "be removed in a future version. Please use the "
-        "kronecker_representation function (same signature) instead",
+        "kronecker_representation function (same signature) instead.",
         DeprecationWarning,
         stacklevel=2,
     )
@@ -183,7 +183,7 @@ def kronecker(system, vs, linear_form=None):
 
 
 def kronecker_representation(system, vs, linear_form=None):
-    r"""Computes the Kronecker Representation of a system of polynomials
+    r"""Computes the Kronecker Representation of a system of polynomials.
 
     INPUT:
 

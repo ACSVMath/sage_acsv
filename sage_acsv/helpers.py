@@ -191,7 +191,7 @@ def compute_hessian(H, variables, r, critical_point=None):
     return hessian
 
 
-def newton_series(phi, variables, series_precision):
+def compute_newton_series(phi, variables, series_precision):
     r"""Computes the series expansion of an implicitly defined function.
 
     The function `g(x)` for which a series expansion is computed is a simple root of the expression
@@ -213,9 +213,9 @@ def newton_series(phi, variables, series_precision):
 
     EXAMPLES::
 
-        sage: from sage_acsv.helpers import newton_series
+        sage: from sage_acsv.helpers import compute_newton_series
         sage: R.<x, T> = QQ[]
-        sage: newton_series(x*T^2 - T + 1, [x, T], 7)
+        sage: compute_newton_series(x*T^2 - T + 1, [x, T], 7)
         132*x^6 + 42*x^5 + 14*x^4 + 5*x^3 + 2*x^2 + x + 1
 
     """

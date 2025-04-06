@@ -135,7 +135,7 @@ from sage_acsv.kronecker import _kronecker_representation
 from sage_acsv.helpers import (
     ACSVException,
     is_contributing,
-    newton_series,
+    compute_newton_series,
     rational_function_reduce,
     compute_hessian,
     compute_implicit_hessian,
@@ -886,7 +886,7 @@ def _general_term_asymptotics(G, H, r, vs, cp, expansion_precision):
 
     # Find series expansion of function g given implicitly by
     # H(w_1, ..., w_{d-1}, g(w_1, ..., w_{d-1})) = 0 up to needed order
-    g = newton_series(H.subs({v: v + cp[v] for v in vs}), vs, N)
+    g = compute_newton_series(H.subs({v: v + cp[v] for v in vs}), vs, N)
     g = g.subs({v: v - cp[v] for v in vs}) + cp[vd]
 
     # Polar change of coordinates
@@ -1357,10 +1357,25 @@ def contributing_points_combinatorial(
     )
 
 
+def MinimalCriticalCombinatorial(F, r=None, linear_form=None, whitney_strat=None):
+    from warnings import warn
+
+    warn(
+        "MinimalCriticalCombinatorial is deprecated and will be removed "
+        "in a future release. Please use minimal_critical_points_combinatorial "
+        "(same signature) instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return minimal_critical_points_combinatorial(
+        F, r=r, linear_form=linear_form, whitney_strat=whitney_strat
+    )
+
+
 def minimal_critical_points_combinatorial(
     F, r=None, linear_form=None, whitney_strat=None
 ):
-    r"""Compute nonzero minimal critical points of a multivariate
+    r"""Compute nonzero minimal critical points of a combinatorial multivariate
     rational function `F=G/H` admitting a finite number of critical points.
 
     The function is assumed to have a combinatorial expansion.
