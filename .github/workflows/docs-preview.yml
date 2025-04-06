@@ -1,0 +1,38 @@
+name: 🔂 Surge PR Preview
+
+on:
+  pull_request:
+    # when using teardown: 'true', add default event types + closed event type
+    types: [opened, synchronize, reopened, closed]
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    env:
+        SAGE_VERSION: "10.5"
+    permissions:
+      pull-requests: write # allow surge-preview to create/update PR comments
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+        with: { mamba-version: "*", channels: "flatsurf,conda-forge", channel-priority: true }
+      - name: Install dependencies
+        shell: bash -l {0}
+        run: |
+          mamba install -n test sagelib=${SAGE_VERSION}
+          mamba install --quiet -n test numpy sympy gap-defaults matplotlib-base maxima ipywidgets
+          conda list
+      - name: Install sage-acsv and dependencies
+        shell: bash -l {0}
+        run: |
+          pip install --verbose "sage-docbuild==${SAGE_VERSION}" furo .
+      - name: Build documentation
+        shell: bash -l {0}
+        run: cd docs && make html
+      - uses: afc163/surge-preview@v1
+        with:
+          surge_token: ${{ secrets.SURGE_TOKEN }}
+          build: |
+            echo "not running npm"
+          dist: docs/build/html
+          teardown: 'true'
