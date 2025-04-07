@@ -539,6 +539,10 @@ def diagonal_asymptotics_combinatorial(
         return
 
     asm_quantities = []
+
+    # Save extra H factors that the contrib point does not lie on
+    # They can keep their multiplicities.
+    extra_factors = []
     for cp in min_crit_pts:
         # Step 1: Determine if pt is a transverse multiple point of H, and compute the factorization
         # for now, we'll just try to factor it in the polynomial ring
@@ -556,7 +560,7 @@ def diagonal_asymptotics_combinatorial(
             unit *= const**multiplicity
             factor /= const
             if factor.subs(subs_dict) != 0:
-                unit *= factor.subs(subs_dict)
+                extra_factors.append(factor**multiplicity)
                 continue
             factors.append(factor)
             multiplicities.append(multiplicity)
@@ -621,7 +625,7 @@ def diagonal_asymptotics_combinatorial(
             expansion = sum(
                 term/n ** term_order
                 for term_order, term in enumerate(
-                    _general_term_asymptotics(G, factors, r, vs, cp, expansion_precision)
+                    _general_term_asymptotics(G, factors, extra_factors, r, vs, cp, expansion_precision)
                 )
             )/unit
             B = SR(
@@ -638,14 +642,22 @@ def diagonal_asymptotics_combinatorial(
             # For non-complete intersections, we must compute the parametrized Hessian matrix
             if s != d:
                 Qw = compute_implicit_hessian(factors, vs, r, subs=subs_dict)
-                expansion = SR(G.subs(subs_dict) * abs(prod([v for v in vs[: d - s]]).subs(subs_dict))/ abs(Gamma.determinant()) / unit)
+                expansion = SR(
+                    G.subs(subs_dict) * abs(prod([v for v in vs[: d - s]]).subs(subs_dict))
+                    / abs(Gamma.determinant()) 
+                    / unit / R(prod(extra_factors)).subs(subs_dict)
+                )
                 B = SR(
                     1
                     / Qw.determinant()
                     / 2 ** (d - s)
                 )
             else:
-                expansion = SR(G.subs(subs_dict) / unit / abs(Gamma.determinant()))
+                expansion = SR(
+                    G.subs(subs_dict) 
+                    / unit / abs(Gamma.determinant())
+                    / R(prod(extra_factors)).subs(subs_dict)
+                )
                 B = 1
 
             expansion *= (
@@ -837,7 +849,7 @@ def _general_term_asymptotics_smooth(G, H, r, vs, cp, expansion_precision):
 
     return res
 
-def _general_term_asymptotics(G, Hs, r, vs, cp, expansion_precision):
+def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
     r"""
     Compute coefficients of general (not necessarily leading) terms of
     the asymptotic expansion for a given critical
@@ -892,7 +904,7 @@ def _general_term_asymptotics(G, Hs, r, vs, cp, expansion_precision):
     if expansion_precision == 1:
         # If cp lies on a single smooth component, we can compute asymptotics like in the smooth case
         if s == 1:
-            return _general_term_asymptotics_smooth(G, prod(Hs), r, vs, cp, expansion_precision)
+            return _general_term_asymptotics_smooth(G, prod(Hs+Hs_ext), r, vs, cp, expansion_precision)
         else:
             return [SR(G.subs(subs_dict) * abs(prod([v for v in vs[: d - s]]).subs(subs_dict)) / abs(Gamma.determinant().subs(subs_dict)))]
 
@@ -926,6 +938,14 @@ def _general_term_asymptotics(G, Hs, r, vs, cp, expansion_precision):
     # H(w_1, ..., w_{d-s}, g_{d-s+1}, ..., g_{d}) = 0 up to needed order
     Hs_shift = [H.subs({v: v + subs_dict[v] for v in vs}) for H in Hs]
     gs = [g.subs({v: v-subs_dict[v] for v in vs}) + subs_dict[vs[d-s+i]] for i, g in enumerate(compute_newton_series_general(Hs_shift, vs, N))]
+    #print("gs:", gs)
+    #print(vs)
+    #for H in Hs:
+    #    print("-------")
+    #    print(H)
+    #    print(H.subs({vs[d-s+j]:gs[j] for j in range(s)}))
+    #    print(H.subs({vs[d-s+j]:gs[j] for j in range(s)}).subs(subs_dict))
+    #    print()
 
     # Polar change of coordinates
     tsubs = {v: subs_dict[v] * exp(I * t).add_bigoh(N) for v, t in zip(vs, tvars)}
@@ -938,9 +958,9 @@ def _general_term_asymptotics(G, Hs, r, vs, cp, expansion_precision):
     psiTilde = psi - (v * Hess.change_ring(TR) * v.transpose())[0, 0] / 2
     PsiSeries = psiTilde.truncate(N)
 
-    # Compute series expansion of P = -G*z_1*...*z_{d-s}/Gamma up to needed order
-    P_num = (-1)**(s+1) * (G.subs(tsubs)*prod([tsubs[v] for v in vs[:d-s]])).add_bigoh(N)
-    P_denom = Gamma.determinant().subs(tsubs).add_bigoh(N)
+    # Compute series expansion of P = G*z_1*...*z_{d-s}/Gamma up to needed order
+    P_num = (G.subs(tsubs)*prod([tsubs[v] for v in vs[:d-s]])).add_bigoh(N)
+    P_denom = (prod(Hs_ext).subs(tsubs)*Gamma.determinant().subs(tsubs)).add_bigoh(N)
     PSeries = (P_num / P_denom).truncate(N)
 
     if len(tvars) > 1:
@@ -961,7 +981,7 @@ def _general_term_asymptotics(G, Hs, r, vs, cp, expansion_precision):
         return extra_contrib * eval_op(EE[ell + j], PP[ell])
 
     res = [
-        sum([constants_clj(ell, j) for ell in srange(2 * j + 1)])
+        (-1)**s * sum([constants_clj(ell, j) for ell in srange(2 * j + 1)])
         for j in srange(expansion_precision)
     ]
     try:
