@@ -537,7 +537,10 @@ def diagonal_asymptotics_combinatorial(
         return
 
     asm_quantities = []
+    # Store copy of vs and r in case order changes due to parametrization
+    vs_copy, r_copy = copy(vs), copy(r)
     for cp in min_crit_pts:
+        vs, r = copy(vs_copy), copy(r_copy)
         # Step 1: Determine if pt is a transverse multiple point of H, and compute the factorization
         # for now, we'll just try to factor it in the polynomial ring
         R = PolynomialRing(QQbar, len(vs), vs)
