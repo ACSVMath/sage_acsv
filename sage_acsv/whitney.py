@@ -58,8 +58,8 @@ def merge_stratifications(Xs, Ys):
 
 
 def whitney_stratification_projective(X, P):
-    r"""
-    Computes a Whitney stratification of projective variety X in the ring P
+    r"""Computes a Whitney stratification of projective variety `X` in
+    the ring `P`.
     """
     X = P.subscheme(compute_radical(X.defining_ideal()))
     vs = P.gens()

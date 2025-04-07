@@ -28,7 +28,7 @@ def _kronecker_representation_sage(system, u_, vs, linear_form=None):
     A polynomial ``P`` and ``d`` polynomials ``Q1, ..., Q_d`` such
     that ``z_i = Q_i(u)/P'(u)`` for ``u`` ranging over the roots of ``P``
 
-    Examples::
+    EXAMPLES::
 
         sage: from sage_acsv.kronecker import kronecker_representation
         sage: var('x, y')
@@ -187,17 +187,18 @@ def kronecker_representation(system, vs, linear_form=None):
 
     INPUT:
 
-    * ``system`` -- A system of polynomials in ``d`` variables defining a zero-dimensional (finite) variety
+    * ``system`` -- A system of polynomials in `d` variables defining a zero-dimensional (finite) variety
     * ``vs`` -- Variables of the system
     * ``linear_form`` -- (Optional) A linear combination of the
       input variables that separates the critical point solutions
 
     OUTPUT:
 
-    A polynomial ``P`` and ``d`` polynomials ``Q1, ..., Q_d`` such that
-    ``z_i = Q_i(u)/P'(u)`` for ``u`` ranging over the roots of ``P``.
+    A polynomial `P` and `d` polynomials `Q1, ..., Q_d` such that
+    `z_i = Q_i(u)/P'(u)` for `u` ranging over the roots of `P`.
 
-    Examples::
+    EXAMPLES::
+
         sage: from sage_acsv.kronecker import kronecker_representation
         sage: var('x,y')
         (x, y)

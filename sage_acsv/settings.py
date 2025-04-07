@@ -70,7 +70,7 @@ class ACSVSettings:
     This class is used to store global settings for the package. It
     provides a mechanism to set and get the default settings.
 
-    Examples::
+    EXAMPLES::
 
         sage: from sage_acsv import ACSVSettings
         sage: list(ACSVSettings.Output)

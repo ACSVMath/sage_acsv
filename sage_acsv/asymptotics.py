@@ -423,6 +423,7 @@ def diagonal_asymptotics_combinatorial(
     * ``output_format`` -- (Optional) A string or
       :class:`.ACSVSettings.Output` specifying the way the asymptotic growth
       is returned. Allowed values currently are:
+
       - ``"tuple"``: the growth is returned as a list of
         tuples of the form ``(a, n^b, pi^c, d)`` such that the `r`-diagonal of `F`
         behaves like the sum of ``a^n n^b pi^c d + O(a^n n^{b-1})`` over these tuples.
@@ -434,6 +435,7 @@ def diagonal_asymptotics_combinatorial(
         :class:`.ACSVSettings.Output` itself via
         :meth:`.ACSVSettings.set_default_output_format`. The default behavior
         is asymptotic output.
+
     * ``as_symbolic`` -- deprecated in favor of the equivalent
       ``output_format="symbolic"``. Will be removed in a future release.
     * ``whitney_strat`` -- (Optional) If known / precomputed, a
@@ -454,10 +456,10 @@ def diagonal_asymptotics_combinatorial(
     This separation step can fail, but (assuming `F` has a finite number of critical
     points) the code can be rerun until a separating form is found.
 
-    EXAMPLES:
+    EXAMPLES::
 
         sage: from sage_acsv import diagonal_asymptotics_combinatorial
-        sage: var('x,y,z,w')
+        sage: var('x, y, z, w')
         (x, y, z, w)
         sage: diagonal_asymptotics_combinatorial(1/(1-x-y))
         1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2))
@@ -964,7 +966,7 @@ def contributing_points_combinatorial_smooth(G, H, variables, r=None, linear_for
     This separation step can fail, but (assuming F has a finite number of critical points)
     the code can be rerun until a separating form is found.
 
-    Examples::
+    EXAMPLES::
 
         sage: from sage_acsv import contributing_points_combinatorial_smooth
         sage: R.<x, y, w, lambda_, t, u_> = QQ[]
@@ -1303,15 +1305,15 @@ def contributing_points_combinatorial(
     INPUT:
 
     * ``F`` -- Symbolic fraction, the rational function assumed to have
-      a finite number of critical points
-    * ``r`` -- (Optional) Length ``d`` vector of positive integers
+      a finite number of critical points.
+    * ``r`` -- (Optional) Length `d` vector of positive integers.
     * ``linear_form`` -- (Optional) A linear combination of the input
-      variables that separates the critical point solutions
+      variables that separates the critical point solutions.
     * ``whitney_strat`` -- (Optional) If known / precomputed, a
       Whitney Stratification of `V(H)`. The program will not check if
-      this stratification is correct. Should be a list of length ``d``, where
-      the ``k``-th entry is a list of tuples of ideas generators representing
-      a component of the ``k``-dimensional stratum.
+      this stratification is correct. Should be a list of length `d`, where
+      the `k`-th entry is a list of tuples of ideas generators representing
+      a component of the `k`-dimensional stratum.
 
     OUTPUT:
 
@@ -1321,10 +1323,10 @@ def contributing_points_combinatorial(
 
     The code randomly generates a linear form, which for generic rational functions
     separates the solutions of an intermediate polynomial system with high probability.
-    This separation step can fail, but (assuming F has a finite number of critical points)
+    This separation step can fail, but (assuming `F` has a finite number of critical points)
     the code can be rerun until a separating form is found.
 
-    Examples::
+    EXAMPLES::
 
         sage: from sage_acsv import contributing_points_combinatorial
         sage: var('x y')
@@ -1403,7 +1405,7 @@ def minimal_critical_points_combinatorial(
     This separation step can fail, but (assuming F has a finite number of critical points)
     the code can be rerun until a separating form is found.
 
-    Examples::
+    EXAMPLES::
 
         sage: from sage_acsv import minimal_critical_points_combinatorial
         sage: var('x y')
@@ -1572,7 +1574,7 @@ def critical_points(F, r=None, linear_form=None, whitney_strat=None):
     This separation step can fail, but (assuming F has a finite number of critical points)
     the code can be rerun until a separating form is found.
 
-    Examples::
+    EXAMPLES::
 
         sage: from sage_acsv import critical_points
         sage: var('x y')
