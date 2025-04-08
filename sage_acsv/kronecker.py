@@ -171,13 +171,10 @@ def _kronecker_representation(system, u_, vs, linear_form=None):
     return _kronecker_representation_sage(system, u_, vs, linear_form=linear_form)
 
 def kronecker(system, vs, linear_form=None):
-    from warnings import warn
-    warn(
+    acsv_logger.warning(
         "The kronecker function has been deprecated and will "
         "be removed in a future version. Please use the "
         "kronecker_representation function (same signature) instead.",
-        DeprecationWarning,
-        stacklevel=2,
     )
     return kronecker_representation(system, vs, linear_form=linear_form)
 
