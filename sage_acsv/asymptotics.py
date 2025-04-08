@@ -373,13 +373,9 @@ def diagonal_asy(
     whitney_strat=None,
     as_symbolic=False,
 ):
-    from warnings import warn
-
-    warn(
+    acsv_logger.warning(
         "diagonal_asy is deprecated and will be removed in a future release. "
         "Please use diagonal_asymptotics_combinatorial (same signature) instead.",
-        DeprecationWarning,
-        stacklevel=2,
     )
     return diagonal_asymptotics_combinatorial(
         F,
@@ -642,7 +638,7 @@ def diagonal_asymptotics_combinatorial(
             break
         except Exception as e:
             if isinstance(e, ACSVException) and e.retry:
-                acsv_logger.warning(
+                acsv_logger.info(
                     "Randomly generated linear form was not suitable, "
                     f"encountered error: {e}\nRetrying..."
                 )
@@ -1360,14 +1356,10 @@ def contributing_points_combinatorial(
 
 
 def MinimalCriticalCombinatorial(F, r=None, linear_form=None, whitney_strat=None):
-    from warnings import warn
-
-    warn(
+    acsv_logger.warning(
         "MinimalCriticalCombinatorial is deprecated and will be removed "
         "in a future release. Please use minimal_critical_points_combinatorial "
         "(same signature) instead.",
-        DeprecationWarning,
-        stacklevel=2,
     )
     return minimal_critical_points_combinatorial(
         F, r=r, linear_form=linear_form, whitney_strat=whitney_strat
