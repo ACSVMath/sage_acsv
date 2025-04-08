@@ -636,7 +636,7 @@ def diagonal_asymptotics_combinatorial(
             break
         except Exception as e:
             if isinstance(e, ACSVException) and e.retry:
-                acsv_logger.warning(
+                acsv_logger.info(
                     "Randomly generated linear form was not suitable, "
                     f"encountered error: {e}\nRetrying..."
                 )
