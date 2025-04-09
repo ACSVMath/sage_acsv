@@ -449,6 +449,8 @@ def diagonal_asymptotics_combinatorial(
         ....: ]
         sage: diagonal_asymptotics_combinatorial(G/H, r = [1,1,1], output_format = 'asymptotic', whitney_strat = strat)
         0.866025403784439?/sqrt(pi)*3^n*n^(-1/2) + O(3^n*n^(-3/2))
+        sage: diagonal_asymptotics_combinatorial(G/H, r = [1,1,1], output_format = 'asymptotic', whitney_strat = strat, expansion_precision = 2)
+        3^n*(-1.136658342467076?/n + 0.866025403784439?)/(sqrt(pi)*sqrt(n))
 
     TESTS:
 
@@ -877,10 +879,14 @@ def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
 
         sage: from sage_acsv.asymptotics import _general_term_asymptotics
         sage: R.<x, y, z> = QQ[]
-        sage: _general_term_asymptotics(1, [1 - x - y], [1, 1], [x, y], [1/2, 1/2], 5)
+        sage: _general_term_asymptotics(1, [1 - x - y], [], [1, 1], [x, y], [1/2, 1/2], 5)
         [2, -1/4, 1/64, 5/512, -21/16384]
-        sage: _general_term_asymptotics(1, [1-x-2*y-z, 1-2*x-y-z], [1, 1, 1], [x, y,z], [2/9,2/9,1/3], 5)
+        sage: _general_term_asymptotics(1, [1 - x - y], [1-y], [1, 1], [x, y], [1/2, 1/2], 5)
+        [4, -1/2, 1/32, 5/256, -21/8192]
+        sage: _general_term_asymptotics(1, [1-x-2*y-z, 1-2*x-y-z], [], [1, 1, 1], [x, y, z], [2/9, 2/9, 1/3], 5)
         [-27/2, 57/16, -1081/768, 106795/165888, -15808177/47775744]
+        sage: _general_term_asymptotics(1, [1-x-2*y-z, 1-2*x-y-z], [1-x/2-y/2-z/2], [1, 1, 1], [x, y,z], [2/9, 2/9, 1/3], 3)
+        [243/11, -70497/10648, 57642411/20614528]
     """
 
     d = len(vs)
@@ -888,7 +894,7 @@ def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
     R = PolynomialRing(QQbar, vs)
     vs = R.gens()
     tvars = SR.var("t", d - s)
-    G, Hs = R(SR(G)), [R(SR(H)) for H in Hs]
+    G, Hs, Hs_ext = R(SR(G)), [R(SR(H)) for H in Hs], [R(SR(H)) for H in Hs_ext]
     subs_dict = {vs[i]: cp[i] for i in range(d)}
 
     # Step 3: Compute the gamma matrix as defined in 9.10
@@ -906,7 +912,11 @@ def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
         if s == 1:
             return _general_term_asymptotics_smooth(G, prod(Hs+Hs_ext), r, vs, cp, expansion_precision)
         else:
-            return [SR(G.subs(subs_dict) * abs(prod([v for v in vs[: d - s]]).subs(subs_dict)) / abs(Gamma.determinant().subs(subs_dict)))]
+            return [
+                SR(G.subs(subs_dict) * abs(prod([v for v in vs[: d - s]]).subs(subs_dict)) 
+                   / abs(Gamma.determinant().subs(subs_dict)))
+                   / prod(Hs_ext).subs(subs_dict)
+            ]
 
     W = DifferentialWeylAlgebra(PolynomialRing(QQbar, tvars))
     TR = QQbar[[tvars]]
