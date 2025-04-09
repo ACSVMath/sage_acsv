@@ -562,7 +562,7 @@ def diagonal_asymptotics_combinatorial(
         sage: diagonal_asymptotics_combinatorial(G/H, r = [1,1,1], output_format = 'asymptotic', whitney_strat = strat)
         0.866025403784439?/sqrt(pi)*3^n*n^(-1/2) + O(3^n*n^(-3/2))
         sage: diagonal_asymptotics_combinatorial(G/H, r = [1,1,1], output_format = 'asymptotic', whitney_strat = strat, expansion_precision = 2)
-        3^n*(-1.136658342467076?/n + 0.866025403784439?)/(sqrt(pi)*sqrt(n))
+        0.866025403784439?/sqrt(pi)*3^n*n^(-1/2) - 1.136658342467076?/sqrt(pi)*3^n*n^(-3/2) + O(3^n*n^(-5/2))
 
     TESTS:
 
@@ -998,9 +998,9 @@ def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
         sage: _general_term_asymptotics(1, [1 - x - y], [], [1, 1], [x, y], [1/2, 1/2], 5)
         [2, -1/4, 1/64, 5/512, -21/16384]
         sage: _general_term_asymptotics(1, [1 - x - y], [1-y], [1, 1], [x, y], [1/2, 1/2], 5)
-        [4, -1/2, 1/32, 5/256, -21/8192]
+        [4, -5/2, 73/32, -575/256, 18459/8192]
         sage: _general_term_asymptotics(1, [1-x-2*y-z, 1-2*x-y-z], [], [1, 1, 1], [x, y, z], [2/9, 2/9, 1/3], 5)
-        [-27/2, 57/16, -1081/768, 106795/165888, -15808177/47775744]
+        [27/2, -57/16, 1081/768, -106795/165888, 15808177/47775744]
         sage: _general_term_asymptotics(1, [1-x-2*y-z, 1-2*x-y-z], [1-x/2-y/2-z/2], [1, 1, 1], [x, y,z], [2/9, 2/9, 1/3], 3)
         [243/11, -70497/10648, 57642411/20614528]
     """
@@ -1022,17 +1022,17 @@ def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
         ]
     )
 
+    leading_term = (
+        _general_term_asymptotics_smooth(G, prod(Hs+Hs_ext), r, vs, cp, 1)[0] 
+        if s == 1 else 
+        SR(G.subs(subs_dict) * abs(prod([v for v in vs[: d - s]]).subs(subs_dict)) 
+        / abs(Gamma.determinant().subs(subs_dict)))
+        / prod(Hs_ext).subs(subs_dict)
+    )
+
     # Directly compute leading term
     if expansion_precision == 1:
-        # If cp lies on a single smooth component, we can compute asymptotics like in the smooth case
-        if s == 1:
-            return _general_term_asymptotics_smooth(G, prod(Hs+Hs_ext), r, vs, cp, expansion_precision)
-        else:
-            return [
-                SR(G.subs(subs_dict) * abs(prod([v for v in vs[: d - s]]).subs(subs_dict)) 
-                   / abs(Gamma.determinant().subs(subs_dict)))
-                   / prod(Hs_ext).subs(subs_dict)
-            ]
+        return [leading_term]
 
     W = DifferentialWeylAlgebra(PolynomialRing(QQbar, tvars))
     TR = QQbar[[tvars]]
@@ -1064,14 +1064,6 @@ def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
     # H(w_1, ..., w_{d-s}, g_{d-s+1}, ..., g_{d}) = 0 up to needed order
     Hs_shift = [H.subs({v: v + subs_dict[v] for v in vs}) for H in Hs]
     gs = [g.subs({v: v-subs_dict[v] for v in vs}) + subs_dict[vs[d-s+i]] for i, g in enumerate(compute_newton_series_general(Hs_shift, vs, N))]
-    #print("gs:", gs)
-    #print(vs)
-    #for H in Hs:
-    #    print("-------")
-    #    print(H)
-    #    print(H.subs({vs[d-s+j]:gs[j] for j in range(s)}))
-    #    print(H.subs({vs[d-s+j]:gs[j] for j in range(s)}).subs(subs_dict))
-    #    print()
 
     # Polar change of coordinates
     tsubs = {v: subs_dict[v] * exp(I * t).add_bigoh(N) for v, t in zip(vs, tvars)}
@@ -1107,7 +1099,7 @@ def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
         return extra_contrib * eval_op(EE[ell + j], PP[ell])
 
     res = [
-        (-1)**s * sum([constants_clj(ell, j) for ell in srange(2 * j + 1)])
+        sum([constants_clj(ell, j) for ell in srange(2 * j + 1)])
         for j in srange(expansion_precision)
     ]
     try:
@@ -1117,7 +1109,12 @@ def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
     except (TypeError, ValueError, NotImplementedError):
         pass
 
-    return res
+    if res[0] == leading_term:
+        return res
+    elif res[0] == -leading_term:
+        return [-term for term in res]
+    else:
+        raise ACSVException("Issue with computing general terms - this should never happen.")
 
 def contributing_points_combinatorial_smooth(G, H, variables, r=None, linear_form=None):
     r"""Compute contributing points of a multivariate

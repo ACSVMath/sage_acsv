@@ -1,5 +1,5 @@
 from sage.all import Ideal, SR, PolynomialRing, Set
-from sage.all import prod, XGCD as xgcd, jacobian
+from sage.all import prod, xgcd, jacobian
 
 from copy import copy
 
@@ -80,7 +80,7 @@ def compute_nullstellensatz_decomposition(R, G, H):
     decomp = [term for term in decomp if term[0] != 0]
     return decomp # todo: combine parts
     
-def get_algebraic_independence_ceritificate(R, Hs, multiplicities):
+def get_algebraic_independence_certificate(R, Hs, multiplicities):
     r"""Finds an algebraic independence certificate of a set `Hs` of polynomials.
 
     An algebraic independence ceritificate is an annhilating polynomial of `Hs` over
@@ -98,9 +98,9 @@ def get_algebraic_independence_ceritificate(R, Hs, multiplicities):
     
     EXAMPLES::
 
-        sage: from sage_acsv.decomposition import get_algebraic_independence_ceritificate
+        sage: from sage_acsv.decomposition import get_algebraic_independence_certificate
         sage: R.<x,y> = PolynomialRing(QQ, 2)
-        sage: get_algebraic_independence_ceritificate(R, [x, x*y+1,y], [2,1,3])
+        sage: get_algebraic_independence_certificate(R, [x, x*y+1,y], [2,1,3])
         Ideal (1 - 6*T1 + 15*T1^2 - 20*T1^3 + 15*T1^4 - T0^3*T2^2 - 6*T1^5 + T1^6) of Multivariate Polynomial Ring in T0, T1, T2 over Rational Field
     """
 
@@ -158,7 +158,7 @@ def compute_algebraic_dependence_decomposition(R, G, H):
 
     Hs, multiplicities = zip(*list(H.factor()))
 
-    J = get_algebraic_independence_ceritificate(R, Hs, multiplicities)
+    J = get_algebraic_independence_certificate(R, Hs, multiplicities)
     #print(J)
     if not J:
         return [(G, H)]
@@ -238,7 +238,7 @@ def compute_cohomology_decomposition(R, G, H):
 
         sage: from sage_acsv.decomposition import compute_cohomology_decomposition
         sage: R.<x,y> = PolynomialRing(QQ, 2)
-        sage: cohomology_decomposition(R, 1, (x*y-1)*(x^2+y^2-1)^2)
+        sage: compute_cohomology_decomposition(R, 1, (x*y-1)*(x^2+y^2-1)^2)
         (-4/3*x^2*y^2 + 4/3*x*y + 1/3, x^3*y + x*y^3 - x^2 - x*y - y^2 + 1)
     """
     G,H = rational_function_reduce(G,H)
