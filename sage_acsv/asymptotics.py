@@ -649,7 +649,10 @@ def diagonal_asymptotics_combinatorial(
         return
 
     asm_quantities = []
+    # Store copy of vs and r in case order changes due to parametrization
+    vs_copy, r_copy = copy(vs), copy(r)
     for cp in min_crit_pts:
+        vs, r = copy(vs_copy), copy(r_copy)
         # Step 1: Determine if pt is a transverse multiple point of H, and compute the factorization
         # for now, we'll just try to factor it in the polynomial ring
         R = PolynomialRing(QQbar, len(vs), vs)
@@ -734,10 +737,10 @@ def diagonal_asymptotics_combinatorial(
             # For non-complete intersections, we must compute the parametrized Hessian matrix
             if s != d:
                 Qw = compute_implicit_hessian(factors, vs, r, subs=subs_dict)
-                expansion = SR(G.subs(subs_dict) / abs(Gamma.determinant()) / unit)
+                expansion = SR(abs(prod([v for v in vs[: d - s]]).subs(subs_dict)) * G.subs(subs_dict) / abs(Gamma.determinant()) / unit)
                 B = SR(
-                    prod([v for v in vs[: d - s]]).subs(subs_dict)
-                    / (r[-1] * Qw).determinant()
+                    1
+                    / Qw.determinant()
                     / 2 ** (d - s)
                 )
             else:
