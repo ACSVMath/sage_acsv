@@ -71,7 +71,7 @@ def collapse_zero_part(algebraic_number: AlgebraicNumber) -> AlgebraicNumber:
 
 
 def rational_function_reduce(G, H):
-    r"""Reduction of G and H by dividing out their GCD.
+    r"""Reduction of the rational function `G/H` by dividing `G` and `H` by their GCD.
 
     INPUT:
 
@@ -79,18 +79,18 @@ def rational_function_reduce(G, H):
 
     OUTPUT:
 
-    A tuple ``(G/d, H/d)``, where ``d`` is the GCD of ``G`` and ``H``.
+    A tuple ``(G/g, H/g)``, where ``g`` is the GCD of ``G`` and ``H``.
     """
     g = gcd(G, H)
     return G / g, H / g
 
 
 def generate_linear_form(system, vsT, u_, linear_form=None):
-    r"""Generate a linear form of the input system.
+    r"""Generate a linear form for the input system.
 
-    This is an integer linear combination of the variables that
-    take unique values on the solutions of the system. The
-    generated linear form is with high probability separating.
+    This is an integer linear combination of the variables that,
+    with high probability, takes unique values on the solutions of 
+    the system. 
 
     INPUT:
 
@@ -103,7 +103,7 @@ def generate_linear_form(system, vsT, u_, linear_form=None):
 
     OUTPUT:
 
-    A linear form.
+    A linear form in ``u_`` and the variables of ``vsT``.
     """
     if linear_form is not None:
         return u_ - linear_form
@@ -121,21 +121,21 @@ def generate_linear_form(system, vsT, u_, linear_form=None):
 
 
 def compute_hessian(H, variables, r, critical_point=None):
-    r"""Computes the Hessian of a given map.
+    r"""Computes the Hessian of an implicitly defined function.
 
-    The map underlying `Hess` is defined as
-
-    .. math::
-
-        (z_1, \ldots, z_{d-1}) \mapsto z_1 \cdots z_{d-1} \log(g(z_1, \ldots, z_{d-1})),
-
-    with `g` determined via the Implicit Function Theorem for the equation
+    The computed matrix is the Hessian of the map
 
     .. math::
 
-        H(z_1,...,z_{d-1}, g(z_1,...,z_{d-1})) = 0`
+        (t_1,...t_{d-1}) \mapsto \log(g(z_1t_1,...,z_{d-1}t_{d-1}))/g(z_1,...,z_{d-1})
+        + I\cdot (r_1t_1+...+r_{d-1}t_{d-1})/r_d 
 
-    at a critical point in direction `r`.
+    at a critical point where the partial derivative of `H` with respect to `z_d` is non-zero, and
+    `g` determined implicitly by
+
+    .. math::
+
+        H(z_1,...,z_{d-1}, g(z_1,...,z_{d-1})) = 0.
 
     INPUT:
 
@@ -144,12 +144,12 @@ def compute_hessian(H, variables, r, critical_point=None):
     * ``vs`` -- A list of variables ``z_1, ..., z_d``
     * ``r`` -- The direction. A vector of length `d` with positive algebraic numbers
       (usually integers) as coordinates.
-    * ``critical_point`` -- An optional critical point where the Hessian should be evaluated at.
-      If not specified, the symbolic Hessian is returned.
+    * ``critical_point`` -- (Optional) A critical point of the map at which to evaluate
+      the Hessian. If not specified, the symbolic Hessian is returned.
 
     OUTPUT:
 
-    A matrix representing the Hessian of the given map.
+    A matrix representing the specified Hessian.
     """
     z_d = variables[-1]
     d = len(variables)
@@ -194,7 +194,7 @@ def compute_hessian(H, variables, r, critical_point=None):
 def compute_newton_series(phi, variables, series_precision):
     r"""Computes the series expansion of an implicitly defined function.
 
-    The function `g(x)` for which a series expansion is computed satisfies
+    The function `g(x)` for which a series expansion is computed is a simple root of the expression
 
     .. math::
 
@@ -279,15 +279,15 @@ def compute_implicit_hessian(Hs, vs, r, subs):
     Given a transverse intersection point `w` in `H_1(w),\dots,H_s(w)=0`, we can parametrize `V(H_1,\dots,H_s)`
     near `w` by writing `z_{d-s+j} = g_j(z_1,\dots,z_{d-s})`.
 
-    Let `h(\theta_1,\dots,\theta_{d-s}) = \sum_{j=1}^s r_{d-s+j}\log g_j({w_1 exp(i\theta_1) \dots w_{d-s} exp(i\theta_{d-s})})`.
-    This function returns the Hessian of h.
+    Let `h(\theta_1,\dots,\theta_{d-s}) = \sum_{j=1}^s r_{d-s+j}\log g_j({w_1 \exp(i\theta_1) \dots w_{d-s} \exp(i\theta_{d-s})})`.
+    This function returns the Hessian of `h`.
 
     INPUT:
 
     * ``Hs`` -- A list of polynomials `H`
     * ``vs`` -- A list of variables in the equation
     * ``r`` -- A direction vector
-    * ``subs`` -- a dic `{v_i:w_i}` for point w
+    * ``subs`` -- a dictionary ``{v_i: w_i}`` defining the point w
 
     OUTPUT:
 
@@ -378,9 +378,10 @@ def compute_implicit_hessian(Hs, vs, r, subs):
 
 
 def is_contributing(vs, pt, r, factors, c):
-    r"""Determines if minimal critical point `pt` where singular variety has transverse square-free factorization
+    r"""Determines if a minimal critical point ``pt`` such that the singular
+    variety has transverse square-free factorization
     is contributing; that is, whether `r` is in the interior
-    of the scaled log-normal cone of `factors` at `pt`
+    of the scaled log-normal cone of ``factors`` at ``pt``
 
     INPUT:
 
@@ -392,7 +393,7 @@ def is_contributing(vs, pt, r, factors, c):
 
     OUTPUT:
 
-    If vs is contributing
+    ``True`` or ``False`` verifying if ``vs`` is contributing
 
     EXAMPLES::
 
@@ -445,7 +446,7 @@ def is_contributing(vs, pt, r, factors, c):
     elif any([r in f for f in polytope.faces(c - 1)]):
         # If r is in the boundary of the log normal cone, point is non-generic
         raise ACSVException(
-            f"Non-generic critical point found - {pt} is contained in {len(vs) - c}-dimensional stratum"
+            f"Non-generic direction detected - critical point {pt} is contained in {len(vs) - c}-dimensional stratum"
         )
     return True
 
@@ -453,7 +454,8 @@ def is_contributing(vs, pt, r, factors, c):
 def get_expansion_terms(
     expr: tuple | list[tuple] | Expression | AsymptoticExpansion,
 ) -> list[Term]:
-    r"""Determines coefficients for each n^k that appears in the asymptotic expression.
+    r"""Determines coefficients for each n^k that appears in the asymptotic expressions
+    returned by :func:`.diagonal_asymptotics_combinatorial`.
 
     INPUT:
 

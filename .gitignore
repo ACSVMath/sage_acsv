@@ -2,8 +2,15 @@
 .ipynb_checkpoints/
 .ipynb_checkpoints/*
 .virtual_documents
+.venv
+.ruff_cache
+
+.DS_Store
 
 examples/local/*
+
+docs/build/
+dist/
 
 __pycache__
 *.pyc

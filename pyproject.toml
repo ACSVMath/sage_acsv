@@ -19,8 +19,10 @@ repository = "https://github.com/ACSVMath/sage_acsv"
 
 [dependency-groups]
 dev = [
+    "furo>=2024.8.6",
     "pytest>=8.3.5",
     "ruff>=0.10.0",
+    "sphinx>=7,<8",
 ]
 
 [build-system]

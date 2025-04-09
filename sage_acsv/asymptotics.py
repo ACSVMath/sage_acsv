@@ -1,5 +1,117 @@
-"""Functions for determining asymptotics of the coefficients
+r"""Functions for determining asymptotics of the coefficients
 of multivariate rational functions.
+
+
+The following examples illustrate some typical use cases. We
+first import relevant functions and define the required
+symbolic variables:
+
+::
+
+    sage: from sage_acsv import diagonal_asymptotics_combinatorial, get_expansion_terms
+    sage: var('w x y z')
+    (w, x, y, z)
+
+The asymptotic expansion for the sequence of central binomial
+coefficients, `\binom{2n}{n}`, generated along the `(1, 1)`-diagonal
+of `F(x, y) = \frac{1}{1 - x - y}` is computed by
+
+::
+
+    sage: diagonal_asymptotics_combinatorial(1 / (1 - x - y))
+    1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2))
+
+The precision of the expansion can be controlled by the
+``expansion_precision`` keyword argument::
+
+    sage: diagonal_asymptotics_combinatorial(1 / (1 - x - y), expansion_precision=4)
+    1/sqrt(pi)*4^n*n^(-1/2) - 1/8/sqrt(pi)*4^n*n^(-3/2) + 1/128/sqrt(pi)*4^n*n^(-5/2) + 5/1024/sqrt(pi)*4^n*n^(-7/2) + O(4^n*n^(-9/2))
+
+::
+
+    sage: F1 = (2*y^2 - x)/(x + y - 1)
+    sage: diagonal_asymptotics_combinatorial(F1, expansion_precision=3)
+    1/4/sqrt(pi)*4^n*n^(-3/2) + 3/32/sqrt(pi)*4^n*n^(-5/2) + O(4^n*n^(-7/2))
+
+::
+
+    sage: F2 = (1+x)*(1+y)/(1-w*x*y*(x+y+1/x+1/y))
+    sage: diagonal_asymptotics_combinatorial(F2, expansion_precision=3)
+    4/pi*4^n*n^(-1) - 6/pi*4^n*n^(-2) + 1/pi*4^n*n^(-3)*(e^(I*arg(-1)))^n + 19/2/pi*4^n*n^(-3) + O(4^n*n^(-4))
+
+The following example comes from Apéry's proof concerning the
+irrationality of `\zeta(3)`.
+
+::
+
+    sage: F3 = 1/(1 - w*(1 + x)*(1 + y)*(1 + z)*(x*y*z + y*z + y + z + 1))
+    sage: apery_expansion = diagonal_asymptotics_combinatorial(F3, expansion_precision=2); apery_expansion
+    1.225275868941647?/pi^(3/2)*33.97056274847714?^n*n^(-3/2) - 0.5128314911970734?/pi^(3/2)*33.97056274847714?^n*n^(-5/2) + O(33.97056274847714?^n*n^(-7/2))
+
+While the representation might suggest otherwise, the numerical
+constants in the expansion are not approximations, but in fact
+explicitly known algebraic numbers. We can use the
+:func:`.get_expansion_terms` function to inspect them closer:
+
+::
+
+    sage: coefs = get_expansion_terms(apery_expansion); coefs
+    [Term(coefficient=1.225275868941647?, pi_factor=pi^(-3/2), base=33.97056274847714?, power=-3/2),
+     Term(coefficient=-0.5128314911970734?, pi_factor=pi^(-3/2), base=33.97056274847714?, power=-5/2)]
+    sage: coefs[0].coefficient.radical_expression()
+    1/4*sqrt(17/2*sqrt(2) + 12)
+    sage: coefs[0].base.radical_expression()
+    12*sqrt(2) + 17
+
+::
+
+    sage: F4 = -1/(1 - (1 - x - y)*(20 - x - 40*y))
+    sage: diagonal_asymptotics_combinatorial(F4, expansion_precision=2)
+    0.09677555757474702?/sqrt(pi)*5.884442204019508?^n*n^(-1/2) + 0.002581950724843528?/sqrt(pi)*5.884442204019508?^n*n^(-3/2) + O(5.884442204019508?^n*n^(-5/2))
+
+The package raises an exception if it detects that some of the
+requirements are not met:
+
+::
+
+    sage: F5 = 1/(x^4*y + x^3*y + x^2*y + x*y - 1)
+    sage: diagonal_asymptotics_combinatorial(F5)
+    Traceback (most recent call last):
+    ...
+    ACSVException: No smooth minimal critical points found.
+
+::
+
+    sage: F6 = 1/((-x + 1)^4 - x*y*(x^3 + x^2*y - x^2 - x + 1))
+    sage: diagonal_asymptotics_combinatorial(F6)  # long time
+    Traceback (most recent call last):
+    ...
+    ACSVException: No contributing points found.
+
+Here is the asymptotic growth of the Delannoy numbers:
+
+::
+
+    sage: F7 = 1/(1 - x - y - x*y)
+    sage: diagonal_asymptotics_combinatorial(F7)
+    1.015051765128218?/sqrt(pi)*5.828427124746190?^n*n^(-1/2) + O(5.828427124746190?^n*n^(-3/2))
+
+::
+
+    sage: F8 = 1/(1 - x^7)
+    sage: diagonal_asymptotics_combinatorial(F8)
+    1/7 + 1/7*(e^(I*arg(-0.2225209339563144? + 0.9749279121818236?*I)))^n + 1/7*(e^(I*arg(-0.2225209339563144? - 0.9749279121818236?*I)))^n + 1/7*(e^(I*arg(-0.9009688679024191? + 0.4338837391175581?*I)))^n + 1/7*(e^(I*arg(-0.9009688679024191? - 0.4338837391175581?*I)))^n + 1/7*(e^(I*arg(0.6234898018587335? + 0.7818314824680299?*I)))^n + 1/7*(e^(I*arg(0.6234898018587335? - 0.7818314824680299?*I)))^n + O(n^(-1))
+
+This example is for a generating function whose singularities have
+very close moduli:
+
+::
+
+    sage: F9 = 1/(8 - 17*x^3 - 9*x^2 + 7*x)
+    sage: diagonal_asymptotics_combinatorial(F9, return_points=True)
+    (0.03396226416457560?*1.285654384750451?^n + O(1.285654384750451?^n*n^(-1)),
+     [[0.7778140158516262?]])
+
 """
 
 from copy import copy
@@ -77,15 +189,15 @@ def _diagonal_asymptotics_combinatorial_smooth(
 
     * ``G`` -- The numerator of the rational function ``F``.
     * ``H`` -- The denominator of the rational function ``F``.
-    * ``r`` -- A vector of positive algebraic numbers (generally integers),
+    * ``r`` -- (Optional) A vector of positive algebraic numbers (generally integers),
       one entry per variable of `F`. Defaults to the appropriate vector of
       all 1's if not specified.
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions.
-    * ``expansion_precision`` -- A positive integer value. This is the number
+    * ``expansion_precision`` -- (Optional) A positive integer value. This is the number
       of terms to compute in the asymptotic expansion. Defaults to 1, which
       only computes the leading term.
-    * ``return_points`` -- If ``True``, also returns the coordinates of
+    * ``return_points`` -- (Optional) If ``True``, also returns the coordinates of
       minimal critical points. By default ``False``.
     * ``output_format`` -- (Optional) A string or :class:`.ACSVSettings.Output`
       specifying the way the asymptotic growth is returned. Allowed values
@@ -101,7 +213,7 @@ def _diagonal_asymptotics_combinatorial_smooth(
         :class:`.ACSVSettings.Output` itself via
         :meth:`.ACSVSettings.set_default_output_format`. The default behavior
         is asymptotic output.
-    * ``as_symbolic`` -- deprecated in favor of the equivalent
+    * ``as_symbolic`` -- (Optional) deprecated in favor of the equivalent
       ``output_format="symbolic"``. Will be removed in a future release.
 
     OUTPUT:
@@ -252,6 +364,7 @@ def _diagonal_asymptotics_combinatorial_smooth(
 
     return result
 
+
 def diagonal_asy(
     F,
     r=None,
@@ -262,12 +375,9 @@ def diagonal_asy(
     whitney_strat=None,
     as_symbolic=False,
 ):
-    from warnings import warn
-    warn(
+    acsv_logger.warning(
         "diagonal_asy is deprecated and will be removed in a future release. "
         "Please use diagonal_asymptotics_combinatorial (same signature) instead.",
-        DeprecationWarning,
-        stacklevel=2,
     )
     return diagonal_asymptotics_combinatorial(
         F,
@@ -292,25 +402,26 @@ def diagonal_asymptotics_combinatorial(
     as_symbolic=False,
 ):
     r"""Asymptotic behavior of the coefficient array of a multivariate rational
-    function `F` along a given direction `r`.
+    function `F` along a given direction `r`. The function is assumed to have a combinatorial expansion.
 
     INPUT:
 
     * ``F`` -- The rational function `G/H` in `d` variables. This function is
       assumed to have a combinatorial expansion.
-    * ``r`` -- A vector of length `d` of positive algebraic numbers.
+    * ``r`` -- (Optional) A vector of length `d` of positive algebraic numbers.
       Defaults to the appropriate vector of all 1's if not specified.
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions. Is generated
       randomly if not specified.
-    * ``expansion_precision`` -- A positive integer, the number of terms to
+    * ``expansion_precision`` -- (Optional) A positive integer, the number of terms to
       compute in the asymptotic expansion. Defaults to 1, which only computes
       the leading term.
-    * ``return_points`` -- If ``True``, also returns the coordinates of
+    * ``return_points`` -- (Optional) If ``True``, also returns the coordinates of
       minimal critical points. By default ``False``.
     * ``output_format`` -- (Optional) A string or
       :class:`.ACSVSettings.Output` specifying the way the asymptotic growth
       is returned. Allowed values currently are:
+
       - ``"tuple"``: the growth is returned as a list of
         tuples of the form ``(a, n^b, pi^c, d)`` such that the `r`-diagonal of `F`
         behaves like the sum of ``a^n n^b pi^c d + O(a^n n^{b-1})`` over these tuples.
@@ -322,6 +433,7 @@ def diagonal_asymptotics_combinatorial(
         :class:`.ACSVSettings.Output` itself via
         :meth:`.ACSVSettings.set_default_output_format`. The default behavior
         is asymptotic output.
+
     * ``as_symbolic`` -- deprecated in favor of the equivalent
       ``output_format="symbolic"``. Will be removed in a future release.
     * ``whitney_strat`` -- (Optional) If known / precomputed, a
@@ -342,10 +454,10 @@ def diagonal_asymptotics_combinatorial(
     This separation step can fail, but (assuming `F` has a finite number of critical
     points) the code can be rerun until a separating form is found.
 
-    EXAMPLES:
+    EXAMPLES::
 
         sage: from sage_acsv import diagonal_asymptotics_combinatorial
-        sage: var('x,y,z,w')
+        sage: var('x, y, z, w')
         (x, y, z, w)
         sage: diagonal_asymptotics_combinatorial(1/(1-x-y))
         1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2))
@@ -433,7 +545,7 @@ def diagonal_asymptotics_combinatorial(
         sage: ACSVSettings.set_logging_level(logging.WARNING)
 
     Extraction of coefficient asymptotics even works in cases where the singular variety of `F`
-    is not smooth::
+    is not smooth but is the transverse union of smooth varieties::
 
         sage: diagonal_asymptotics_combinatorial(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)), r = [17/24, 7/24], output_format = 'asymptotic')
         12 + O(n^(-1))
@@ -530,7 +642,7 @@ def diagonal_asymptotics_combinatorial(
             break
         except Exception as e:
             if isinstance(e, ACSVException) and e.retry:
-                acsv_logger.warning(
+                acsv_logger.info(
                     "Randomly generated linear form was not suitable, "
                     f"encountered error: {e}\nRetrying..."
                 )
@@ -542,10 +654,14 @@ def diagonal_asymptotics_combinatorial(
 
     asm_quantities = []
 
-    # Save extra H factors that the contrib point does not lie on
-    # They can keep their multiplicities.
-    extra_factors = []
+    # Store copy of vs and r in case order changes due to parametrization
+    vs_copy, r_copy = copy(vs), copy(r)
     for cp in min_crit_pts:
+        vs, r = copy(vs_copy), copy(r_copy)
+
+        # Save extra H factors that the contrib point does not lie on
+        # They can keep their multiplicities.
+        extra_factors = []
         # Step 1: Determine if pt is a transverse multiple point of H, and compute the factorization
         # for now, we'll just try to factor it in the polynomial ring
         R = PolynomialRing(QQbar, len(vs), vs)
@@ -645,7 +761,7 @@ def diagonal_asymptotics_combinatorial(
             if s != d:
                 Qw = compute_implicit_hessian(factors, vs, r, subs=subs_dict)
                 expansion = SR(
-                    G.subs(subs_dict) * abs(prod([v for v in vs[: d - s]]).subs(subs_dict))
+                    abs(prod([v for v in vs[: d - s]]).subs(subs_dict)) * G.subs(subs_dict)
                     / abs(Gamma.determinant()) 
                     / unit / R(prod(extra_factors)).subs(subs_dict)
                 )
@@ -1004,9 +1120,9 @@ def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
     return res
 
 def contributing_points_combinatorial_smooth(G, H, variables, r=None, linear_form=None):
-    r"""Compute contributing points of a combinatorial multivariate
+    r"""Compute contributing points of a multivariate
     rational function `F=G/H` admitting a finite number of critical points.
-    Assumes the singular variety of `F` is smooth.
+    Assumes that the singular variety of `F` is smooth and the function has a combinatorial expansion.
 
     Typically, this function is called as a subroutine of :func:`._diagonal_asymptotics_combinatorial_smooth`.
 
@@ -1031,7 +1147,7 @@ def contributing_points_combinatorial_smooth(G, H, variables, r=None, linear_for
     This separation step can fail, but (assuming F has a finite number of critical points)
     the code can be rerun until a separating form is found.
 
-    Examples::
+    EXAMPLES::
 
         sage: from sage_acsv import contributing_points_combinatorial_smooth
         sage: R.<x, y, w, lambda_, t, u_> = QQ[]
@@ -1161,7 +1277,7 @@ def _find_contributing_points_combinatorial(
     whitney_strat=None,
 ):
     r"""Compute contributing points of a combinatorial multivariate
-    rational function `F=G/H` admitting a finite number of critical points.
+    rational function `F=G/H` admitting a finite number of critical points where the singular variety is the transverse union of smooth varieties.
 
     Typically, this function is called as a subroutine of :func:`.diagonal_asymptotics_combinatorial`.
 
@@ -1231,7 +1347,9 @@ def _find_contributing_points_combinatorial(
             )
             # Saturate cpid by lower dimension stratum, if d > 0
             if d > 0:
-                cpid = compute_saturation(cpid, whitney_strat[d - 1].change_ring(expanded_R))
+                cpid = compute_saturation(
+                    cpid, whitney_strat[d - 1].change_ring(expanded_R)
+                )
 
             critical_point_ideals[-1].append((P, cpid))
 
@@ -1360,21 +1478,23 @@ def contributing_points_combinatorial(
     linear_form=None,
     whitney_strat=None,
 ):
-    r"""Compute contributing points of a combinatorial multivariate
-    rational function `F=G/H` admitting a finite number of critical points.
+    r"""Compute contributing points of a multivariate
+    rational function `F=G/H` admitting a finite number of critical points. 
+
+    The function is assumed to have a combinatorial expansion. 
 
     INPUT:
 
     * ``F`` -- Symbolic fraction, the rational function assumed to have
-      a finite number of critical points
-    * ``r`` -- (Optional) Length ``d`` vector of positive integers
+      a finite number of critical points.
+    * ``r`` -- (Optional) Length `d` vector of positive integers.
     * ``linear_form`` -- (Optional) A linear combination of the input
-      variables that separates the critical point solutions
+      variables that separates the critical point solutions.
     * ``whitney_strat`` -- (Optional) If known / precomputed, a
       Whitney Stratification of `V(H)`. The program will not check if
-      this stratification is correct. Should be a list of length ``d``, where
-      the ``k``-th entry is a list of tuples of ideas generators representing
-      a component of the ``k``-dimensional stratum.
+      this stratification is correct. Should be a list of length `d`, where
+      the `k`-th entry is a list of tuples of ideas generators representing
+      a component of the `k`-dimensional stratum.
 
     OUTPUT:
 
@@ -1384,10 +1504,10 @@ def contributing_points_combinatorial(
 
     The code randomly generates a linear form, which for generic rational functions
     separates the solutions of an intermediate polynomial system with high probability.
-    This separation step can fail, but (assuming F has a finite number of critical points)
+    This separation step can fail, but (assuming `F` has a finite number of critical points)
     the code can be rerun until a separating form is found.
 
-    Examples::
+    EXAMPLES::
 
         sage: from sage_acsv import contributing_points_combinatorial
         sage: var('x y')
@@ -1421,14 +1541,10 @@ def contributing_points_combinatorial(
 
 
 def MinimalCriticalCombinatorial(F, r=None, linear_form=None, whitney_strat=None):
-    from warnings import warn
-
-    warn(
+    acsv_logger.warning(
         "MinimalCriticalCombinatorial is deprecated and will be removed "
         "in a future release. Please use minimal_critical_points_combinatorial "
         "(same signature) instead.",
-        DeprecationWarning,
-        stacklevel=2,
     )
     return minimal_critical_points_combinatorial(
         F, r=r, linear_form=linear_form, whitney_strat=whitney_strat
@@ -1440,6 +1556,8 @@ def minimal_critical_points_combinatorial(
 ):
     r"""Compute nonzero minimal critical points of a combinatorial multivariate
     rational function `F=G/H` admitting a finite number of critical points.
+
+    The function is assumed to have a combinatorial expansion.
 
     INPUT:
 
@@ -1464,7 +1582,7 @@ def minimal_critical_points_combinatorial(
     This separation step can fail, but (assuming F has a finite number of critical points)
     the code can be rerun until a separating form is found.
 
-    Examples::
+    EXAMPLES::
 
         sage: from sage_acsv import minimal_critical_points_combinatorial
         sage: var('x y')
@@ -1529,7 +1647,9 @@ def minimal_critical_points_combinatorial(
             )
             # Saturate cpid by lower dimension stratum, if d > 0
             if d > 0:
-                ideal = compute_saturation(ideal, whitney_strat[d - 1].change_ring(expanded_R))
+                ideal = compute_saturation(
+                    ideal, whitney_strat[d - 1].change_ring(expanded_R)
+                )
 
             if ideal.dimension() < 0:
                 continue
@@ -1631,7 +1751,7 @@ def critical_points(F, r=None, linear_form=None, whitney_strat=None):
     This separation step can fail, but (assuming F has a finite number of critical points)
     the code can be rerun until a separating form is found.
 
-    Examples::
+    EXAMPLES::
 
         sage: from sage_acsv import critical_points
         sage: var('x y')
@@ -1693,7 +1813,9 @@ def critical_points(F, r=None, linear_form=None, whitney_strat=None):
             )
             # Saturate cpid by lower dimension stratum, if d > 0
             if d > 0:
-                ideal = compute_saturation(ideal, whitney_strat[d - 1].change_ring(expanded_R))
+                ideal = compute_saturation(
+                    ideal, whitney_strat[d - 1].change_ring(expanded_R)
+                )
 
             if ideal.dimension() < 0:
                 continue
@@ -1742,14 +1864,14 @@ def _prepare_symbolic_fraction(F):
 
 
 def _prepare_expanded_polynomial_ring(variables, direction=None, include_t=True):
-    r"""Prepare an auxiliary polynomial ring for the diagonal asymptotics.
+    r"""Prepare an auxiliary polynomial ring for computing diagonal asymptotics.
 
     INPUT:
 
     * ``variables`` -- variables in the rational function `F`
-    * ``direction`` -- direction vector `r` for the asymptotics,
+    * ``direction`` -- (Optional) direction vector `r` for the asymptotics,
       defaults to the diagonal (all ones).
-    * ``include_t`` -- whether to include the auxiliary variable `t`
+    * ``include_t`` -- (Optional) whether to include the auxiliary variable `t`
       in the expanded ring.
     """
     # if direction r is not given, default to the diagonal

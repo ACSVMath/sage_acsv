@@ -1,10 +1,17 @@
 # sage_acsv
 
+![GitHub Release](https://img.shields.io/github/v/release/ACSVMath/sage_acsv)
+[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/ACSVMath/sage_acsv/docs-main.yml?label=docs)](https://acsvmath.github.io/sage_acsv/)
+![GitHub branch check runs](https://img.shields.io/github/check-runs/ACSVMath/sage_acsv/main)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/ACSVMath/sage_acsv/HEAD)
+
+
 This repository hosts the implementation of a SageMath package
 containing algorithms for analytic combinatorics in several variables.
 
 The package works with any reasonably recent version of SageMath, we
 recommend to have SageMath 9.4 (released in August 2021) or newer.
+Documentation is available at <https://acsvmath.github.io/sage_acsv/>.
 
 
 ## Quickstart
