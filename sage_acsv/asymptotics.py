@@ -129,6 +129,7 @@ from sage.all import (
     srange,
     shuffle,
     vector,
+    sqrt
 )
 
 from sage_acsv.kronecker import _kronecker_representation
@@ -136,6 +137,7 @@ from sage_acsv.helpers import (
     ACSVException,
     is_contributing,
     compute_newton_series,
+    compute_newton_series_general,
     rational_function_reduce,
     compute_hessian,
     compute_implicit_hessian,
@@ -299,7 +301,7 @@ def _diagonal_asymptotics_combinatorial_smooth(
             [
                 term / (rd * n) ** (term_order)
                 for term_order, term in enumerate(
-                    _general_term_asymptotics(G, H, r, vs, cp, expansion_precision)
+                    _general_term_asymptotics_smooth(G, H, r, vs, cp, expansion_precision)
                 )
             ]
         )
@@ -559,6 +561,8 @@ def diagonal_asymptotics_combinatorial(
         ....: ]
         sage: diagonal_asymptotics_combinatorial(G/H, r = [1,1,1], output_format = 'asymptotic', whitney_strat = strat)
         0.866025403784439?/sqrt(pi)*3^n*n^(-1/2) + O(3^n*n^(-3/2))
+        sage: diagonal_asymptotics_combinatorial(G/H, r = [1,1,1], output_format = 'asymptotic', whitney_strat = strat, expansion_precision = 2)
+        0.866025403784439?/sqrt(pi)*3^n*n^(-1/2) - 1.136658342467076?/sqrt(pi)*3^n*n^(-3/2) + O(3^n*n^(-5/2))
 
     TESTS:
 
@@ -649,10 +653,15 @@ def diagonal_asymptotics_combinatorial(
         return
 
     asm_quantities = []
+
     # Store copy of vs and r in case order changes due to parametrization
     vs_copy, r_copy = copy(vs), copy(r)
     for cp in min_crit_pts:
         vs, r = copy(vs_copy), copy(r_copy)
+
+        # Save extra H factors that the contrib point does not lie on
+        # They can keep their multiplicities.
+        extra_factors = []
         # Step 1: Determine if pt is a transverse multiple point of H, and compute the factorization
         # for now, we'll just try to factor it in the polynomial ring
         R = PolynomialRing(QQbar, len(vs), vs)
@@ -669,7 +678,7 @@ def diagonal_asymptotics_combinatorial(
             unit *= const**multiplicity
             factor /= const
             if factor.subs(subs_dict) != 0:
-                unit *= factor.subs(subs_dict)
+                extra_factors.append(factor**multiplicity)
                 continue
             factors.append(factor)
             multiplicities.append(multiplicity)
@@ -723,33 +732,55 @@ def diagonal_asymptotics_combinatorial(
             expansion = sum(
                 term / (r[-1] * n) ** (term_order)
                 for term_order, term in enumerate(
-                    _general_term_asymptotics(G, H, r, vs, cp, expansion_precision)
+                    _general_term_asymptotics_smooth(G, H, r, vs, cp, expansion_precision)
                 )
             )
             Det = compute_hessian(H, vs, r).determinant()
             B = SR(1 / Det.subs(subs_dict) / r[-1] ** (d - 1) / 2 ** (d - 1))
+        elif all([p==1 for p in multiplicities]) and s != d:
+            Qw = compute_implicit_hessian(factors, vs, r, subs=subs_dict)
+            n = SR.var("n")
+            expansion = sum(
+                term/n ** term_order
+                for term_order, term in enumerate(
+                    _general_term_asymptotics(G, factors, extra_factors, r, vs, cp, expansion_precision)
+                )
+            )/unit
+            B = SR(
+                    1
+                    / Qw.determinant()
+                    / 2 ** (d - s)
+                )
         else:
             # Higher order expansions not currently supported for non-smooth critical points
             if expansion_precision > 1:
                 acsv_logger.warning(
-                    "Higher order expansions are not supported in the non-smooth case. Defaulting to expansion_precision 1."
+                    "Higher order expansions are not supported for non-simple poles. Defaulting to expansion_precision 1."
                 )
             # For non-complete intersections, we must compute the parametrized Hessian matrix
             if s != d:
                 Qw = compute_implicit_hessian(factors, vs, r, subs=subs_dict)
-                expansion = SR(abs(prod([v for v in vs[: d - s]]).subs(subs_dict)) * G.subs(subs_dict) / abs(Gamma.determinant()) / unit)
+                expansion = SR(
+                    abs(prod([v for v in vs[: d - s]]).subs(subs_dict)) * G.subs(subs_dict)
+                    / abs(Gamma.determinant()) 
+                    / unit / R(prod(extra_factors)).subs(subs_dict)
+                )
                 B = SR(
                     1
                     / Qw.determinant()
                     / 2 ** (d - s)
                 )
             else:
-                expansion = SR(G.subs(subs_dict) / unit / abs(Gamma.determinant()))
+                expansion = SR(
+                    G.subs(subs_dict) 
+                    / unit / abs(Gamma.determinant())
+                    / R(prod(extra_factors)).subs(subs_dict)
+                )
                 B = 1
 
-        expansion *= (
-            (-1) ** sum([m - 1 for m in multiplicities]) * r_gamma_inv / mult_fac
-        )
+            expansion *= (
+                (-1) ** sum([m - 1 for m in multiplicities]) * r_gamma_inv / mult_fac
+            )
 
         T = prod(SR(vs[i].subs(subs_dict)) ** r[i] for i in range(d))
         C = SR(1 / T)
@@ -811,11 +842,11 @@ def diagonal_asymptotics_combinatorial(
     return result
 
 
-def _general_term_asymptotics(G, H, r, vs, cp, expansion_precision):
+def _general_term_asymptotics_smooth(G, H, r, vs, cp, expansion_precision):
     r"""
     Compute coefficients of general (not necessarily leading) terms of
     the asymptotic expansion for a given critical
-    point of a rational combinatorial multivariate rational function.
+    point of a rational combinatorial multivariate rational function lying on a smooth point of `V(H)`.
 
     Typically, this function is called as a subroutine of :func:`.diagonal_asymptotics_combinatorial`.
 
@@ -836,11 +867,11 @@ def _general_term_asymptotics(G, H, r, vs, cp, expansion_precision):
 
     EXAMPLES::
 
-        sage: from sage_acsv.asymptotics import _general_term_asymptotics
+        sage: from sage_acsv.asymptotics import _general_term_asymptotics_smooth
         sage: R.<x, y, z> = QQ[]
-        sage: _general_term_asymptotics(1, 1 - x - y, [1, 1], [x, y], [1/2, 1/2], 5)
+        sage: _general_term_asymptotics_smooth(1, 1 - x - y, [1, 1], [x, y], [1/2, 1/2], 5)
         [2, -1/4, 1/64, 5/512, -21/16384]
-        sage: _general_term_asymptotics(1, 1 - x - y - z, [1, 1, 1], [x, y, z], [1/3, 1/3, 1/3], 4)
+        sage: _general_term_asymptotics_smooth(1, 1 - x - y - z, [1, 1, 1], [x, y, z], [1/3, 1/3, 1/3], 4)
         [3, -2/3, 2/27, 14/729]
     """
 
@@ -936,6 +967,154 @@ def _general_term_asymptotics(G, H, r, vs, cp, expansion_precision):
 
     return res
 
+def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
+    r"""
+    Compute coefficients of general (not necessarily leading) terms of
+    the asymptotic expansion for a given critical
+    point of a rational combinatorial multivariate rational function.
+
+    Typically, this function is called as a subroutine of :func:`.diagonal_asymptotics_combinatorial`.
+
+    INPUT:
+
+    * ``G`` -- A polynomial in `vs`.
+    * ``Hs`` -- A list of polynomials in `vs` such that `[G,Hs]` have no pairwise common factors.
+    * ``vs`` -- Tuple of variables occurring in `G` and `Hs`.
+    * ``r`` -- The direction. A length `d` vector of positive algebraic numbers (usually
+      integers).
+    * ``cp`` -- A minimal critical point of `F` with coordinates specified in the
+      same order as in ``vs``.
+    * ``expansion_precision`` -- A positive integer value. This is the number of terms
+      for which to compute coefficients in the asymptotic expansion.
+
+    OUTPUT:
+
+    List of coefficients of the asymptotic expansion.
+
+    EXAMPLES::
+
+        sage: from sage_acsv.asymptotics import _general_term_asymptotics
+        sage: R.<x, y, z> = QQ[]
+        sage: _general_term_asymptotics(1, [1 - x - y], [], [1, 1], [x, y], [1/2, 1/2], 5)
+        [2, -1/4, 1/64, 5/512, -21/16384]
+        sage: _general_term_asymptotics(1, [1 - x - y], [1-y], [1, 1], [x, y], [1/2, 1/2], 5)
+        [4, -5/2, 73/32, -575/256, 18459/8192]
+        sage: _general_term_asymptotics(1, [1-x-2*y-z, 1-2*x-y-z], [], [1, 1, 1], [x, y, z], [2/9, 2/9, 1/3], 5)
+        [27/2, -57/16, 1081/768, -106795/165888, 15808177/47775744]
+        sage: _general_term_asymptotics(1, [1-x-2*y-z, 1-2*x-y-z], [1-x/2-y/2-z/2], [1, 1, 1], [x, y,z], [2/9, 2/9, 1/3], 3)
+        [243/11, -70497/10648, 57642411/20614528]
+    """
+
+    d = len(vs)
+    s = len(Hs)
+    R = PolynomialRing(QQbar, vs)
+    vs = R.gens()
+    tvars = SR.var("t", d - s)
+    G, Hs, Hs_ext = R(SR(G)), [R(SR(H)) for H in Hs], [R(SR(H)) for H in Hs_ext]
+    subs_dict = {vs[i]: cp[i] for i in range(d)}
+
+    # Step 3: Compute the gamma matrix as defined in 9.10
+    Gamma = matrix(
+        [[(v * Q.derivative(v)) for v in vs] for Q in Hs]
+        + [
+            [v if vs.index(v) == i else 0 for i in range(d)]
+            for v in vs[: d - s]
+        ]
+    )
+
+    leading_term = (
+        _general_term_asymptotics_smooth(G, prod(Hs+Hs_ext), r, vs, cp, 1)[0] 
+        if s == 1 else 
+        SR(G.subs(subs_dict) * abs(prod([v for v in vs[: d - s]]).subs(subs_dict)) 
+        / abs(Gamma.determinant().subs(subs_dict)))
+        / prod(Hs_ext).subs(subs_dict)
+    )
+
+    # Directly compute leading term
+    if expansion_precision == 1:
+        return [leading_term]
+
+    W = DifferentialWeylAlgebra(PolynomialRing(QQbar, tvars))
+    TR = QQbar[[tvars]]
+    T = TR.gens()
+    tvars = T
+    D = list(W.differentials())
+
+    # Function to apply differential operator dop on function f
+    def eval_op(dop, f):
+        if len(f.parent().gens()) == 1:
+            return sum(
+                prod([factorial(k) for k in E[0][1]]) * E[1] * f[E[0][1][0]]
+                for E in dop
+            )
+        else:
+            return sum(
+                [prod([factorial(k) for k in E[0][1]]) * E[1] * f[E[0][1]] for E in dop]
+            )
+
+    Hess = compute_implicit_hessian(Hs, vs, r, subs_dict)
+    Hessinv = Hess.inverse()
+    v = matrix(W, [D[: d - s]])
+    Epsilon = -(v * Hessinv.change_ring(W) * v.transpose())[0, 0]
+
+    # P and PsiTilde only need to be computed to order 2M
+    N = 2 * expansion_precision + 1
+
+    # Find series expansion of function g given implicitly by
+    # H(w_1, ..., w_{d-s}, g_{d-s+1}, ..., g_{d}) = 0 up to needed order
+    Hs_shift = [H.subs({v: v + subs_dict[v] for v in vs}) for H in Hs]
+    gs = [g.subs({v: v-subs_dict[v] for v in vs}) + subs_dict[vs[d-s+i]] for i, g in enumerate(compute_newton_series_general(Hs_shift, vs, N))]
+
+    # Polar change of coordinates
+    tsubs = {v: subs_dict[v] * exp(I * t).add_bigoh(N) for v, t in zip(vs, tvars)}
+    for i in range(s):
+        tsubs[vs[d-s+i]] = gs[i].subs(tsubs)
+
+    psi = sum([r[d-s+i]*log(g.subs(tsubs)/ g.subs(subs_dict)) for i, g in enumerate(gs)]).add_bigoh(N)
+    psi += I * sum([r[k] * tvars[k] for k in range(d - s)])
+    v = matrix(TR, [tvars[k] for k in range(d - s)])
+    psiTilde = psi - (v * Hess.change_ring(TR) * v.transpose())[0, 0] / 2
+    PsiSeries = psiTilde.truncate(N)
+
+    # Compute series expansion of P = G*z_1*...*z_{d-s}/Gamma up to needed order
+    P_num = (G.subs(tsubs)*prod([tsubs[v] for v in vs[:d-s]])).add_bigoh(N)
+    P_denom = (prod(Hs_ext).subs(tsubs)*Gamma.determinant().subs(tsubs)).add_bigoh(N)
+    PSeries = (P_num / P_denom).truncate(N)
+
+    if len(tvars) > 1:
+        PsiSeries = PsiSeries.polynomial()
+        PSeries = PSeries.polynomial()
+
+    # Precompute products used for asymptotics
+    EE = [Epsilon**k for k in range(3 * expansion_precision - 2)]
+    PP = [PSeries]
+    for k in range(1, 2 * expansion_precision - 1):
+        PP.append(PP[k - 1] * PsiSeries)
+
+    # Function to compute constants appearing in asymptotic expansion
+    def constants_clj(ell, j):
+        extra_contrib = (-1) ** j / (
+            2 ** (ell + j) * factorial(ell) * factorial(ell + j)
+        )
+        return extra_contrib * eval_op(EE[ell + j], PP[ell])
+
+    res = [
+        sum([constants_clj(ell, j) for ell in srange(2 * j + 1)])
+        for j in srange(expansion_precision)
+    ]
+    try:
+        for i in range(len(res)):
+            if res[i].imag() == 0:
+                res[i] = AA(res[i])
+    except (TypeError, ValueError, NotImplementedError):
+        pass
+
+    if res[0] == leading_term:
+        return res
+    elif res[0] == -leading_term:
+        return [-term for term in res]
+    else:
+        raise ACSVException("Issue with computing general terms - this should never happen.")
 
 def contributing_points_combinatorial_smooth(G, H, variables, r=None, linear_form=None):
     r"""Compute contributing points of a multivariate
