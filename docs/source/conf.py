@@ -1,7 +1,18 @@
 import os
 import re
 import importlib.metadata
-from sage_docbuild.conf import html_theme, html_theme_options, pygments_style, pygments_dark_style, html_css_files, skip_TESTS_block, mathjax3_config, default_role
+from sphinx import highlighting
+from IPython.lib.lexers import IPythonConsoleLexer, IPyLexer
+from sage_docbuild.conf import (
+    html_theme,
+    html_theme_options,
+    pygments_style,
+    pygments_dark_style,
+    html_css_files,
+    skip_TESTS_block,
+    mathjax3_config,
+    default_role,
+)
 
 extensions = [
     # We need to use SageMath's autodoc to render nested classes in categories
@@ -72,6 +83,10 @@ jupyter_execute_default_kernel = "sagemath"
 
 # Only rerender example notebooks when the cache is stale.
 nb_execution_mode = "cache"
+
+highlighting.lexers['ipycon'] = IPythonConsoleLexer(in1_regex=r'(sage:|>>>)', in2_regex=r'([.][.][.][.]:|[.][.][.])')
+highlighting.lexers['ipython'] = IPyLexer()
+highlight_language = 'ipycon'
 
 def setup(app):
     app.connect('autodoc-process-docstring', skip_TESTS_block)

@@ -71,7 +71,7 @@ def collapse_zero_part(algebraic_number: AlgebraicNumber) -> AlgebraicNumber:
 
 
 def rational_function_reduce(G, H):
-    r"""Reduction of the rational function G/H by dividing G and H by their GCD.
+    r"""Reduction of the rational function `G/H` by dividing `G` and `H` by their GCD.
 
     INPUT:
 
@@ -127,10 +127,10 @@ def compute_hessian(H, variables, r, critical_point=None):
 
     .. math::
 
-        (t_1,...t_{d-1}) \mapsto log(g(z_1t_1,...,z_{d-1}t_{d-1}))/g(z_1,...,z_{d-1})
-        + I*(r_1t_1+...+r_{d-1}t_{d-1})/r_d 
+        (t_1,...t_{d-1}) \mapsto \log(g(z_1t_1,...,z_{d-1}t_{d-1}))/g(z_1,...,z_{d-1})
+        + I\cdot (r_1t_1+...+r_{d-1}t_{d-1})/r_d 
 
-    at a critical point where the partial derivative of H with respect to z_d is non-zero, and
+    at a critical point where the partial derivative of `H` with respect to `z_d` is non-zero, and
     `g` determined implicitly by
 
     .. math::
@@ -249,15 +249,15 @@ def compute_implicit_hessian(Hs, vs, r, subs):
     Given a transverse intersection point `w` in `H_1(w),\dots,H_s(w)=0`, we can parametrize `V(H_1,\dots,H_s)`
     near `w` by writing `z_{d-s+j} = g_j(z_1,\dots,z_{d-s})`.
 
-    Let `h(\theta_1,\dots,\theta_{d-s}) = \sum_{j=1}^s r_{d-s+j}\log g_j({w_1 exp(i\theta_1) \dots w_{d-s} exp(i\theta_{d-s})})`.
-    This function returns the Hessian of h.
+    Let `h(\theta_1,\dots,\theta_{d-s}) = \sum_{j=1}^s r_{d-s+j}\log g_j({w_1 \exp(i\theta_1) \dots w_{d-s} \exp(i\theta_{d-s})})`.
+    This function returns the Hessian of `h`.
 
     INPUT:
 
     * ``Hs`` -- A list of polynomials `H`
     * ``vs`` -- A list of variables in the equation
     * ``r`` -- A direction vector
-    * ``subs`` -- a dic `{v_i:w_i}` defining the point w
+    * ``subs`` -- a dictionary ``{v_i: w_i}`` defining the point w
 
     OUTPUT:
 
@@ -348,9 +348,10 @@ def compute_implicit_hessian(Hs, vs, r, subs):
 
 
 def is_contributing(vs, pt, r, factors, c):
-    r"""Determines if a minimal critical point `pt` where singular variety has transverse square-free factorization
+    r"""Determines if a minimal critical point ``pt`` such that the singular
+    variety has transverse square-free factorization
     is contributing; that is, whether `r` is in the interior
-    of the scaled log-normal cone of `factors` at `pt`
+    of the scaled log-normal cone of ``factors`` at ``pt``
 
     INPUT:
 
@@ -423,7 +424,8 @@ def is_contributing(vs, pt, r, factors, c):
 def get_expansion_terms(
     expr: tuple | list[tuple] | Expression | AsymptoticExpansion,
 ) -> list[Term]:
-    r"""Determines coefficients for each n^k that appears in the asymptotic expressions returned by `diagonal_asymptotics_combinatorial`.
+    r"""Determines coefficients for each n^k that appears in the asymptotic expressions
+    returned by :func:`.diagonal_asymptotics_combinatorial`.
 
     INPUT:
 
