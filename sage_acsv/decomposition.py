@@ -145,7 +145,7 @@ def compute_algebraic_dependence_decomposition(R, G, H):
     
     EXAMPLES::
 
-        sage: from sage_acsv.decomposition import compute_nullstellensatz_decomposition
+        sage: from sage_acsv.decomposition import compute_algebraic_dependence_decomposition
         sage: R.<x,y> = PolynomialRing(QQ, 2)
         sage: compute_algebraic_dependence_decomposition(R, 1, x^2*(x*y+1)*y)
         [(2, x^2*y), (-x*y - 1, x^2*y), (y, x*y + 1)]
