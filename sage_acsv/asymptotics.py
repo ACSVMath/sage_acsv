@@ -653,7 +653,8 @@ def diagonal_asymptotics_combinatorial(
     vs_copy, r_copy = copy(vs), copy(r)
     for cp in min_crit_pts:
         vs, r = copy(vs_copy), copy(r_copy)
-        # Step 1: Determine if pt is a transverse multiple point of H, and compute the factorization
+        # Step 1: Determine if pt is a transverse multiple point of H,
+        # and compute the factorization
         # for now, we'll just try to factor it in the polynomial ring
         R = PolynomialRing(QQbar, len(vs), vs)
         G = R(SR(G))
@@ -683,8 +684,10 @@ def diagonal_asymptotics_combinatorial(
             )
 
         # Step 2: Find the locally parametrizing coordinates of the point pt
-        # Since we have d variables and s factors, there should be d-s of these parametrizing coordinates
-        # We will try to parametrize with the first d-s coordinates, shuffling the vs and r if it doesn't work
+        # Since we have d variables and s factors, there should be d-s of these
+        # parametrizing coordinates
+        # We will try to parametrize with the first d-s coordinates, shuffling
+        # the vs and r if it doesn't work
         for _ in range(s**2):
             Jac = matrix(
                 [
@@ -717,7 +720,8 @@ def diagonal_asymptotics_combinatorial(
             x ** (multiplicities[i] - 1)
             for i, x in enumerate(list(vector(r) * Gamma.inverse())[:s])
         )
-        # If cp lies on a single smooth component, we can compute asymptotics like in the smooth case
+        # If cp lies on a single smooth component, we can compute asymptotics
+        # like in the smooth case
         if s == 1 and sum(multiplicities) == 1:
             n = SR.var("n")
             expansion = sum(

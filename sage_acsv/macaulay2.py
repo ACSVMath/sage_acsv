@@ -1,4 +1,3 @@
-# TODO - this should be removed once we have the global configuration settings
 from sage.all import PolynomialRing, QQ, Hom
 from sage_acsv.settings import ACSVSettings
 
@@ -56,8 +55,8 @@ def compute_groebner_basis(ideal):
         mor, inv = _construct_m2_morphims(ideal)
         ideal = ideal.apply_morphism(mor)
         m2 = ACSVSettings.get_macaulay2()
-        # This is really roundabout but for some reason returning the generators from M2 to sage
-        # puts it in the wrong ring
+        # This is really roundabout but for some reason returning the generators
+        # from M2 to sage puts them in the wrong ring
         return m2.ideal(m2.gb(ideal).generators()).sage().apply_morphism(inv).gens()
     return ideal.groebner_basis()
 

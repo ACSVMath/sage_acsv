@@ -44,7 +44,7 @@ def decompose_variety(Y, X, P, R, RZ):
 
 def merge_stratifications(Xs, Ys):
     r"""Merge two stratifications."""
-    # Ensures Xs > Ys
+    # Ensures Xs >= Ys
     if len(Ys) > len(Xs):
         return merge_stratifications(Ys, Xs)
 
@@ -115,8 +115,9 @@ def whitney_stratification(IX, R):
     """
     vs = R.gens()
     d = len(vs)
-    # Check if IX = V(H) and H factors smoothly -
-    # if so, the whitney strat is just the intersection of subsets of the components
+    # Check if IX = V(H) and H factors smoothly
+    # if so, the whitney stratification is just the intersection
+    # of subsets of the components
     if len(IX.gens()) == 1:
         factors = [fm[0] for fm in IX.gens()[0].factor()]
         if all(
