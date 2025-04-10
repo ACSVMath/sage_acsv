@@ -144,7 +144,7 @@ from sage_acsv.helpers import (
 from sage_acsv.debug import Timer, acsv_logger
 from sage_acsv.settings import ACSVSettings
 from sage_acsv.whitney import whitney_stratification
-from sage_acsv.macaulay2 import compute_primary_decomposition, compute_saturation
+from sage_acsv.groebner import compute_primary_decomposition, compute_saturation
 
 
 # we need to monkeypatch a function from the asymptotics module such that creating

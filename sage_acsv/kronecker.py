@@ -7,8 +7,8 @@ from sage.rings.polynomial.multi_polynomial_ideal import MPolynomialIdeal
 
 from sage_acsv.helpers import ACSVException, generate_linear_form
 from sage_acsv.debug import acsv_logger
-from sage_acsv.msolve import get_parametrization
-from sage_acsv.macaulay2 import compute_groebner_basis, compute_radical
+from sage_acsv.backends.msolve import get_parametrization
+from sage_acsv.groebner import compute_groebner_basis, compute_radical
 from sage_acsv.settings import ACSVSettings
 
 

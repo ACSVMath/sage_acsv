@@ -3,7 +3,7 @@
 from sage.all import Ideal, PolynomialRing, ProjectiveSpace, QQ
 from sage.all import Combinations, matrix
 
-from sage_acsv.macaulay2 import compute_primary_decomposition, compute_groebner_basis, compute_saturation, compute_radical
+from sage_acsv.groebner import compute_primary_decomposition, compute_groebner_basis, compute_saturation, compute_radical
 
 
 def conormal_ideal(X, P, RZ):
