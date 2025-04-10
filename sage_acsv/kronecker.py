@@ -1,3 +1,7 @@
+"""Functions related to computing the Kronecker representation of
+a system of polynomials.
+"""
+
 from sage.all import PolynomialRing, QQ, gcd
 from sage.rings.polynomial.multi_polynomial_ideal import MPolynomialIdeal
 

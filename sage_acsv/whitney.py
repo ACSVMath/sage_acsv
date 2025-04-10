@@ -1,3 +1,5 @@
+"""Functions related to computing Whitney stratifications."""
+
 from sage.all import Ideal, PolynomialRing, ProjectiveSpace, QQ
 from sage.all import Combinations, matrix
 
