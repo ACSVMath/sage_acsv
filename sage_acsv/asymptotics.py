@@ -1263,7 +1263,7 @@ def _find_contributing_points_combinatorial(
                     stratum = whitney_strat[i]
                     if stratum.subs(
                         {pure_H(wi): val for wi, val in zip(vs, x)}
-                    ) == Ideal(pure_H(0)):
+                    ) == Ideal(pure_H.zero()):
                         raise ACSVException(
                             "Non-generic direction detected - critical point {w} is contained in {dim}-dimensional stratum".format(
                                 w=str(x), dim=i

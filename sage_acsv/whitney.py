@@ -127,8 +127,8 @@ def whitney_stratification(IX, R):
             for fs in Combinations(factors)
             if len(fs) >= 1
         ):
-            strat = [Ideal(R(1)) for _ in range(d)]
-            strat[-1] = Ideal(IX.gens())
+            strat = [Ideal(R.one()) for _ in range(d)]
+            strat[-1] = compute_radical(IX)
             for k in reversed(range(1, d)):
                 Jac = matrix([[f.derivative(v) for v in vs] for f in strat[k].gens()])
                 sing = compute_radical(Ideal(Jac.minors(d - k) + strat[k].gens()))
@@ -144,7 +144,7 @@ def whitney_stratification(IX, R):
         P.subscheme(IX.change_ring(R_hom).homogenize(z0)), P
     )
 
-    strat = [Ideal(R(1)) for _ in range(len(proj_strat))]
+    strat = [Ideal(R.one()) for _ in range(len(proj_strat))]
     for stratum in proj_strat:
         for Id in compute_primary_decomposition(stratum.defining_ideal()):
             newId = Id.subs({z0: 1}).change_ring(R)
