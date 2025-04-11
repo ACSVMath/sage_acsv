@@ -20,9 +20,9 @@ def compute_primary_decomposition(ideal):
     """
     match ACSVSettings.get_default_groebner_backend():
         case ACSVSettings.Groebner.MACAULAY2:
-            return macaulay2_backend.compute_groebner_basis(ideal)
+            return macaulay2_backend.compute_primary_decomposition(ideal)
         case _:
-            return default_backend.compute_groebner_basis(ideal)
+            return default_backend.compute_primary_decomposition(ideal)
 
 
 def compute_saturation(ideal_I, ideal_J):
