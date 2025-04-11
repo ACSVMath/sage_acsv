@@ -1,10 +1,16 @@
-from sage.all import PolynomialRing, QQ, gcd
+"""Functions related to computing the Kronecker representation of
+a system of polynomials.
+"""
+
+from sage.arith.misc import gcd
 from sage.rings.polynomial.multi_polynomial_ideal import MPolynomialIdeal
+from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
+from sage.rings.rational_field import QQ
 
 from sage_acsv.helpers import ACSVException, generate_linear_form
 from sage_acsv.debug import acsv_logger
-from sage_acsv.msolve import get_parametrization
-from sage_acsv.macaulay2 import compute_groebner_basis, compute_radical
+from sage_acsv.backends.msolve import get_parametrization
+from sage_acsv.groebner import compute_groebner_basis, compute_radical
 from sage_acsv.settings import ACSVSettings
 
 

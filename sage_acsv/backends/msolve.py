@@ -1,3 +1,5 @@
+"""Interface to msolve."""
+
 import os
 import tempfile
 import subprocess
