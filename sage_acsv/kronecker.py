@@ -2,8 +2,10 @@
 a system of polynomials.
 """
 
-from sage.all import PolynomialRing, QQ, gcd
+from sage.arith.misc import gcd
 from sage.rings.polynomial.multi_polynomial_ideal import MPolynomialIdeal
+from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
+from sage.rings.rational_field import QQ
 
 from sage_acsv.helpers import ACSVException, generate_linear_form
 from sage_acsv.debug import acsv_logger

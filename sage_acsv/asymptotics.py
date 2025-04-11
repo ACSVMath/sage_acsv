@@ -116,20 +116,23 @@ very close moduli:
 
 from copy import copy
 
-from sage.all import AA, PolynomialRing, QQ, QQbar, SR, DifferentialWeylAlgebra, Ideal
-from sage.all import (
-    gcd,
-    prod,
-    pi,
-    matrix,
-    exp,
-    log,
-    I,
-    factorial,
-    srange,
-    shuffle,
-    vector,
-)
+from sage.algebras.weyl_algebra import DifferentialWeylAlgebra
+from sage.arith.misc import gcd
+from sage.arith.srange import srange
+from sage.functions.log import log, exp
+from sage.functions.other import factorial
+from sage.matrix.constructor import matrix
+from sage.misc.misc_c import prod
+from sage.misc.prandom import shuffle
+from sage.modules.free_module_element import vector
+from sage.rings.asymptotic.asymptotic_ring import AsymptoticRing
+from sage.rings.ideal import Ideal
+from sage.rings.imaginary_unit import I
+from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
+from sage.rings.qqbar import AA, QQbar
+from sage.rings.rational_field import QQ
+from sage.symbolic.constants import pi
+from sage.symbolic.ring import SR
 
 from sage_acsv.kronecker import _kronecker_representation
 from sage_acsv.helpers import (
@@ -337,8 +340,6 @@ def _diagonal_asymptotics_combinatorial_smooth(
             result = sum([a**n * b * c * d for (a, b, c, d) in result])
 
     elif output_format == ACSVSettings.Output.ASYMPTOTIC:
-        from sage.all import AsymptoticRing
-
         AR = AsymptoticRing("QQbar^n * n^QQ", QQbar)
         n = AR.gen()
         result = sum(
@@ -789,8 +790,6 @@ def diagonal_asymptotics_combinatorial(
             result = sum([a**n * b * c * d for (a, b, c, d) in result])
 
     elif output_format == ACSVSettings.Output.ASYMPTOTIC:
-        from sage.all import AsymptoticRing
-
         AR = AsymptoticRing("QQbar^n * n^QQ", QQbar)
         n = AR.gen()
         result = sum(

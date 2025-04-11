@@ -1,6 +1,9 @@
 """Interface to macaulay2."""
 
-from sage.all import PolynomialRing, QQ, Hom
+from sage.categories.homset import Hom
+from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
+from sage.rings.rational_field import QQ
+
 from sage_acsv.settings import ACSVSettings
 
 

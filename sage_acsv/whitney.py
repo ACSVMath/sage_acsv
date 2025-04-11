@@ -1,7 +1,11 @@
 """Functions related to computing Whitney stratifications."""
 
-from sage.all import Ideal, PolynomialRing, ProjectiveSpace, QQ
-from sage.all import Combinations, matrix
+from sage.combinat.combination import Combinations
+from sage.matrix.constructor import matrix
+from sage.rings.ideal import Ideal
+from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
+from sage.rings.rational_field import QQ
+from sage.schemes.projective.projective_space import ProjectiveSpace
 
 from sage_acsv.groebner import compute_primary_decomposition, compute_groebner_basis, compute_saturation, compute_radical
 

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from enum import Enum
 
+from sage.interfaces.macaulay2 import Macaulay2
+
 from sage_acsv.debug import acsv_logger
-from sage.all import Macaulay2
 
 
 class OutputFormat(Enum):
