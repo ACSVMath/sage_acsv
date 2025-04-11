@@ -1,5 +1,14 @@
 """Central interface for accessing and using different backends
 for Groebner basis computations.
+
+Depending on the chosen backend for Groebner basis computations
+(via :meth:`.ACSVSettings.set_default_groebner_backend`, allowed
+values are given in :class:`.ACSVSettings.Groebner`) the members
+of this module delegate their computations to the available
+computational backends:
+
+- :mod:`.backends.default`
+- :mod:`.backends.macaulay2`
 """
 
 
