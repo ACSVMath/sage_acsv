@@ -1,7 +1,13 @@
-from sage.all import Ideal, PolynomialRing, ProjectiveSpace, QQ
-from sage.all import Combinations, matrix
+"""Functions related to computing Whitney stratifications."""
 
-from sage_acsv.macaulay2 import compute_primary_decomposition, compute_groebner_basis, compute_saturation, compute_radical
+from sage.combinat.combination import Combinations
+from sage.matrix.constructor import matrix
+from sage.rings.ideal import Ideal
+from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
+from sage.rings.rational_field import QQ
+from sage.schemes.projective.projective_space import ProjectiveSpace
+
+from sage_acsv.groebner import compute_primary_decomposition, compute_groebner_basis, compute_saturation, compute_radical
 
 
 def conormal_ideal(X, P, RZ):
@@ -44,7 +50,7 @@ def decompose_variety(Y, X, P, R, RZ):
 
 def merge_stratifications(Xs, Ys):
     r"""Merge two stratifications."""
-    # Ensures Xs > Ys
+    # Ensures Xs >= Ys
     if len(Ys) > len(Xs):
         return merge_stratifications(Ys, Xs)
 
@@ -115,8 +121,9 @@ def whitney_stratification(IX, R):
     """
     vs = R.gens()
     d = len(vs)
-    # Check if IX = V(H) and H factors smoothly -
-    # if so, the whitney strat is just the intersection of subsets of the components
+    # Check if IX = V(H) and H factors smoothly
+    # if so, the whitney stratification is just the intersection
+    # of subsets of the components
     if len(IX.gens()) == 1:
         factors = [fm[0] for fm in IX.gens()[0].factor()]
         if all(

@@ -5,10 +5,10 @@ Reference Manual
    :maxdepth: 2
 
    reference/asymptotics
+   reference/backends
    reference/debug
+   reference/groebner
    reference/helpers
    reference/kronecker
-   reference/macaulay2
-   reference/msolve
    reference/settings
    reference/whitney

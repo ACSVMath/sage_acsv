@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from enum import Enum
 
+from sage.interfaces.macaulay2 import Macaulay2
+
 from sage_acsv.debug import acsv_logger
-from sage.all import Macaulay2
 
 
 class OutputFormat(Enum):
@@ -44,13 +45,15 @@ class KroneckerBackend(Enum):
 
 class GroebnerBackend(Enum):
     """Options for computing Groebner Bases and related ideal functions
-    :func:`.compute_groebner_basis`, :func:`.compute_primary_decomposition`, and :func:`.critical_points`.
+    :func:`.groebner.compute_groebner_basis`,
+    :func:`.groebner.compute_primary_decomposition`,
+    and :func:`.groebner.critical_points`.
 
     See also:
 
-    - :func:`.compute_groebner_basis`
-    - :func:`.compute_primary_decomposition`
-    - :func:`.compute_radical`
+    - :func:`.groebner.compute_groebner_basis`
+    - :func:`.groebner.compute_primary_decomposition`
+    - :func:`.groebner.compute_radical`
     - :class:`.ACSVSettings`
 
     """
@@ -180,7 +183,9 @@ class ACSVSettings:
         cls, backend: GroebnerBackend | str | None
     ) -> None:
         """Set the preferred method for performing Groebner Bases and related computations,
-        including :func:`.compute_groebner_basis`, :func:`.compute_primary_decomposition`, and :func:`.compute_radical`.
+        including :func:`.groebner.compute_groebner_basis`,
+        :func:`.groebner.compute_primary_decomposition`,
+        and :func:`.groebner.compute_radical`.
 
         Will default to singular.
 
