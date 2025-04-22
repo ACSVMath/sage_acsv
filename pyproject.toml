@@ -1,31 +1,49 @@
-[tool.poetry]
+[project]
 name = "sage-acsv"
-version = "0.1.1"
+version = "0.3.0"
 description = "A SageMath package with algorithms for analytic combinatorics in several variables."
 authors = [
-  "Benjamin Hackl <devel@benjamin-hackl.at>",
-  "Andrew Luo <j92luo@uwaterloo.ca>",
-  "Stephen Melczer <steve.melczer@uwaterloo.ca>",
-  "Jesse Selover <jselover@umass.edu>",
-  "Elaine Wong <elaine.wong@ricam.oeaw.ac.at>",
+  {name = "Benjamin Hackl", email = "devel@benjamin-hackl.at"},
+  {name = "Andrew Luo", email = "j92luo@uwaterloo.ca"},
+  {name = "Stephen Melczer", email = "steve.melczer@uwaterloo.ca"},
+  {name = "Jesse Selover", email = "jselover@umass.edu"},
+  {name = "Elaine Wong", email = "elaine.wong@ricam.oeaw.ac.at"},
 ]
-license = "MIT"
 readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.9"
+dependencies = []
+
+[project.urls]
 repository = "https://github.com/ACSVMath/sage_acsv"
 
-[tool.poetry.dependencies]
-python = "^3.8"
+[dependency-groups]
+dev = [
+    "furo>=2024.8.6",
+    "pytest>=8.3.5",
+    "ruff>=0.10.0",
+    "sphinx>=7,<8",
+]
 
-passagemath-singular = { version = "^10.4", optional = true }
-passagemath-symbolics = { version = "^10.4", optional = true }
-passagemath-repl = { version = "^10.4", optional = true }
-
-[tool.poetry.dev-dependencies]
-pytest = "^5.2"
-
-[tool.poetry.extras]
-passagemath = ["passagemath-singular", "passagemath-symbolics", "passagemath-repl"]
+[project.optional-dependencies]
+passagemath = [
+    "passagemath-graphs",
+    "passagemath-polyhedra",
+    "passagemath-singular",
+    "passagemath-symbolics",
+    "passagemath-repl",
+]
+macaulay2 = [
+    "passagemath-macaulay2",
+]
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff.lint]
+exclude = ["*.ipynb"]
+ignore = ["F821"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "F403"]
