@@ -165,7 +165,10 @@ def compute_hessian(H, variables, r, critical_point=None):
     try:
         V = [QQ(r[k] / r[-1]) for k in range(d)]
     except (ValueError, TypeError):
-        V = [AA(r[k] / r[-1]) for k in range(d)]
+        try:
+            V = [AA(r[k] / r[-1]) for k in range(d)]
+        except (NotImplementedError):
+            V = [r[k] / r[-1] for k in range(d)]
 
     # Build (d-1) x (d-1) Matrix for Hessian
     hessian = [

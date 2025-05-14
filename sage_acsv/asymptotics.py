@@ -119,6 +119,7 @@ from copy import copy
 from sage.algebras.weyl_algebra import DifferentialWeylAlgebra
 from sage.arith.misc import gcd
 from sage.arith.srange import srange
+from sage.combinat.combination import Combinations
 from sage.functions.log import log, exp
 from sage.functions.other import factorial
 from sage.matrix.constructor import matrix
@@ -662,19 +663,8 @@ def diagonal_asymptotics_combinatorial(
         H = R(SR(H))
         vs = [R(SR(v)) for v in vs]
         subs_dict = {vs[i]: cp[i] for i in range(d)}
-        poly_factors = H.factor()
-        unit = poly_factors.unit()
-        factors = []
-        multiplicities = []
-        for factor, multiplicity in poly_factors:
-            const = factor.coefficients()[-1]
-            unit *= const**multiplicity
-            factor /= const
-            if factor.subs(subs_dict) != 0:
-                unit *= factor.subs(subs_dict)
-                continue
-            factors.append(factor)
-            multiplicities.append(multiplicity)
+
+        unit, factors, multiplicities = _get_factorization(H, subs_dict)
         s = len(factors)
         normals = matrix(
             [[f.derivative(v).subs(subs_dict) for v in vs] for f in factors]
@@ -706,66 +696,11 @@ def diagonal_asymptotics_combinatorial(
         else:
             raise ACSVException("Cannot find parametrizing set.")
 
-        # Step 3: Compute the gamma matrix as defined in 9.10
-        Gamma = matrix(
-            [[(v * Q.derivative(v)).subs(subs_dict) for v in vs] for Q in factors]
-            + [
-                [v.subs(subs_dict) if vs.index(v) == i else 0 for i in range(d)]
-                for v in vs[: d - s]
-            ]
-        )
-
-        # Some constants appearing for higher order singularities
-        mult_fac = prod([factorial(m - 1) for m in multiplicities])
-        r_gamma_inv = prod(
-            x ** (multiplicities[i] - 1)
-            for i, x in enumerate(list(vector(r) * Gamma.inverse())[:s])
-        )
-        # If cp lies on a single smooth component, we can compute asymptotics
-        # like in the smooth case
-        if s == 1 and sum(multiplicities) == 1:
-            n = SR.var("n")
-            expansion = sum(
-                term / (r[-1] * n) ** (term_order)
-                for term_order, term in enumerate(
-                    _general_term_asymptotics(G, H, r, vs, cp, expansion_precision)
-                )
+        asm_quantities.append(
+            _compute_asm_quantity(
+                G, H, vs, cp, r, subs_dict, unit ,factors, multiplicities, expansion_precision
             )
-            Det = compute_hessian(H, vs, r).determinant()
-            B = SR(1 / Det.subs(subs_dict) / r[-1] ** (d - 1) / 2 ** (d - 1))
-        else:
-            # Higher order expansions not currently supported for non-smooth critical points
-            if expansion_precision > 1:
-                acsv_logger.warning(
-                    "Higher order expansions are not supported in the non-smooth case. Defaulting to expansion_precision 1."
-                )
-            # For non-complete intersections, we must compute the parametrized Hessian matrix
-            if s != d:
-                Qw = compute_implicit_hessian(factors, vs, r, subs=subs_dict)
-                expansion = SR(abs(prod([v for v in vs[: d - s]]).subs(subs_dict)) * G.subs(subs_dict) / abs(Gamma.determinant()) / unit)
-                B = SR(
-                    1
-                    / Qw.determinant()
-                    / 2 ** (d - s)
-                )
-            else:
-                expansion = SR(G.subs(subs_dict) / unit / abs(Gamma.determinant()))
-                B = 1
-
-        expansion *= (
-            (-1) ** sum([m - 1 for m in multiplicities]) * r_gamma_inv / mult_fac
         )
-
-        T = prod(SR(vs[i].subs(subs_dict)) ** r[i] for i in range(d))
-        C = SR(1 / T)
-        D = QQ((s - d) / 2 + sum(multiplicities) - s)
-        try:
-            B = QQbar(B)
-            C = QQbar(C)
-        except (ValueError, TypeError):
-            pass
-
-        asm_quantities.append([expansion, B, C, D, s])
 
     asm_vals = [(c, d, b.sqrt(), a, s) for a, b, c, d, s in asm_quantities]
 
@@ -813,7 +748,156 @@ def diagonal_asymptotics_combinatorial(
 
     return result
 
+def compute_asymptotic_contribution(
+        F,
+        critical_point,
+        r=None
+):
+    G, H, variable_map = _prepare_symbolic_fraction(F)
+    vs = list(variable_map.values())
 
+    if r is None:
+        n = len(H.variables())
+        r = [1 for _ in range(n)]
+
+    cp = critical_point
+
+    d = len(vs)
+
+    # Make sure G and H are coprime, and that H does not vanish at 0
+    G, H = rational_function_reduce(G, H)
+    if H.subs({v: 0 for v in H.variables()}) == 0:
+        raise ValueError("Denominator vanishes at 0.")
+
+    # Step 1: Determine if pt is a transverse multiple point of H,
+    # and compute the factorization
+    subs_dict = {vs[i]: cp[i] for i in range(d)}
+
+    # Factorization works weirdly in symbolic ring
+    R = PolynomialRing(QQbar, len(vs), vs)
+    unit, all_factors, all_multiplicities = _get_factorization(R(H))
+    unit, all_factors, all_multiplicities = SR(unit), [SR(f) for f in all_factors], [SR(f) for f in all_multiplicities]
+
+    asymptotics = []
+
+    # Since critical point might be symbolic, we need to consider all flats it may lie on
+    for factor_multiplicities in Combinations(zip(all_factors, all_multiplicities)):
+        if not factor_multiplicities:
+            continue
+        factors, multiplicities = zip(*factor_multiplicities)
+        # Determine whether it's possible for the critical point vanish in this
+        # combination of factors
+        if  any([f.subs(subs_dict) != 0 for f in factors]):
+            # TODO - check if some parameters allow this to hold in certain conditions
+            continue
+
+        s = len(factors)
+        normals = matrix(
+            [[f.derivative(v).subs(subs_dict) for v in vs] for f in factors]
+        )
+        if normals.rank() < s:
+            raise ACSVException(
+                "Not a transverse intersection. Cannot deal with this case."
+            )
+
+        # Step 2: Find the locally parametrizing coordinates of the point pt
+        # Since we have d variables and s factors, there should be d-s of these
+        # parametrizing coordinates
+        # We will try to parametrize with the first d-s coordinates, shuffling
+        # the vs and r if it doesn't work
+        for _ in range(s**2):
+            Jac = matrix(
+                [
+                    [(v * Q.derivative(v)).subs(subs_dict) for v in vs[d - s :]]
+                    for Q in factors
+                ]
+            )
+            if Jac.determinant() != 0:
+                break
+
+            acsv_logger.info("Variables do not parametrize, shuffling")
+            vs_r_cp = list(zip(vs, r, cp))
+            shuffle(vs_r_cp)  # shuffle mutates the list
+            vs, r, cp = zip(*vs_r_cp)
+        else:
+            raise ACSVException("Cannot find parametrizing set.")
+
+        expansion, constant_squared, base, exponent, s = _compute_asm_quantity(
+            G, H, vs, cp, r, subs_dict, unit ,factors, multiplicities, 1
+        )
+        constant = constant_squared.sqrt()
+
+        n = SR.var("n")
+        asymptotics.append(base**n * n**exponent * (pi ** (s - d)).sqrt() * constant * expansion)
+
+    # TODO: If input parameters are rational, do some extra checking of validity
+
+    return asymptotics
+
+def _compute_asm_quantity(G, H, vs, cp, r, subs_dict, unit, factors, multiplicities, expansion_precision):
+    s = len(factors)
+    d = len(vs)
+    # Step 3: Compute the gamma matrix as defined in 9.10
+    Gamma = matrix(
+        [[(v * Q.derivative(v)).subs(subs_dict) for v in vs] for Q in factors]
+        + [
+            [v.subs(subs_dict) if vs.index(v) == i else 0 for i in range(d)]
+            for v in vs[: d - s]
+        ]
+    )
+
+    # Some constants appearing for higher order singularities
+    mult_fac = prod([factorial(m - 1) for m in multiplicities])
+    r_gamma_inv = prod(
+        x ** (multiplicities[i] - 1)
+        for i, x in enumerate(list(vector(r) * Gamma.inverse())[:s])
+    )
+    # If cp lies on a single smooth component, we can compute asymptotics
+    # like in the smooth case
+    if s == 1 and sum(multiplicities) == 1:
+        n = SR.var("n")
+        expansion = sum(
+            term / (r[-1] * n) ** (term_order)
+            for term_order, term in enumerate(
+                _general_term_asymptotics(G, H, r, vs, cp, expansion_precision)
+            )
+        )
+        Det = compute_hessian(H, vs, r).determinant()
+        B = SR(1 / Det.subs(subs_dict) / r[-1] ** (d - 1) / 2 ** (d - 1))
+    else:
+        # Higher order expansions not currently supported for non-smooth critical points
+        if expansion_precision > 1:
+            acsv_logger.warning(
+                "Higher order expansions are not supported in the non-smooth case. Defaulting to expansion_precision 1."
+            )
+        # For non-complete intersections, we must compute the parametrized Hessian matrix
+        if s != d:
+            Qw = compute_implicit_hessian(factors, vs, r, subs=subs_dict)
+            expansion = SR(abs(prod([v for v in vs[: d - s]]).subs(subs_dict)) * G.subs(subs_dict) / abs(Gamma.determinant()) / unit)
+            B = SR(
+                1
+                / Qw.determinant()
+                / 2 ** (d - s)
+            )
+        else:
+            expansion = SR(G.subs(subs_dict) / unit / abs(Gamma.determinant()))
+            B = 1
+
+    expansion *= (
+        (-1) ** sum([m - 1 for m in multiplicities]) * r_gamma_inv / mult_fac
+    )
+
+    T = prod(SR(vs[i].subs(subs_dict)) ** r[i] for i in range(d))
+    C = SR(1 / T)
+    D = QQ((s - d) / 2 + sum(multiplicities) - s)
+    try:
+        B = QQbar(B)
+        C = QQbar(C)
+    except (ValueError, TypeError, NotImplementedError):
+        pass
+
+    return [expansion, B, C, D, s]
+    
 def _general_term_asymptotics(G, H, r, vs, cp, expansion_precision):
     r"""
     Compute coefficients of general (not necessarily leading) terms of
@@ -1734,3 +1818,20 @@ def _prepare_expanded_polynomial_ring(variables, direction=None, include_t=True)
         replaced_direction,
         direction_variable_values,
     )
+
+def _get_factorization(H, subs_dict=None):
+    unit = 1
+    poly_factors = H.factor()
+    unit = poly_factors.unit()
+    factors = []
+    multiplicities = []
+    for factor, multiplicity in poly_factors:
+        const = factor.coefficients()[-1]
+        unit *= const**multiplicity
+        factor /= const
+        if subs_dict is not None and factor.subs(subs_dict) != 0:
+            unit *= factor.subs(subs_dict)
+            continue
+        factors.append(factor)
+        multiplicities.append(multiplicity)
+    return unit, factors, multiplicities
