@@ -129,15 +129,18 @@ from sage.modules.free_module_element import vector
 from sage.rings.asymptotic.asymptotic_ring import AsymptoticRing
 from sage.rings.ideal import Ideal
 from sage.rings.imaginary_unit import I
+from sage.rings.fraction_field import FractionField
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 from sage.rings.qqbar import AA, QQbar
 from sage.rings.rational_field import QQ
+from sage.schemes.affine.affine_space import AffineSpace
 from sage.symbolic.constants import pi
 from sage.symbolic.ring import SR
 
 from sage_acsv.kronecker import _kronecker_representation
 from sage_acsv.helpers import (
     ACSVException,
+    Restriction,
     is_contributing,
     compute_newton_series,
     rational_function_reduce,
@@ -148,7 +151,7 @@ from sage_acsv.helpers import (
 from sage_acsv.debug import Timer, acsv_logger
 from sage_acsv.settings import ACSVSettings
 from sage_acsv.whitney import whitney_stratification
-from sage_acsv.groebner import compute_primary_decomposition, compute_saturation
+from sage_acsv.groebner import compute_primary_decomposition, compute_saturation, compute_radical
 
 
 # we need to monkeypatch a function from the asymptotics module such that creating
@@ -778,18 +781,28 @@ def compute_asymptotic_contribution(
     unit, all_factors, all_multiplicities = _get_factorization(R(H))
     unit, all_factors, all_multiplicities = SR(unit), [SR(f) for f in all_factors], [SR(f) for f in all_multiplicities]
 
+    fvs = list(set([v for ri in r for v in SR(ri).variables()] + [v for cpi in cp for v in SR(cpi).variables()]))
+    Rf = PolynomialRing(QQ, len(fvs), fvs)
+
     asymptotics = []
+    restrictions = []
 
     # Since critical point might be symbolic, we need to consider all flats it may lie on
-    for factor_multiplicities in Combinations(zip(all_factors, all_multiplicities)):
-        if not factor_multiplicities:
+    for combo in Combinations(list(range(len(all_factors)))):
+        if not combo:
             continue
-        factors, multiplicities = zip(*factor_multiplicities)
+        factors = [all_factors[i] for i in combo]
+        multiplicities = [all_multiplicities[i] for i in combo] 
+        
+        valid_set = Restriction(Rf)
+        valid_set.setminus(
+            [all_factors[j] for j in range(len(all_factors)) if j not in combo]
+        )
+
         # Determine whether it's possible for the critical point vanish in this
         # combination of factors
         if  any([f.subs(subs_dict) != 0 for f in factors]):
-            # TODO - check if some parameters allow this to hold in certain conditions
-            continue
+            valid_set.intersection([f.subs(subs_dict) for f in factors])
 
         s = len(factors)
         normals = matrix(
@@ -799,6 +812,12 @@ def compute_asymptotic_contribution(
             raise ACSVException(
                 "Not a transverse intersection. Cannot deal with this case."
             )
+        else:
+            try:
+                Id_minors = [Rf(f) for f in normals.minors(s)]
+                valid_set.setminus(Id_minors)
+            except:
+                valid_set = None
 
         # Step 2: Find the locally parametrizing coordinates of the point pt
         # Since we have d variables and s factors, there should be d-s of these
@@ -815,6 +834,11 @@ def compute_asymptotic_contribution(
             if Jac.determinant() != 0:
                 break
 
+            try:
+                valid_set = valid_set.setminus([Jac.determinant()])
+            except:
+                valid_set = None
+
             acsv_logger.info("Variables do not parametrize, shuffling")
             vs_r_cp = list(zip(vs, r, cp))
             shuffle(vs_r_cp)  # shuffle mutates the list
@@ -823,16 +847,17 @@ def compute_asymptotic_contribution(
             raise ACSVException("Cannot find parametrizing set.")
 
         expansion, constant_squared, base, exponent, s = _compute_asm_quantity(
-            G, H, vs, cp, r, subs_dict, unit ,factors, multiplicities, 1
+            G, H, vs, cp, r, subs_dict, unit,factors, multiplicities, 1
         )
         constant = constant_squared.sqrt()
 
         n = SR.var("n")
         asymptotics.append(base**n * n**exponent * (pi ** (s - d)).sqrt() * constant * expansion)
+        restrictions.append(valid_set)
 
     # TODO: If input parameters are rational, do some extra checking of validity
 
-    return asymptotics
+    return restrictions, asymptotics
 
 def _compute_asm_quantity(G, H, vs, cp, r, subs_dict, unit, factors, multiplicities, expansion_precision):
     s = len(factors)

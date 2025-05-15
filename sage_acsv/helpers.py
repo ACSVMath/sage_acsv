@@ -19,12 +19,16 @@ from sage.rings.asymptotic.growth_group import (
     MonomialGrowthGroup,
 )
 from sage.rings.ideal import Ideal
+from sage.rings.fraction_field import FractionField
+from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 from sage.rings.qqbar import AA, AlgebraicNumber, QQbar
 from sage.rings.rational_field import QQ
+from sage.schemes.affine.affine_space import AffineSpace
 from sage.symbolic.expression import Expression
 from sage.symbolic.ring import SymbolicRing, SR
 from sage.symbolic.operators import add_vararg
 from sage.symbolic.constants import pi
+from sage_acsv.groebner import compute_radical, compute_saturation
 
 
 @dataclass
@@ -56,7 +60,6 @@ class Term:
 
     def __lt__(self, other):
         return (self.base, self.power) < (other.base, other.power)
-
 
 def collapse_zero_part(algebraic_number: AlgebraicNumber) -> AlgebraicNumber:
     if algebraic_number.real().is_zero():
@@ -567,6 +570,83 @@ def get_expansion_terms(
 
     return decomposed_terms
 
+class Restriction():
+    def __init__(self, base_ring):
+        if len(base_ring.gens()) == 0:
+            self.base_ring = SR
+            self.base_field = SR
+            self.inclusion = []
+            self.exclusion = []
+            return
+
+        self.base_ring = base_ring
+        self.base_field = FractionField(base_ring)
+        self.inclusion = Ideal(base_ring.zero())
+        self.exclusion = Ideal(base_ring.one())
+
+    def intersection(self, eqns):
+        if self.base_ring != SR:
+            try:
+                eqns = [self.base_field(f) for f in eqns]
+                denoms = [f.denominator() for f in eqns]
+                Id = compute_radical(Ideal([self.base_ring.zero()] + [self.base_ring(f * prod(denoms)) for f in eqns]))
+                self.inclusion += Id
+            except:
+                self.inclusion = eqns + [SR(f) for f in self.inclusion.gens()]
+                self.exclusion = [SR(f) for f in self.exclusion.gens()]
+                self.base_ring = SR
+                self.base_field = SR
+        else:
+            self.inclusion += eqns
+
+        return self
+    
+    def setminus(self, eqns):
+        if self.base_ring != SR:
+            try:
+                eqns = [self.base_field(f) for f in eqns]
+                denoms = [f.denominator() for f in eqns]
+                Id = compute_radical(Ideal([self.base_ring.zero()] + [self.base_ring(f * prod(denoms)) for f in eqns]))
+                self.exclusion = self.exclusion.intersection(Id)
+            except:
+                self.inclusion = [SR(f) for f in self.inclusion.gens()]
+                self.exclusion = eqns + [SR(f) for f in self.exclusion.gens()]
+                self.base_ring = SR
+                self.base_field = SR
+        else:
+            self.exclusion += eqns
+
+        return self
+    
+    def simplify(self):
+        if self.base_ring == SR:
+            return
+        self.inclusion = compute_saturation(self.inclusion, self.exclusion)
+        self.inclusion = compute_radical(self.inclusion)
+        self.exclusion = compute_radical(self.exclusion)
+
+    def contains(self, other : Restriction):
+        if self.base_ring == SR:
+            return False
+        
+        self.simplify()
+        other.simplify()
+        for f in self.inclusion.gens():
+            if f not in other.inclusion:
+                return False
+        
+        exclusion_set = compute_radical(self.exclusion + other.inclusion)
+        for f in other.exclusion.gens():
+            if f not in exclusion_set:
+                return False
+        
+        return True
+    
+    def is_empty(self):
+        return self.contains(Restriction(self.base_ring).intersection([1]))
+    
+    def __str__(self):
+        return f"Quasi-Affine variety defined by X - Y where X is \n {self.inclusion} and Y is \n {self.exclusion}"
 
 class ACSVException(Exception):
     def __init__(self, message, retry=False):
