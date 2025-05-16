@@ -796,8 +796,9 @@ def compute_asymptotic_contribution(
         
         valid_set = Restriction(Rf)
         valid_set.setminus(
-            [all_factors[j] for j in range(len(all_factors)) if j not in combo]
+            [all_factors[j].subs(subs_dict) for j in range(len(all_factors)) if j not in combo]
         )
+        print(valid_set)
 
         # Determine whether it's possible for the critical point vanish in this
         # combination of factors
@@ -819,7 +820,10 @@ def compute_asymptotic_contribution(
             except:
                 valid_set = None
 
-        # Step 2: Find the locally parametrizing coordinates of the point pt
+        # Check conditions needed for point to be contributing
+        # Might just need for point to be non-critical in upper dimensional component?
+
+        # Find the locally parametrizing coordinates of the point pt
         # Since we have d variables and s factors, there should be d-s of these
         # parametrizing coordinates
         # We will try to parametrize with the first d-s coordinates, shuffling
@@ -834,10 +838,7 @@ def compute_asymptotic_contribution(
             if Jac.determinant() != 0:
                 break
 
-            try:
-                valid_set = valid_set.setminus([Jac.determinant()])
-            except:
-                valid_set = None
+            valid_set = valid_set.setminus([Jac.determinant()])
 
             acsv_logger.info("Variables do not parametrize, shuffling")
             vs_r_cp = list(zip(vs, r, cp))
@@ -845,6 +846,9 @@ def compute_asymptotic_contribution(
             vs, r, cp = zip(*vs_r_cp)
         else:
             raise ACSVException("Cannot find parametrizing set.")
+
+        if valid_set.is_empty():
+            continue
 
         expansion, constant_squared, base, exponent, s = _compute_asm_quantity(
             G, H, vs, cp, r, subs_dict, unit,factors, multiplicities, 1

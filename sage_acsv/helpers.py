@@ -572,7 +572,7 @@ def get_expansion_terms(
 
 class Restriction():
     def __init__(self, base_ring):
-        if len(base_ring.gens()) == 0:
+        if base_ring == SR or len(base_ring.gens()) == 0:
             self.base_ring = SR
             self.base_field = SR
             self.inclusion = []
@@ -592,6 +592,7 @@ class Restriction():
                 Id = compute_radical(Ideal([self.base_ring.zero()] + [self.base_ring(f * prod(denoms)) for f in eqns]))
                 self.inclusion += Id
             except:
+                print(1)
                 self.inclusion = eqns + [SR(f) for f in self.inclusion.gens()]
                 self.exclusion = [SR(f) for f in self.exclusion.gens()]
                 self.base_ring = SR
@@ -602,13 +603,16 @@ class Restriction():
         return self
     
     def setminus(self, eqns):
+        if not eqns:
+            return
         if self.base_ring != SR:
             try:
                 eqns = [self.base_field(f) for f in eqns]
                 denoms = [f.denominator() for f in eqns]
-                Id = compute_radical(Ideal([self.base_ring.zero()] + [self.base_ring(f * prod(denoms)) for f in eqns]))
+                Id = compute_radical(Ideal([self.base_ring(f * prod(denoms)) for f in eqns]))
                 self.exclusion = self.exclusion.intersection(Id)
             except:
+                print(2)
                 self.inclusion = [SR(f) for f in self.inclusion.gens()]
                 self.exclusion = eqns + [SR(f) for f in self.exclusion.gens()]
                 self.base_ring = SR
@@ -643,7 +647,24 @@ class Restriction():
         return True
     
     def is_empty(self):
-        return self.contains(Restriction(self.base_ring).intersection([1]))
+        self.simplify()
+        inclusion_gens = self.inclusion if self.base_field == SR else self.inclusion.gens()
+        exclusion_gens = self.exclusion if self.base_field == SR else self.exclusion.gens()
+        for val in inclusion_gens:
+            try:
+                val = QQbar(val)
+                if val != 0:
+                    return True
+            except:
+                pass
+        for val in exclusion_gens:
+            try:
+                val = QQbar(val)
+                if val == 0:
+                    return True
+            except:
+                pass
+        return False
     
     def __str__(self):
         return f"Quasi-Affine variety defined by X - Y where X is \n {self.inclusion} and Y is \n {self.exclusion}"
