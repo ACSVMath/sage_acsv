@@ -585,18 +585,10 @@ class Restriction():
         self.exclusion = Ideal(base_ring.one())
 
     def intersection(self, eqns):
+        eqns, denoms = self._convert_equations(eqns)
         if self.base_ring != SR:
-            try:
-                eqns = [self.base_field(f) for f in eqns]
-                denoms = [f.denominator() for f in eqns]
-                Id = compute_radical(Ideal([self.base_ring.zero()] + [self.base_ring(f * prod(denoms)) for f in eqns]))
-                self.inclusion += Id
-            except:
-                print(1)
-                self.inclusion = eqns + [SR(f) for f in self.inclusion.gens()]
-                self.exclusion = [SR(f) for f in self.exclusion.gens()]
-                self.base_ring = SR
-                self.base_field = SR
+            Id = compute_radical(Ideal([self.base_ring.zero()] + [self.base_ring(f * prod(denoms)) for f in eqns]))
+            self.inclusion += Id
         else:
             self.inclusion += eqns
 
@@ -605,22 +597,29 @@ class Restriction():
     def setminus(self, eqns):
         if not eqns:
             return
+        eqns, denoms = self._convert_equations(eqns)
         if self.base_ring != SR:
-            try:
-                eqns = [self.base_field(f) for f in eqns]
-                denoms = [f.denominator() for f in eqns]
-                Id = compute_radical(Ideal([self.base_ring(f * prod(denoms)) for f in eqns]))
-                self.exclusion = self.exclusion.intersection(Id)
-            except:
-                print(2)
-                self.inclusion = [SR(f) for f in self.inclusion.gens()]
-                self.exclusion = eqns + [SR(f) for f in self.exclusion.gens()]
-                self.base_ring = SR
-                self.base_field = SR
+            Id = compute_radical(Ideal([self.base_ring(f * prod(denoms)) for f in eqns]))
+            self.exclusion = self.exclusion.intersection(Id)
         else:
             self.exclusion += eqns
 
         return self
+    
+    def _convert_equations(self, eqns):
+        try:
+            eqns = [self.base_field(f) for f in eqns]
+            denoms = [f.denominator() for f in eqns]
+        except:
+            print("Error - cannot represent as quasi variety.")
+            self.convert_to_symbolic()
+        return eqns, denoms
+
+    def convert_to_symbolic(self):
+        self.inclusion = [SR(f) for f in self.inclusion.gens()]
+        self.exclusion = [SR(f) for f in self.exclusion.gens()]
+        self.base_ring = SR
+        self.base_field = SR
     
     def simplify(self):
         if self.base_ring == SR:

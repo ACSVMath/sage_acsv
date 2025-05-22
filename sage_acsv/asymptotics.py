@@ -129,11 +129,9 @@ from sage.modules.free_module_element import vector
 from sage.rings.asymptotic.asymptotic_ring import AsymptoticRing
 from sage.rings.ideal import Ideal
 from sage.rings.imaginary_unit import I
-from sage.rings.fraction_field import FractionField
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 from sage.rings.qqbar import AA, QQbar
 from sage.rings.rational_field import QQ
-from sage.schemes.affine.affine_space import AffineSpace
 from sage.symbolic.constants import pi
 from sage.symbolic.ring import SR
 
@@ -751,7 +749,7 @@ def diagonal_asymptotics_combinatorial(
 
     return result
 
-def compute_asymptotic_contribution(
+def compute_contribution(
         F,
         critical_point,
         r=None
@@ -798,13 +796,25 @@ def compute_asymptotic_contribution(
         valid_set.setminus(
             [all_factors[j].subs(subs_dict) for j in range(len(all_factors)) if j not in combo]
         )
-        print(valid_set)
 
         # Determine whether it's possible for the critical point vanish in this
         # combination of factors
-        if  any([f.subs(subs_dict) != 0 for f in factors]):
+        if any([f.subs(subs_dict) != 0 for f in factors]):
             valid_set.intersection([f.subs(subs_dict) for f in factors])
 
+        # Remove critical points of higher dimensional strata
+        for factors_subset in Combinations(factors):
+            if not factors_subset or len(factors_subset) == len(factors):
+                continue
+            cp_eqns = matrix(
+                [[v * f.derivative(v) for v in vs] for f in factors_subset] + [r]
+            ).minors(d-len(factors_subset)+1) + factors_subset
+            
+            cp_eqns = [f.subs(subs_dict) for f in cp_eqns]
+
+            valid_set.setminus(cp_eqns)
+
+        # Check transverse factorization
         s = len(factors)
         normals = matrix(
             [[f.derivative(v).subs(subs_dict) for v in vs] for f in factors]
@@ -814,14 +824,8 @@ def compute_asymptotic_contribution(
                 "Not a transverse intersection. Cannot deal with this case."
             )
         else:
-            try:
-                Id_minors = [Rf(f) for f in normals.minors(s)]
-                valid_set.setminus(Id_minors)
-            except:
-                valid_set = None
-
-        # Check conditions needed for point to be contributing
-        # Might just need for point to be non-critical in upper dimensional component?
+            normals_minors = normals.minors(s)
+            valid_set.setminus(normals_minors)
 
         # Find the locally parametrizing coordinates of the point pt
         # Since we have d variables and s factors, there should be d-s of these
@@ -859,9 +863,51 @@ def compute_asymptotic_contribution(
         asymptotics.append(base**n * n**exponent * (pi ** (s - d)).sqrt() * constant * expansion)
         restrictions.append(valid_set)
 
-    # TODO: If input parameters are rational, do some extra checking of validity
-
     return restrictions, asymptotics
+
+def compute_contribution_smooth(F, critical_point, r=None):
+    G, H, variable_map = _prepare_symbolic_fraction(F)
+    vs = list(variable_map.values())
+    d = len(vs)
+    subs_dict = {vs[i]: critical_point[i] for i in range(d)}
+    if r is None:
+        r = [1 for _ in range(d)]
+
+    expansion, constant_squared, base, exponent, _ = _compute_asm_quantity(
+        G, H, vs, critical_point, r, subs_dict,
+        unit=1, 
+        factors=[H], 
+        multiplicities=[1], 
+        expansion_precision=1
+    )
+    constant = constant_squared.sqrt()
+
+    n = SR.var("n")
+    return base**n * n**exponent * (pi ** (1 - d)).sqrt() * constant * expansion
+
+def compute_contribution_transverse(F, factors, multiplicities, critical_point, r=None):
+    G, H, variable_map = _prepare_symbolic_fraction(F)
+    vs = list(variable_map.values())
+    d = len(vs)
+    subs_dict = {vs[i]: critical_point[i] for i in range(d)}
+
+    # Make coefficients integers to get the correct constants
+    factors = [f.subs(variable_map)*f.denominator() for f in factors]
+
+    if r is None:
+        r = [1 for _ in range(d)]
+
+    expansion, constant_squared, base, exponent, s = _compute_asm_quantity(
+        G, H, vs, critical_point, r, subs_dict,
+        unit=1, 
+        factors=factors,
+        multiplicities=multiplicities, 
+        expansion_precision=1
+    )
+    constant = constant_squared.sqrt()
+
+    n = SR.var("n")
+    return base**n * n**exponent * (pi ** (s - d)).sqrt() * constant * expansion
 
 def _compute_asm_quantity(G, H, vs, cp, r, subs_dict, unit, factors, multiplicities, expansion_precision):
     s = len(factors)
