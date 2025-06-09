@@ -754,6 +754,32 @@ def compute_contribution(
         critical_point,
         r=None
 ):
+    r"""Asymptotic contribution of `critical_point` to the asymptotic behaviour of the
+    coefficient array of a multivariate rational function `F` along a given direction `r`.
+    The `critical_point` does not need to be contributing.
+
+    INPUT:
+
+    * ``F`` -- The rational function `G/H` in `d` variables.
+    * ``critical_point`` -- A vector of length `d` of symbolic values.
+    * ``r`` -- (Optional) a vector of length `d` of symbolic values. Defaults to the
+      appropriate vector of all 1's if not specified.
+
+    OUTPUT:
+
+    A list of symbolic representations of the dominant asymptotic contribution of 
+    `critical_point` along the direction `r`, as well as a list of `Restriction`
+    objects indicating the quasi-affine variety where each asymptotic expression is valid.
+
+    NOTE:
+
+    TODO something about the Restriction trying to keep valid region a quasi-affine variety.
+
+    EXAMPLES::
+
+    TODO
+
+    """
     G, H, variable_map = _prepare_symbolic_fraction(F)
     vs = list(variable_map.values())
 
