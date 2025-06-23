@@ -572,25 +572,20 @@ def get_expansion_terms(
 
 class Restriction():
     def __init__(self, base_ring):
-        if base_ring == SR or len(base_ring.gens()) == 0:
-            self.base_ring = SR
-            self.base_field = SR
-            self.inclusion = []
-            self.exclusion = []
-            return
+        if len(base_ring.gens()) == 0:
+            # This is just a workaround for when no auxiliary variables exist
+            base_ring = PolynomialRing(QQ, 1, ['sub0'])
 
         self.base_ring = base_ring
         self.base_field = FractionField(base_ring)
+        self.symbolic_variables_map = {}
         self.inclusion = Ideal(base_ring.zero())
         self.exclusion = Ideal(base_ring.one())
-
+        
     def intersection(self, eqns):
         eqns, denoms = self._convert_equations(eqns)
-        if self.base_ring != SR:
-            Id = compute_radical(Ideal([self.base_ring.zero()] + [self.base_ring(f * prod(denoms)) for f in eqns]))
-            self.inclusion += Id
-        else:
-            self.inclusion += eqns
+        Id = compute_radical(Ideal([self.base_ring.zero()] + [self.base_ring(f * prod(denoms)) for f in eqns]))
+        self.inclusion += Id
 
         return self
     
@@ -598,42 +593,45 @@ class Restriction():
         if not eqns:
             return
         eqns, denoms = self._convert_equations(eqns)
-        if self.base_ring != SR:
-            Id = compute_radical(Ideal([self.base_ring(f * prod(denoms)) for f in eqns]))
-            self.exclusion = self.exclusion.intersection(Id)
-        else:
-            self.exclusion += eqns
+        Id = compute_radical(Ideal([self.base_ring(f * prod(denoms)) for f in eqns]))
+        self.exclusion = self.exclusion.intersection(Id)
 
         return self
     
     def _convert_equations(self, eqns):
-        try:
-            eqns = [self.base_field(f) for f in eqns]
-            denoms = [f.denominator() for f in eqns]
-        except:
-            print("Error - cannot represent as quasi variety.")
-            self.convert_to_symbolic()
-        return eqns, denoms
+        new_eqns = []
+        denoms = []
+        for f in eqns:
+            try:
+                f = self.base_field(f)
+                denom = f.denominator()
+            except:
+                f = self._add_substitution_variable(f)
+                denom = self.base_ring.one()
+            new_eqns.append(f)
+            denoms.append(denom)
+        return new_eqns, denoms
 
-    def convert_to_symbolic(self):
-        self.inclusion = [SR(f) for f in self.inclusion.gens()]
-        self.exclusion = [SR(f) for f in self.exclusion.gens()]
-        self.base_ring = SR
-        self.base_field = SR
+    def _add_substitution_variable(self, eqn):
+        new_var = SR(f'sub{len(self.symbolic_variables_map)}')
+        self.symbolic_variables_map[new_var] = eqn
+        new_ring = PolynomialRing(self.base_ring, [new_var]).flattening_morphism().codomain()
+        self.base_ring = new_ring
+        self.base_field = FractionField(self.base_ring)
+
+        self.inclusion = self.inclusion.change_ring(self.base_ring)
+        self.exclusion = self.exclusion.change_ring(self.base_ring)
+
+        return new_ring(new_var)
     
-    def simplify(self):
-        if self.base_ring == SR:
-            return
+    def _simplify(self):
         self.inclusion = compute_saturation(self.inclusion, self.exclusion)
         self.inclusion = compute_radical(self.inclusion)
         self.exclusion = compute_radical(self.exclusion)
 
     def contains(self, other : Restriction):
-        if self.base_ring == SR:
-            return False
-        
-        self.simplify()
-        other.simplify()
+        self._simplify()
+        other._simplify()
         for f in self.inclusion.gens():
             if f not in other.inclusion:
                 return False
@@ -646,7 +644,7 @@ class Restriction():
         return True
     
     def is_empty(self):
-        self.simplify()
+        self._simplify()
         inclusion_gens = self.inclusion if self.base_field == SR else self.inclusion.gens()
         exclusion_gens = self.exclusion if self.base_field == SR else self.exclusion.gens()
         for val in inclusion_gens:
@@ -666,7 +664,19 @@ class Restriction():
         return False
     
     def __str__(self):
-        return f"Quasi-Affine variety defined by X - Y where X is \n {self.inclusion} and Y is \n {self.exclusion}"
+        return_str = ""
+        if 1 in self.exclusion:
+            return_str += f"Affine variety defined by \n {self.inclusion} \n"
+        else:
+            return_str += f"Quasi-Affine variety defined by X - Y where X is \n {self.inclusion} and Y is \n {self.exclusion}"
+        
+        num_new = len(self.symbolic_variables_map)
+        if num_new > 0:
+            return_str += "and \n"
+            for i, (key, value) in enumerate(self.symbolic_variables_map.items()):
+                return_str += f" {key} = {value}\n"
+
+        return return_str
 
 class ACSVException(Exception):
     def __init__(self, message, retry=False):
