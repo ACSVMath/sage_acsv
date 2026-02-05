@@ -1648,7 +1648,7 @@ def critical_points(F, r=None, linear_form=None, whitney_strat=None):
             for u in P.roots(QQbar, multiplicities=False):
                 rv = {
                     ri: (q / Pd).subs(u_=u)
-                    for (ri, q) in zip(r_variable_values, Qs[len(vs) : -2])
+                    for (ri, q) in zip(r_variable_values, Qs[len(vs) : -1])
                 }
                 if any(
                     rv[r_var] != r_value for r_var, r_value in r_variable_values.items()
