@@ -407,8 +407,9 @@ def diagonal_asymptotics_combinatorial(
 
     * ``F`` -- The rational function `G/H` in `d` variables. This function is
       assumed to have a combinatorial expansion.
-    * ``r`` -- (Optional) A vector of length `d` of positive algebraic numbers.
+    * ``r`` -- (Optional) A vector or dictionary of length `d` of positive algebraic numbers.
       Defaults to the appropriate vector of all 1's if not specified.
+      If a vector is given, assumes the variable order is given by ``F.variables()``.
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions. Is generated
       randomly if not specified.
@@ -576,7 +577,17 @@ def diagonal_asymptotics_combinatorial(
         sage: diagonal_asymptotics_combinatorial(1/(1 - n - t - u_))
         0.866025403784439?/pi*27^n*n^(-1) + O(27^n*n^(-2))
 
+    Check that direction can be passed as dictionary::
+
+        sage: var('y T x')
+        (y, T, x)
+        sage: diagonal_asymptotics_combinatorial(1/(1 - x - 2*y - 3*T), r = {T:2, x:1, y:3})
+        1/2/pi*31104^n*n^(-1) + O(31104^n*n^(-2))
+
     """
+    if isinstance(r, dict):
+        r = _prepare_direction_variable_order(F, r)
+
     G, H, variable_map = _prepare_symbolic_fraction(F)
     vs = list(variable_map.values())
 
@@ -951,8 +962,8 @@ def contributing_points_combinatorial_smooth(G, H, variables, r=None, linear_for
 
     * ``G, H`` -- Coprime polynomials with `F = G/H`.
     * ``variables`` -- List of variables of ``G`` and ``H``.
-    * ``r`` -- (Optional) the direction, a vector of positive algebraic
-      numbers (usually integers).
+    * ``r`` -- (Optional) the direction, a vector or dictionary of positive algebraic numbers (usually integers).
+      If a vector is given, assumes the variable order is given by ``(G/H).variables()``.
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions.
 
@@ -980,6 +991,9 @@ def contributing_points_combinatorial_smooth(G, H, variables, r=None, linear_for
         sage: sorted(pts)
         [[-1/4, -1, -1], [1/4, 1, 1]]
     """
+
+    if isinstance(r, dict):
+        r = _prepare_direction_variable_order(G/H, r)
 
     timer = Timer()
     (
@@ -1308,7 +1322,8 @@ def contributing_points_combinatorial(
 
     * ``F`` -- Symbolic fraction, the rational function assumed to have
       a finite number of critical points.
-    * ``r`` -- (Optional) Length `d` vector of positive integers.
+    * ``r`` -- (Optional) Length `d` vector or dictionary of positive integers.
+      If a vector is given, assumes the variable order is given by ``F.variables()``.
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions.
     * ``whitney_strat`` -- (Optional) If known / precomputed, a
@@ -1338,6 +1353,9 @@ def contributing_points_combinatorial(
         [[3/4, 3/2]]
 
     """
+    if isinstance(r, dict):
+        r = _prepare_direction_variable_order(F, r)
+   
     G, H, variable_map = _prepare_symbolic_fraction(F)
     variables = list(variable_map.values())
     if whitney_strat is not None:
@@ -1383,7 +1401,8 @@ def minimal_critical_points_combinatorial(
     INPUT:
 
     * ``F`` -- Symbolic fraction, the rational function of interest.
-    * ``r`` -- (Optional) Length ``d`` vector of positive integers
+    * ``r`` -- (Optional) Length `d` vector or dictionary of positive integers.
+      If a vector is given, assumes the variable order is given by ``F.variables()``.
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions
     * ``whitney_strat`` -- (Optional) If known / precomputed, a
@@ -1413,6 +1432,10 @@ def minimal_critical_points_combinatorial(
         [[3/4, 3/2], [1, 1]]
 
     """
+
+    if isinstance(r, dict):
+        r = _prepare_direction_variable_order(F, r)
+
     _, H, variable_map = _prepare_symbolic_fraction(F)
     variables = list(variable_map.values())
     if whitney_strat is not None:
@@ -1552,7 +1575,8 @@ def critical_points(F, r=None, linear_form=None, whitney_strat=None):
     INPUT:
 
     * ``F`` -- Symbolic fraction, the rational function of interest.
-    * ``r`` -- (Optional) Length ``d`` vector of positive integers
+    * ``r`` -- (Optional) Length `d` vector or dictionary of positive integers.
+      If a vector is given, assumes the variable order is given by ``F.variables()``.
     * ``linear_form`` -- (Optional) A linear combination of the input
       variables that separates the critical point solutions
     * ``whitney_strat`` -- (Optional) If known / precomputed, a
@@ -1582,6 +1606,9 @@ def critical_points(F, r=None, linear_form=None, whitney_strat=None):
         [[2/3, 2], [3/4, 3/2], [1, 1]]
 
     """
+    if isinstance(r, dict):
+        r = _prepare_direction_variable_order(F, r)
+
     _, H, variable_map = _prepare_symbolic_fraction(F)
     variables = list(variable_map.values())
     if whitney_strat is not None:
@@ -1683,6 +1710,19 @@ def _prepare_symbolic_fraction(F):
     frac_gcd = gcd(G, H)
     return G / frac_gcd, H / frac_gcd, variable_map
 
+
+def _prepare_direction_variable_order(F, r):
+    r"""Converts a direction dictionary `r` to a direction vector in the variable order
+    given by `F.variables()`
+
+    INPUT:
+
+    * ``F`` -- A symbolic fraction
+    * ``r`` -- A direction dictionary
+    """
+
+    vs = F.variables()
+    return [r.get(v, 1) for v in vs]
 
 def _prepare_expanded_polynomial_ring(variables, direction=None, include_t=True):
     r"""Prepare an auxiliary polynomial ring for computing diagonal asymptotics.
