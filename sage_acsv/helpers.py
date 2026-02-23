@@ -188,6 +188,48 @@ def compute_hessian(H, variables, r, critical_point=None):
     return hessian
 
 
+def compute_hessian_with_log(H, variables, r):
+    r"""Computes the Hessian matrix appearing in LCLT.
+
+    INPUT:
+
+    * ``H`` -- a polynomial (the denominator of the rational GF `F`)
+    * ``variables`` -- list of variables ``z_1, ..., z_d``
+    * ``r`` -- direction vector of length `d` with positive entries
+
+    OUTPUT:
+
+    The Hessian matrix with rational function entries in the variables of ``variables``.
+    """
+    z_d = variables[-1]
+    d = len(variables)
+
+    # Build d x d matrix of U[i,j] = z_i * z_j * H'_{z_i * z_j}
+    U = matrix(
+        [
+            [
+                v1 * v2 * H.derivative(v1, v2)/(z_d * H.derivative(z_d))
+                for v2 in variables
+            ] for v1 in variables
+        ]
+    )
+    V = [(r[k] / r[-1]) for k in range(d)]
+
+    # Build (d-1) x (d-1) Matrix for Hessian
+    Hess = [
+        [
+            V[i] * V[j] + U[i][j] - V[j] * U[i][-1] - V[i]*U[j][-1]
+            + V[i] * V[j] * U[-1][-1]
+            for j in range(d-1)
+        ] for i in range(d-1)
+    ]
+    for i in range(d-1):
+        Hess[i][i] = Hess[i][i] + V[i]
+
+    # Return Hessian
+    return matrix(Hess)
+
+
 def compute_newton_series(phi, variables, series_precision):
     r"""Computes the series expansion of an implicitly defined function.
 
