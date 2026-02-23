@@ -1,6 +1,6 @@
 [project]
 name = "sage-acsv"
-version = "0.2.0"
+version = "0.3.0"
 description = "A SageMath package with algorithms for analytic combinatorics in several variables."
 authors = [
   {name = "Benjamin Hackl", email = "devel@benjamin-hackl.at"},
@@ -19,8 +19,10 @@ repository = "https://github.com/ACSVMath/sage_acsv"
 
 [dependency-groups]
 dev = [
+    "furo>=2024.8.6",
     "pytest>=8.3.5",
     "ruff>=0.10.0",
+    "sphinx>=7,<8",
 ]
 
 [build-system]

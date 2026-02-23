@@ -1,10 +1,16 @@
-from sage.all import PolynomialRing, QQ, gcd
+"""Functions related to computing the Kronecker representation of
+a system of polynomials.
+"""
+
+from sage.arith.misc import gcd
 from sage.rings.polynomial.multi_polynomial_ideal import MPolynomialIdeal
+from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
+from sage.rings.rational_field import QQ
 
 from sage_acsv.helpers import ACSVException, generate_linear_form
 from sage_acsv.debug import acsv_logger
-from sage_acsv.msolve import get_parametrization
-from sage_acsv.macaulay2 import compute_groebner_basis, compute_radical
+from sage_acsv.backends.msolve import get_parametrization
+from sage_acsv.groebner import compute_groebner_basis, compute_radical
 from sage_acsv.settings import ACSVSettings
 
 
@@ -28,7 +34,7 @@ def _kronecker_representation_sage(system, u_, vs, linear_form=None):
     A polynomial ``P`` and ``d`` polynomials ``Q1, ..., Q_d`` such
     that ``z_i = Q_i(u)/P'(u)`` for ``u`` ranging over the roots of ``P``
 
-    Examples::
+    EXAMPLES::
 
         sage: from sage_acsv.kronecker import kronecker_representation
         sage: var('x, y')
@@ -171,13 +177,10 @@ def _kronecker_representation(system, u_, vs, linear_form=None):
     return _kronecker_representation_sage(system, u_, vs, linear_form=linear_form)
 
 def kronecker(system, vs, linear_form=None):
-    from warnings import warn
-    warn(
+    acsv_logger.warning(
         "The kronecker function has been deprecated and will "
         "be removed in a future version. Please use the "
         "kronecker_representation function (same signature) instead.",
-        DeprecationWarning,
-        stacklevel=2,
     )
     return kronecker_representation(system, vs, linear_form=linear_form)
 
@@ -187,17 +190,18 @@ def kronecker_representation(system, vs, linear_form=None):
 
     INPUT:
 
-    * ``system`` -- A system of polynomials in ``d`` variables
+    * ``system`` -- A system of polynomials in `d` variables defining a zero-dimensional (finite) variety
     * ``vs`` -- Variables of the system
     * ``linear_form`` -- (Optional) A linear combination of the
       input variables that separates the critical point solutions
 
     OUTPUT:
 
-    A polynomial ``P`` and ``d`` polynomials ``Q1, ..., Q_d`` such that
-    ``z_i = Q_i(u)/P'(u)`` for ``u`` ranging over the roots of ``P``.
+    A polynomial `P` and `d` polynomials `Q1, ..., Q_d` such that
+    `z_i = Q_i(u)/P'(u)` for `u` ranging over the roots of `P`.
 
-    Examples::
+    EXAMPLES::
+
         sage: from sage_acsv.kronecker import kronecker_representation
         sage: var('x,y')
         (x, y)
