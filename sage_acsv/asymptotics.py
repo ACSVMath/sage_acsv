@@ -664,7 +664,6 @@ def diagonal_asymptotics_combinatorial(
         return
 
     asm_quantities = []
-
     # Store copy of vs and r in case order changes due to parametrization
     vs_copy, r_copy = copy(vs), copy(r)
     for cp in min_crit_pts:
