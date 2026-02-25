@@ -2058,14 +2058,14 @@ def getLCLT(F, main_var, as_symbolic=False):
 
     # Values appearing in asymptotics
     base = 1/rho
-    constant = - AA(G.subs(sbs) / rho / H.derivative(vs[-1]).subs(sbs) / (2^(d-1) * Det).sqrt())
+    constant = - AA(G.subs(sbs) / rho / H.derivative(vs[-1]).subs(sbs) / (2**(d-1) * Det).sqrt())
     exponent = (1-d)/2
 
-    s = matrix((var('s', n=d-1)))
+    s = matrix((SR.var('s', n=d-1)))
     invHess = Hess.inverse()
     
     n = SR.var('n')
-    result = (base, n^exponent, pi^exponent, constant, invHess, matrix(m[:-1]))
+    result = (base, n**exponent, pi**exponent, constant, invHess, matrix(m[:-1]))
     
     if as_symbolic:
         (a, b, c, d, e, f) = result
@@ -2080,6 +2080,6 @@ def getLCLT(F, main_var, as_symbolic=False):
         else: 
             sfactor = exp(-(((s-n*f)*e*(s-n*f).transpose())[0,0])/2/n)
         
-        result = a^n * b * c * d * sfactor
+        result = a**n * b * c * d * sfactor
 
     return result
