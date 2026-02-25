@@ -118,7 +118,7 @@ from copy import copy
 
 from sage.algebras.weyl_algebra import DifferentialWeylAlgebra
 from sage.arith.misc import gcd
-from sage.arith.function import lcm
+from sage.arith.functions import lcm
 from sage.arith.srange import srange
 from sage.functions.log import log, exp
 from sage.functions.other import factorial
