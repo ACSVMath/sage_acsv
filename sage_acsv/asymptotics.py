@@ -1954,7 +1954,7 @@ def _prepare_expanded_polynomial_ring(variables, direction=None, include_t=True)
     )
 
 
-def getLCLT(F, main_var, as_symbolic=False):
+def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False):
     r"""Take a multivariate rational generating function, check if it admits a 
     minimal critical point of a form implying a local central limit theorem, and
     (if so) return the local central limit theorem.
