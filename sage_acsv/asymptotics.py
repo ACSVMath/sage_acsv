@@ -1954,7 +1954,7 @@ def _prepare_expanded_polynomial_ring(variables, direction=None, include_t=True)
     )
 
 
-def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False):
+def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False, expr_order=None):
     r"""Take a multivariate rational generating function, check if it admits a 
     minimal critical point of a form implying a local central limit theorem, and
     (if so) return the local central limit theorem.
@@ -1969,6 +1969,8 @@ def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False):
         ring ``SR`` in the variable ``n``. If ``False``, the default, returns a tuple 
         (a, n^b, pi^b, C, D, v) such that the local central limit theorem is specified by the
         function f(s) = a^n * n^b * pi^b * C * exp(-((s-n*v)*D*(s-n*v).transpose())/2/n)
+    * ``expr_order`` -- (Optional) A tuple specifying the desired order of the non-main
+        variables. If not provided, the order is determined by ``H.variables()``.
 
     OUTPUT:
 
@@ -1978,7 +1980,10 @@ def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False):
 
     # Initialize quantities
     G, H = F.numerator(), F.denominator()
-    zvariables = [v for v in H.variables() if v != main_var]
+    if expr_order is not None:
+        zvariables = [v for v in expr_order if v != main_var and v in H.variables()]
+    else:
+        zvariables = [v for v in H.variables() if v != main_var]
     R = PolynomialRing(QQ,zvariables + [main_var])
     vs = R.gens()
     
