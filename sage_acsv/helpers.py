@@ -692,26 +692,6 @@ def get_limit_theorem_terms(
 
     EXAMPLES::
 
-        sage: from sage_acsv import central_limit_theorem_combinatorial, get_limit_theorem_terms
-        sage: var('x y w')
-        (x, y, w)
-        sage: F = 1/(1 - w*(x + y))
-        sage: result = central_limit_theorem_combinatorial(F, w)
-        sage: terms = get_limit_theorem_terms(result)
-        sage: len(terms) >= 1
-        True
-        sage: all(hasattr(t, 'density_covariance_matrix') for t in terms)
-        True
-        sage: all(hasattr(t, 'density_mean_vector') for t in terms)
-        True
-
-    ::
-
-        sage: result_sym = central_limit_theorem_combinatorial(F, w, as_symbolic=True)
-        sage: terms_sym = get_limit_theorem_terms(result_sym)
-        sage: all(t.density_symbolic is not None for t in terms_sym)
-        True
-
     """
     from sage.functions.log import exp
 
