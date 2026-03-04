@@ -7,3 +7,4 @@ from sage_acsv.asymptotics import *
 from sage_acsv.kronecker import kronecker_representation
 from sage_acsv.helpers import get_expansion_terms, get_limit_theorem_terms, LimitTheoremTerm
 from sage_acsv.settings import ACSVSettings
+from sage_acsv.diagonal import algebraic_diagonal
