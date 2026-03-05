@@ -14,13 +14,13 @@ def get_nullstellensatz_certificate(R, Hs, multiplicities):
     It is a list of polynomials `p_1,\dots,p_s` such that `p_1H_1 + \dots + p_sH_s = 1`.
 
     INPUT:
-    * ``R`` -- A `PolynomialRing`.
-    * ``Hs`` -- A list of square-free polynomials in `R`.
-    * ``multiplicities`` -- A list of integers representing powers of `Hs`.
+    * ``R`` -- A ``PolynomialRing``.
+    * ``Hs`` -- A list of square-free polynomials in ``R``.
+    * ``multiplicities`` -- A list of integers representing powers of ``Hs``.
 
     OUTPUT:
 
-    A list of polynomials in `R`.
+    A list of polynomials in ``R``.
     
     EXAMPLES::
 
@@ -42,12 +42,12 @@ def compute_nullstellensatz_decomposition(R, G, H):
     `q_{k_1}, ..., q_{k_i}` are factors of `H` that do not generate the ideal `R`.
 
     INPUT:
-    * ``R`` -- A `PolynomialRing`.
+    * ``R`` -- A ``PolynomialRing``.
     * ``G, H`` -- Polynomials representing the rational function `G/H`.
 
     OUTPUT:
 
-    A list of tuples `(G_i,H_i)` where `G_i, H_i` are in `R`.
+    A list of tuples ``(G_i,H_i)`` where ``G_i, H_i`` are in ``R``.
     
     EXAMPLES::
 
@@ -81,20 +81,20 @@ def compute_nullstellensatz_decomposition(R, G, H):
     return decomp # todo: combine parts
     
 def get_algebraic_independence_certificate(R, Hs, multiplicities):
-    r"""Finds an algebraic independence certificate of a set `Hs` of polynomials.
+    r"""Finds an algebraic independence certificate of a list ``Hs`` of polynomials.
 
     An algebraic independence ceritificate is an annhilating polynomial of `Hs` over
     the same base ring.
 
     INPUT:
-    * ``R`` -- A `PolynomialRing`.
-    * ``Hs`` -- A list of square-free polynomials in `R`.
-    * ``multiplicities`` -- A list of integers representing powers of `Hs`.
+    * ``R`` -- A ``PolynomialRing``.
+    * ``Hs`` -- A list of square-free polynomials in ``R``.
+    * ``multiplicities`` -- A list of integers representing powers of ``Hs``.
 
     OUTPUT:
 
-    A list of polynomials in variables `T_1,...,T_m` over the same base ring as `R`,
-    where `m` is the length of `Hs`.
+    A list of polynomials in variables ``T_1,...,T_m`` over the same base ring as ``R``,
+    where ``m`` is the length of ``Hs``.
     
     EXAMPLES::
 
@@ -136,7 +136,7 @@ def compute_algebraic_dependence_decomposition(R, G, H):
     `q_{k_1},\dots,q_{k_i}` are algebraically independent factors of `H`.
 
     INPUT:
-    * ``R`` -- A `PolynomialRing`.
+    * ``R`` -- A ``PolynomialRing``.
     * ``G, H`` -- Polynomials representing the rational function `G/H`.
 
     OUTPUT:
@@ -195,12 +195,12 @@ def compute_leinartas_decomposition(R, G, H):
     generate the ideal `R`.
 
     INPUT:
-    * ``R`` -- A `PolynomialRing`.
+    * ``R`` -- A ``PolynomialRing``.
     * ``G, H`` -- Polynomials representing the rational function `G/H`.
 
     OUTPUT:
 
-    A list of tuples `(G_i,H_i)` where `G_i, H_i` are in `R`.
+    A list of tuples ``(G_i,H_i)`` where ``G_i, H_i`` are in ``R``.
     
     EXAMPLES::
 
@@ -227,12 +227,12 @@ def compute_cohomology_decomposition(R, G, H):
     denominator contains no repeated factor.
 
     INPUT:
-    * ``R`` -- A `PolynomialRing`.
+    * ``R`` -- A ``PolynomialRing``.
     * ``G, H`` -- Polynomials representing the rational function `G/H`.
 
     OUTPUT:
 
-    A tuple `(G',H')` where `G_i, H_i` are in `R` and `H'` is square-free
+    A tuple ``(G',H')`` where ``G_i, H_i`` are in ``R`` and ``H'`` is square-free
     
     EXAMPLES::
 

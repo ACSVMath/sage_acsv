@@ -53,7 +53,8 @@ how this package is used to extract coefficient asymptotics from multivariate
 rational combinatorial generating functions.
 
 An article serving as an introduction to version 0.1.0 of the package
-and its internals can be found at [SageACSV23]_.
+and its internals can be found at [SageACSV23]_. The most up-to-date article
+discussing non-smooth asymptotics is [SageACSV25]_.
 
 
 Reference Manual
@@ -65,6 +66,11 @@ in our :doc:`reference manual <reference>`.
 
 Bibliography
 ============
+
+.. [SageACSV25]  Benjamin Hackl, Andrew Luo, Stephen Melczer, Éric Schost,
+   `A SageMath Package for Analytic Combinatorics in Several Variables: Beyond the Smooth Case. <https://www.mat.univie.ac.at/~slc/wpapers/FPSAC2025/159.pdf>`__,
+   Sém. Lothar. de Combin., vol. 93B, no. 159, pp. 1-12, 2025; 
+   `arXiv:2504.09790 [math.CO] <https://arxiv.org/abs/2504.09790>`__.
 
 .. [SageACSV23] Benjamin Hackl, Andrew Luo, Stephen Melczer, Jesse Selover,
    and Elaine Wong,
