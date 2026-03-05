@@ -53,7 +53,8 @@ how this package is used to extract coefficient asymptotics from multivariate
 rational combinatorial generating functions.
 
 An article serving as an introduction to version 0.1.0 of the package
-and its internals can be found at [SageACSV23]_.
+and its internals can be found at [SageACSV23]_. The most up-to-date article
+discussing non-smooth asymptotics is [SageACSV25]_.
 
 
 Reference Manual
