@@ -66,6 +66,11 @@ in our :doc:`reference manual <reference>`.
 Bibliography
 ============
 
+.. [SageACSV25]  Benjamin Hackl, Andrew Luo, Stephen Melczer, Éric Schost,
+   `A SageMath Package for Analytic Combinatorics in Several Variables: Beyond the Smooth Case. <https://www.mat.univie.ac.at/~slc/wpapers/FPSAC2025/159.pdf>`__,
+   Sém. Lothar. de Combin., vol. 93B, no. 159, pp. 1-12, 2025; 
+   `arXiv:2504.09790 [math.CO] <https://arxiv.org/abs/2504.09790>`__.
+
 .. [SageACSV23] Benjamin Hackl, Andrew Luo, Stephen Melczer, Jesse Selover,
    and Elaine Wong,
    `Rigorous Analytic Combinatorics in Several Variables in SageMath <https://www.mat.univie.ac.at/~slc/wpapers/FPSAC2023/90.pdf>`__,
