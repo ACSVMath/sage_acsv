@@ -929,7 +929,7 @@ def _general_term_asymptotics_smooth(G, H, r, vs, cp, expansion_precision):
 
     # Find series expansion of function g given implicitly by
     # H(w_1, ..., w_{d-1}, g(w_1, ..., w_{d-1})) = 0 up to needed order
-    g = compute_newton_series(H.subs({v: v + cp[v] for v in vs}), vs, N)
+    g = compute_newton_series(H.subs({v: v + cp[v]for v in vs}), vs, N)
     g = g.subs({v: v - cp[v] for v in vs}) + cp[vd]
 
     # Polar change of coordinates
