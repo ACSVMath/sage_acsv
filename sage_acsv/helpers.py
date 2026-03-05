@@ -211,7 +211,7 @@ def compute_newton_series(phi, variables, series_precision):
     EXAMPLES::
 
         sage: from sage_acsv.helpers import compute_newton_series
-        sage: R.<x, T> = QQ[]
+        sage: R.<x, T> = PolynomialRing(QQ, ['x', 'T'])
         sage: compute_newton_series(x*T^2 - T + 1, [x, T], 7)
         132*x^6 + 42*x^5 + 14*x^4 + 5*x^3 + 2*x^2 + x + 1
 
@@ -237,14 +237,18 @@ def compute_newton_series_general(phis, variables, series_precision):
 
     OUTPUT:
 
-    A list of series expansion of the functions `g_1(x), ..., g_s(x)`.
+    A tuple of series expansion of the functions `g_1(x), ..., g_s(x)`.
 
     EXAMPLES::
 
-        sage: from sage_acsv.helpers import compute_newton_series
-        sage: R.<x, T> = QQ[]
-        sage: compute_newton_series([x*T^2 - T + 1], [x, T], 7)[0]
+        sage: from sage_acsv.helpers import compute_newton_series_general
+        sage: R.<x, T> = PolynomialRing(QQ, ['x', 'T'])
+        sage: compute_newton_series_general([x*T^2 - T + 1], [x, T], 7)[0]
         132*x^6 + 42*x^5 + 14*x^4 + 5*x^3 + 2*x^2 + x + 1
+
+        sage: R.<x, Y, Z> = PolynomialRing(QQ, ['x', 'Y', 'Z'])
+        sage: compute_newton_series_general([x^3 - Y - Z^2, x - Y - Z], [x, Y, Z], 7)
+        (-23*x^6 - 8*x^5 - 3*x^4 - x^3 - x^2, 23*x^6 + 8*x^5 + 3*x^4 + x^3 + x^2 + x)
 
     """
     s = len(phis)
