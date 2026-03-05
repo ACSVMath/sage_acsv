@@ -217,30 +217,37 @@ def compute_newton_series(phi, variables, series_precision):
 
     """
 
-    X = variables[:-1]
-    Y = variables[-1]
+    return compute_newton_series_general([phi], variables, series_precision)[0]
 
-    def ModX(F, N):
-        return F.mod(Ideal(X) ** N)
+def compute_newton_series_general(phis, variables, series_precision):
+    r"""Computes the series expansion of implicitly defined functions.
 
-    def ModY(F, N):
-        return F.mod(Y**N)
+    The functions `g_1(x), ..., g_s(x)` for which a series expansion is computed is a simple root of the expression
 
-    def Mod(F, N):
-        return ModX(ModY(F, N), N)
+    .. math::
 
-    def NewtonRecur(H, N):
-        if N == 1:
-            return 0, 1 / H.derivative(Y).subs({v: 0 for v in variables})
-        F, G = NewtonRecur(H, ceil(N / 2))
-        G = G + (1 - G * H.derivative(Y).subs({Y: F})) * G
-        F = F - G * H.subs({Y: F})
-        return ModX(F, N), ModX(G, ceil(N / 2))
+        \Phi(x, g_1(x), ..., g_s(x)) = 0
 
-    return NewtonRecur(Mod(phi, series_precision), series_precision)[0]
+    INPUT:
 
-def compute_newton_series_general(phi, variables, series_precision):
-    s = len(phi)
+    * ``phis`` -- A list of polynomials; the equations defining the functions that are expanded.
+    * ``variables`` -- A list of variables in the equation. The last variable in this
+      list is the variable corresponding to `g(x)`.
+    * ``series_precision`` -- A positive integer, the precision of the series expansion.
+
+    OUTPUT:
+
+    A list of series expansion of the functions `g_1(x), ..., g_s(x)`.
+
+    EXAMPLES::
+
+        sage: from sage_acsv.helpers import compute_newton_series
+        sage: R.<x, T> = QQ[]
+        sage: compute_newton_series([x*T^2 - T + 1], [x, T], 7)[0]
+        132*x^6 + 42*x^5 + 14*x^4 + 5*x^3 + 2*x^2 + x + 1
+
+    """
+    s = len(phis)
     X = variables[:-s]
     Y = variables[-s:]
 
@@ -267,7 +274,7 @@ def compute_newton_series_general(phi, variables, series_precision):
         Fs = Fs - Gs * Hs.subs({Y[j]:Fs[j] for j in range(s)})
         return ModX(Fs, N), matrix([ModX(G, ceil(N / 2)) for G in Gs])
 
-    return NewtonRecur(Mod(phi, series_precision), series_precision)[0]
+    return NewtonRecur(Mod(phis, series_precision), series_precision)[0]
 
 
 def compute_implicit_hessian(Hs, vs, r, subs):
