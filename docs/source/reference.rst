@@ -12,3 +12,4 @@ Reference Manual
    reference/kronecker
    reference/settings
    reference/whitney
+   reference/decomposition
