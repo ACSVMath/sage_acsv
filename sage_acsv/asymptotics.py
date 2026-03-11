@@ -2056,7 +2056,7 @@ def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False, r=None):
                 raise e
     
     sbs = {v:1 for v in vsT[0:-3]} | {vsT[-3]:rho}
-    Hess = compute_hessian_with_logs(H, vsT[0:-2], r)
+    Hess = compute_hessian(H, vsT[0:-2], r)
     Hess = Hess.subs({v:1 for v in Hess.base_ring().gens()[0:-4]} | {Hess.base_ring().gens()[-4]:rho})
     Det = Hess.determinant()
 
