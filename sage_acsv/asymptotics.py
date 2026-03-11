@@ -1954,7 +1954,7 @@ def _prepare_expanded_polynomial_ring(variables, direction=None, include_t=True)
     )
 
 
-def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False, expr_order=None):
+def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False, r=None):
     r"""Take a multivariate rational generating function, check if it admits a 
     minimal critical point of a form implying a local central limit theorem, and
     (if so) return the local central limit theorem.
@@ -1969,8 +1969,8 @@ def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False, expr_ord
         ring ``SR`` in the variable ``n``. If ``False``, the default, returns a tuple 
         (a, n^b, pi^b, C, D, v) such that the local central limit theorem is specified by the
         function f(s) = a^n * n^b * pi^b * C * exp(-((s-n*v)*D*(s-n*v).transpose())/2/n)
-    * ``expr_order`` -- (Optional) A tuple specifying the desired order of the non-main
-        variables. If not provided, the order is determined by ``H.variables()``.
+    * ``r`` -- (Optional) A dictionary specifying the variables in the direction vector. If not provided, the direction is
+        determined by ``H.variables()``.
 
     OUTPUT:
 
@@ -1978,12 +1978,14 @@ def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False, expr_ord
     or as a symbolic expression.
     """
 
-    # Initialize quantities
-    G, H = F.numerator(), F.denominator()
-    if expr_order is not None:
-        zvariables = [v for v in expr_order if v != main_var and v in H.variables()]
-    else:
-        zvariables = [v for v in H.variables() if v != main_var]
+    if (isinstance(r, dict)):
+        r = _prepare_direction_variable_order(F, r)
+
+    G, H, variable_map = _prepare_symbolic_fraction(F)
+
+    main_var = variable_map[main_var]
+    zvariables = [v for v in variable_map.values() if v != main_var]
+
     R = PolynomialRing(QQ,zvariables + [main_var])
     vs = R.gens()
     
@@ -2029,7 +2031,7 @@ def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False, expr_ord
     d = len(vs)
 
     # Reorder direction to match F's variable ordering for minimal_critical_points_combinatorial
-    original_vars = list(F.denominator().variables())
+    original_vars = [variable_map[v] for v in F.denominator().variables()]
     var_to_r_idx = {v: i for i, v in enumerate(zvariables + [main_var])}
     r_reordered = [r[var_to_r_idx[v]] for v in original_vars]
     expected_point = [rho if v == main_var else 1 for v in original_vars]
@@ -2054,7 +2056,7 @@ def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False, expr_ord
                 raise e
     
     sbs = {v:1 for v in vsT[0:-3]} | {vsT[-3]:rho}
-    Hess = compute_hessian_with_log(H, vsT[0:-2], r)
+    Hess = compute_hessian_with_logs(H, vsT[0:-2], r)
     Hess = Hess.subs({v:1 for v in Hess.base_ring().gens()[0:-4]} | {Hess.base_ring().gens()[-4]:rho})
     Det = Hess.determinant()
 
