@@ -1693,7 +1693,95 @@ def critical_points(F, r=None, linear_form=None, whitney_strat=None):
 
     return critical_points
 
+def diagonal_asymptotics_hyperplane(
+    F,
+    r=None,
+    linear_form=None,
+    expansion_precision=1,
+    return_points=False,
+    output_format=None,
+):
+    if isinstance(r, dict):
+        r = _prepare_direction_variable_order(F, r)
 
+    if r is None:
+        n = len(H.variables())
+        r = [1 for _ in range(n)]
+
+    try:
+        r = [QQ(ri) for ri in r]
+    except (ValueError, TypeError):
+        r = [AA(ri) for ri in r]
+
+    # In case form doesn't separate, we want to try again
+    for _ in range(ACSVSettings.MAX_MIN_CRIT_RETRIES):
+        try:
+            # Find minimal critical points in Kronecker Representation
+            cps = critical_points(
+                F, r, linear_form
+            )
+            break
+        except Exception as e:
+            if isinstance(e, ACSVException) and e.retry:
+                acsv_logger.info(
+                    "Randomly generated linear form was not suitable, "
+                    f"encountered error: {e}\nRetrying..."
+                )
+                continue
+            else:
+                raise e
+    else:
+        return
+
+    G, H, variable_map = _prepare_symbolic_fraction(F)
+    vs = list(variable_map.values())
+    R = PolynomialRing(QQ, vs)
+    vs = [R(v) for v in vs]
+
+    d = len(vs)
+
+    # Make sure G and H are coprime, and that H does not vanish at 0
+    G, H = rational_function_reduce(G, H)
+    G, H = R(G), R(H)
+    Hs = [f for f, _ in H.factor()]
+    if H.subs({v: 0 for v in H.variables()}) == 0:
+        raise ValueError("Denominator vanishes at 0.")
+    if any([f.degree() > 1 for f in Hs]):
+        raise ACSVException("H does not define a hyperplane arrangement.")
+    
+    contributing_points = []
+    
+    # Sort all critical points by height
+    cps_by_height = [(cp, prod([abs(vi)**ri for (vi, ri) in zip(cp, r)])) for cp in cps]
+    cps_by_height.sort(key=lambda x: x[1])
+
+    # Determine which critical points are contributing
+    contributing_height = None
+    for cp, h in cps_by_height:
+        # Break if we've already found all points of lowest height
+        if contributing_height is not None and h != contributing_height:
+            break
+
+        subs_dict = {vs[i]:cp[i] for i in range(d)}
+        if G.subs(subs_dict) == 0:
+            continue
+
+        factors = [f for f in Hs if f.subs(subs_dict) == 0]
+        if is_contributing(vs, cp, r, factors, len(factors)):
+            contributing_height = h
+            contributing_points.append(cp)
+
+    if len(contributing_points) == 0:
+        raise ACSVException("No contributing points found.")
+
+    result = _compute_asymptotics_at_points(
+        G, H, vs, r, contributing_points, expansion_precision, output_format
+    )
+
+    if return_points:
+        return result, contributing_points
+
+    return result
 
 def compute_asymptotics_at_points(
     F, 
