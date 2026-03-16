@@ -1701,11 +1701,98 @@ def diagonal_asymptotics_hyperplane(
     return_points=False,
     output_format=None,
 ):
+    r"""Asymptotic behavior of the coefficient array of a multivariate rational
+    function `F` whose denominator `H` can be factored into linear factors. Note that this function not 
+    require `F` to be combinatorial.
+
+    INPUT:
+
+    * ``F`` -- The rational function `G/H` in `d` variables. 
+    * ``r`` -- (Optional) A vector or dictionary of length `d` of positive algebraic numbers.
+      Defaults to the appropriate vector of all 1's if not specified.
+      If a vector is given, assumes the variable order is given by ``F.variables()``.
+    * ``linear_form`` -- (Optional) A linear combination of the input
+      variables that separates the critical point solutions. Is generated
+      randomly if not specified.
+    * ``expansion_precision`` -- (Optional) A positive integer, the number of terms to
+      compute in the asymptotic expansion. Defaults to 1, which only computes
+      the leading term.
+    * ``return_points`` -- (Optional) If ``True``, also returns the coordinates of
+      minimal critical points. By default ``False``.
+    * ``output_format`` -- (Optional) A string or
+      :class:`.ACSVSettings.Output` specifying the way the asymptotic growth
+      is returned. Allowed values currently are:
+
+      - ``"tuple"``: the growth is returned as a list of
+        tuples of the form ``(a, n^b, pi^c, d)`` such that the `r`-diagonal of `F`
+        behaves like the sum of ``a^n n^b pi^c d + O(a^n n^{b-1})`` over these tuples.
+      - ``"symbolic"``: the growth is returned as an expression from the symbolic
+        ring ``SR`` in the variable ``n``.
+      - ``"asymptotic"``: the growth is returned as an expression from an appropriate
+        ``AsymptoticRing`` in the variable ``n``.
+      - ``None``: the default, which uses the default set for
+        :class:`.ACSVSettings.Output` itself via
+        :meth:`.ACSVSettings.set_default_output_format`. The default behavior
+        is asymptotic output.
+
+    OUTPUT:
+
+    A representation of the asymptotic behavior of the coefficient array of `F` along
+    the specified direction.
+
+    NOTE:
+
+    The code randomly generates a linear form, which for generic rational functions
+    separates the solutions of an intermediate polynomial system with high probability.
+    This separation step can fail, but (assuming `F` has a finite number of critical
+    points) the code can be rerun until a separating form is found.
+
+    EXAMPLES::
+
+        sage: from sage_acsv import diagonal_asymptotics_hyperplane
+        sage: var('x, y')
+        (x, y)
+        sage: diagonal_asymptotics_hyperplane(1/(1-x-y))
+        1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2))
+        sage: diagonal_asymptotics_hyperplane(1/(1-(1+x)*y), r = [1,2], return_points=True)
+        (1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2)), [[1, 1/2]])
+        sage: diagonal_asymptotics_hyperplane(1/(1-(x+y+z)+(3/4)*x*y*z), output_format="symbolic")
+        0.840484893481498?*24.68093482214177?^n/(pi*n)
+        sage: diagonal_asymptotics_hyperplane(1/(1-(x+y+z)+(3/4)*x*y*z))
+        0.840484893481498?/pi*24.68093482214177?^n*n^(-1) + O(24.68093482214177?^n*n^(-2))
+
+    Non-smooth combinatorial example.
+
+        sage: diagonal_asymptotics_hyperplane(1/((1-x/3-2*y/3)*(1-2*x/3-y/3)))
+        3 + O(n^(-1))
+        sage: diagonal_asymptotics_hyperplane(1/((1-x/3-2*y/3)*(1-2*x/3-y/3)), r=[3,1])
+        6.531972647421808?/sqrt(pi)*(2048/2187)^n*n^(-1/2) + O((2048/2187)^n*n^(-3/2))
+
+    Non-combinatorial example.
+
+        sage: diagonal_asymptotics_hyperplane(1/(1+x+y))
+        1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2))
+        sage: diagonal_asymptotics_hyperplane(1/(1+x+y), r=[2,1])
+        0.866025403784439?/sqrt(pi)*(27/4)^n*n^(-1/2)*(e^(I*arg(-1)))^n + O((27/4)^n*n^(-3/2))
+
+    Non-smooth non-combinatorial non-smooth example.
+
+        sage: diagonal_asymptotics_hyperplane(1/((1+x/3+2*y/3)*(1-2*x/3-y/3)))
+        8/9/sqrt(pi)*(8/9)^n*n^(-1/2) + O((8/9)^n*n^(-3/2))
+
+    Should fail if H is not a hyperplane arrangement.
+
+        sage: diagonal_asymptotics_hyperplane(1/(1-x^2-y^2))
+        Traceback (most recent call last):
+        ...
+        ACSVException: H does not define a hyperplane arrangement.
+
+    """
     if isinstance(r, dict):
         r = _prepare_direction_variable_order(F, r)
 
     if r is None:
-        n = len(H.variables())
+        n = len(F.variables())
         r = [1 for _ in range(n)]
 
     try:
@@ -1790,6 +1877,53 @@ def compute_asymptotics_at_points(
     expansion_precision=1,
     output_format=None
 ):
+    r"""Compute contributing points of a combinatorial multivariate
+    rational function `F=G/H` admitting a finite number of critical points where the singular variety is the transverse union of smooth varieties.
+
+    INPUT:
+
+    * ``F`` -- The rational function `G/H` in `d` variables.
+    * ``contributing_points`` -- A list of ``d``-tuples of algebraic numbers
+    * ``r`` -- (Optional) Length ``d`` vector of positive integers
+    * ``expansion_precision`` -- (Optional) A positive integer value. This is the number
+      of terms to compute in the asymptotic expansion. Defaults to 1, which
+      only computes the leading term.
+    * ``output_format`` -- (Optional) A string or :class:`.ACSVSettings.Output`
+      specifying the way the asymptotic growth is returned. Allowed values
+      currently are:
+      - ``"tuple"``: the growth is returned as a list of
+        tuples of the form ``(a, n^b, pi^c, d)`` such that the `r`-diagonal of `F`
+        is the sum of ``a^n n^b pi^c d + O(a^n n^{b-1})`` over these tuples.
+      - ``"symbolic"``: the growth is returned as an expression from the symbolic
+        ring ``SR`` in the variable ``n``.
+      - ``"asymptotic"``: the growth is returned as an expression from an appropriate
+        ``AsymptoticRing`` in the variable ``n``.
+      - ``None``: the default, which uses the default set for
+        :class:`.ACSVSettings.Output` itself via
+        :meth:`.ACSVSettings.set_default_output_format`. The default behavior
+        is asymptotic output.
+    * ``as_symbolic`` -- (Optional) deprecated in favor of the equivalent
+      ``output_format="symbolic"``. Will be removed in a future release.
+
+    OUTPUT:
+
+    A representation of the asymptotic contributions from the ``contributing_points`` 
+    of the coefficient array of `F` along the specified direction.
+
+    EXAMPLES::
+
+        sage: from sage_acsv import compute_asymptotics_at_points
+        sage: var('x, y')
+        (x, y)
+        sage: compute_asymptotics_at_points(1/(1-x-y), [(1/2, 1/2)])
+        1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2))
+
+    Note that we do not check if the input points are actually contributing.
+
+        sage: compute_asymptotics_at_points(1/(1-x-y), [(2/3, 1/3)])
+        3/2/sqrt(pi)*(9/2)^n*n^(-1/2) + O((9/2)^n*n^(-3/2))
+
+    """
     if isinstance(r, dict):
         r = _prepare_direction_variable_order(F, r)
 
@@ -1827,6 +1961,42 @@ def _compute_asymptotics_at_points(
     expansion_precision,
     output_format,
 ):
+    r"""Compute contributing points of a combinatorial multivariate
+    rational function `F=G/H` admitting a finite number of critical points where the singular variety is the transverse union of smooth varieties.
+
+    Typically, this function is called as a subroutine of :func:`.diagonal_asymptotics_combinatorial`.
+
+    INPUT:
+
+    * ``G, H`` -- Coprime polynomials with ``F = G/H``
+    * ``vs`` -- List of variables of ``G`` and ``H``
+    * ``r`` -- (Optional) Length ``d`` vector of positive integers
+    * ``contributing_points`` -- A list of ``d``-tuples of algebraic numbers
+    * ``expansion_precision`` -- (Optional) A positive integer value. This is the number
+      of terms to compute in the asymptotic expansion. Defaults to 1, which
+      only computes the leading term.
+    * ``output_format`` -- (Optional) A string or :class:`.ACSVSettings.Output`
+      specifying the way the asymptotic growth is returned. Allowed values
+      currently are:
+      - ``"tuple"``: the growth is returned as a list of
+        tuples of the form ``(a, n^b, pi^c, d)`` such that the `r`-diagonal of `F`
+        is the sum of ``a^n n^b pi^c d + O(a^n n^{b-1})`` over these tuples.
+      - ``"symbolic"``: the growth is returned as an expression from the symbolic
+        ring ``SR`` in the variable ``n``.
+      - ``"asymptotic"``: the growth is returned as an expression from an appropriate
+        ``AsymptoticRing`` in the variable ``n``.
+      - ``None``: the default, which uses the default set for
+        :class:`.ACSVSettings.Output` itself via
+        :meth:`.ACSVSettings.set_default_output_format`. The default behavior
+        is asymptotic output.
+    * ``as_symbolic`` -- (Optional) deprecated in favor of the equivalent
+      ``output_format="symbolic"``. Will be removed in a future release.
+    
+    OUTPUT:
+
+    A representation of the asymptotic contributions from the ``contributing_points`` 
+    of the coefficient array of `F` along the specified direction.
+    """
     d = len(vs)
 
     asm_quantities = []
@@ -1931,7 +2101,7 @@ def _compute_asymptotics_at_points(
                     / 2 ** (d - s)
                 )
         else:
-            # Higher order expansions not currently supported for non-smooth critical points
+            # Higher order expansions not currently supported for higher-order poles
             if expansion_precision > 1:
                 acsv_logger.warning(
                     "Higher order expansions are not supported for non-simple poles. Defaulting to expansion_precision 1."
