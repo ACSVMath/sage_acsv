@@ -143,7 +143,6 @@ from sage_acsv.helpers import (
     compute_newton_series_general,
     rational_function_reduce,
     compute_hessian,
-    compute_hessian_with_log,
     compute_implicit_hessian,
     collapse_zero_part,
 )
@@ -2011,7 +2010,7 @@ def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False, r=None):
         raise ValueError("The numerator at (1, rho) is 0.")
 
     # Get direction for LCLT
-    m = [H.derivative(v).subs(sbs)/(rho*H.derivative(vs[-1]).subs(sbs)) for v in vs[0:-1]] + [1]
+    m = [H.derivative(v).subs(sbs)/(rho*H.derivative(vs[-1]).subs(sbs)) for v in vs[0:-1]] + [ZZ(1)]
 
     # Determine direction type and set r accordingly
     if max([k.degree() for k in m[0:-1]]) == 1:

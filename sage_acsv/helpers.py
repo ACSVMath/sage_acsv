@@ -25,6 +25,7 @@ from sage.symbolic.expression import Expression
 from sage.symbolic.ring import SymbolicRing, SR
 from sage.symbolic.operators import add_vararg
 from sage.symbolic.constants import pi
+from sage.symbolic.relation import solve
 
 
 @dataclass
@@ -690,6 +691,21 @@ def get_limit_theorem_terms(
         return result
 
     elif isinstance(expr, Expression):
+        exponent_expr = expr.operands()[4].operands()[0] * n
+        zero_subbed_exp = exponent_expr.subs(n=0)
+        s_vars = zero_subbed_exp.variables()
+        cov_matrix = -matrix([
+            [zero_subbed_exp.derivative(v1, v2) for v2 in s_vars ] for v1 in s_vars
+        ])
+
+        one_subbed_exp = exponent_expr.subs(n=1)
+        eqs = [one_subbed_exp.derivative(v) == 0 for v in s_vars]
+        sols = solve(eqs, list(s_vars), solution_dict=True)
+        if sols:
+            mean_vec = matrix([[sols[0][v] for v in s_vars]])
+        else:
+            mean_vec = matrix([[0] * len(s_vars)])
+
         density_sym = None
         growth_operands = []
 
@@ -718,15 +734,14 @@ def get_limit_theorem_terms(
                 base=term.base,
                 power=term.power,
                 density_symbolic=density_sym,
-                density_covariance_matrix=None,
-                density_mean_vector=None,
+                density_covariance_matrix=cov_matrix,
+                density_mean_vector=mean_vec,
             )
             result.append(lterm)
 
         return result
     else:
         raise ACSVException(f"Cannot process expression of type {type(expr)}")
-
 
 
 class ACSVException(Exception):
