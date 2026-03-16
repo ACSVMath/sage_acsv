@@ -1702,8 +1702,8 @@ def diagonal_asymptotics_hyperplane(
     output_format=None,
 ):
     r"""Asymptotic behavior of the coefficient array of a multivariate rational
-    function `F` whose denominator `H` can be factored into linear factors. Note that this function not 
-    require `F` to be combinatorial.
+    function `F` whose denominator `H` can be factored into linear factors. Note that this function
+    does not require `F` to be combinatorial.
 
     INPUT:
 
@@ -1754,12 +1754,6 @@ def diagonal_asymptotics_hyperplane(
         (x, y)
         sage: diagonal_asymptotics_hyperplane(1/(1-x-y))
         1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2))
-        sage: diagonal_asymptotics_hyperplane(1/(1-(1+x)*y), r = [1,2], return_points=True)
-        (1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2)), [[1, 1/2]])
-        sage: diagonal_asymptotics_hyperplane(1/(1-(x+y+z)+(3/4)*x*y*z), output_format="symbolic")
-        0.840484893481498?*24.68093482214177?^n/(pi*n)
-        sage: diagonal_asymptotics_hyperplane(1/(1-(x+y+z)+(3/4)*x*y*z))
-        0.840484893481498?/pi*24.68093482214177?^n*n^(-1) + O(24.68093482214177?^n*n^(-2))
 
     Non-smooth combinatorial example.
 
