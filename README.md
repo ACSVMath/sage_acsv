@@ -28,6 +28,7 @@ using [Binder](https://mybinder.org/v2/gh/ACSVMath/sage_acsv/HEAD).
 
 An article serving as an introduction to version 0.1.0 of the package
 and its internals can be found on the [arXiv](https://arxiv.org/abs/2303.09603).
+The most recent article on [arXiv](https://arxiv.org/abs/2504.09790).
 
 
 ## Installation from source
