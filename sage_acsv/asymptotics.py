@@ -1871,8 +1871,8 @@ def compute_asymptotics_at_points(
     expansion_precision=1,
     output_format=None
 ):
-    r"""Compute contributing points of a combinatorial multivariate
-    rational function `F=G/H` admitting a finite number of critical points where the singular variety is the transverse union of smooth varieties.
+    r"""Compute asymptotic contribution of points of a multivariate rational function `F=G/H`
+    admitting a finite number of critical points where the singular variety is the transverse union of smooth varieties.
 
     INPUT:
 
