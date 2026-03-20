@@ -343,18 +343,36 @@ def _diagonal_asymptotics_combinatorial_smooth(
     elif output_format == ACSVSettings.Output.ASYMPTOTIC:
         AR = AsymptoticRing("QQbar^n * n^QQ", QQbar)
         n = AR.gen()
-        result = sum(
-            [  # bug in AsymptoticRing requires splitting out modulus manually
-                constant
-                * pi**exponent
-                * abs(base) ** n
-                * collapse_zero_part(base / abs(base)) ** n
-                * n**exponent
-                * AR(expansion)
-                + (abs(base) ** n * n ** (exponent - expansion_precision)).O()
-                for (base, exponent, constant, expansion) in asm_vals
-            ]
-        )
+        try:
+            result = sum(
+                [  # bug in AsymptoticRing requires splitting out modulus manually
+                    constant
+                    * pi**exponent
+                    * abs(base) ** n
+                    * collapse_zero_part(base / abs(base)) ** n
+                    * n**exponent
+                    * AR(expansion)
+                    + (abs(base) ** n * n ** (exponent - expansion_precision)).O()
+                    for (base, exponent, constant, expansion) in asm_vals
+                ]
+            )
+        except ValueError:
+            # Issue with Sage algebraic numbers equality checking
+            for a, _, c, _ in asm_vals:
+                a.simplify()
+                c.simplify()
+            result = sum(
+                [  # bug in AsymptoticRing requires splitting out modulus manually
+                    constant
+                    * pi**exponent
+                    * abs(base) ** n
+                    * collapse_zero_part(base / abs(base)) ** n
+                    * n**exponent
+                    * AR(expansion)
+                    + (abs(base) ** n * n ** (exponent - expansion_precision)).O()
+                    for (base, exponent, constant, expansion) in asm_vals
+                ]
+            )
 
     else:
         raise NotImplementedError(f"Missing implementation for {output_format}")
@@ -2158,19 +2176,36 @@ def _compute_asymptotics_at_points(
     elif output_format == ACSVSettings.Output.ASYMPTOTIC:
         AR = AsymptoticRing("QQbar^n * n^QQ", QQbar)
         n = AR.gen()
-        result = sum(
-            [  # bug in AsymptoticRing requires splitting out modulus manually
-                constant
-                * (pi ** (s - d)).sqrt()
-                * abs(base) ** n
-                * collapse_zero_part(base / abs(base)) ** n
-                * n**exponent
-                * AR(expansion)
-                + (abs(base) ** n * n ** (exponent - expansion_precision)).O()
-                for (base, exponent, constant, expansion, s) in asm_vals
-            ]
-        )
-
+        try:
+            result = sum(
+                [  # bug in AsymptoticRing requires splitting out modulus manually
+                    constant
+                    * (pi ** (s - d)).sqrt()
+                    * abs(base) ** n
+                    * collapse_zero_part(base / abs(base)) ** n
+                    * n**exponent
+                    * AR(expansion)
+                    + (abs(base) ** n * n ** (exponent - expansion_precision)).O()
+                    for (base, exponent, constant, expansion, s) in asm_vals
+                ]
+            )
+        except ValueError:
+            # Issue with Sage algebraic numbers equality checking
+            for a, _, c, _ in asm_vals:
+                a.simplify()
+                c.simplify()
+            result = sum(
+                [  # bug in AsymptoticRing requires splitting out modulus manually
+                    constant
+                    * (pi ** (s - d)).sqrt()
+                    * abs(base) ** n
+                    * collapse_zero_part(base / abs(base)) ** n
+                    * n**exponent
+                    * AR(expansion)
+                    + (abs(base) ** n * n ** (exponent - expansion_precision)).O()
+                    for (base, exponent, constant, expansion, s) in asm_vals
+                ]
+            )
     else:
         raise NotImplementedError(f"Missing implementation for {output_format}")
 
