@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from sage.arith.misc import gcd
 from sage.functions.generalized import kronecker_delta
@@ -25,6 +25,7 @@ from sage.symbolic.expression import Expression
 from sage.symbolic.ring import SymbolicRing, SR
 from sage.symbolic.operators import add_vararg
 from sage.symbolic.constants import pi
+from sage.symbolic.relation import solve
 
 
 @dataclass
@@ -56,6 +57,39 @@ class Term:
 
     def __lt__(self, other):
         return (self.base, self.power) < (other.base, other.power)
+
+
+@dataclass
+class LimitTheoremTerm(Term):
+    r"""A dataclass for storing the decomposed terms of a local central limit theorem expression.
+
+    Extends :class:`.Term` with additional fields specific to the density function
+    returned by :func:`~sage_acsv.asymptotics.central_limit_theorem_combinatorial`.
+
+    INPUT:
+
+    * ``coefficient`` -- The coefficient of the term
+    * ``pi_factor`` -- The factor of pi in the term
+    * ``base`` -- The base of the term
+    * ``power`` -- The power of the term
+    * ``density_symbolic`` -- The symbolic density expression (the exponential factor from the LCLT)
+    * ``density_covariance_matrix`` -- The inverse Hessian matrix `D` appearing in the density
+    * ``density_mean_vector`` -- The mean vector `v` appearing in the density
+
+    OUTPUT:
+
+    A dataclass with the given attributes.
+
+    EXAMPLES::
+
+        sage: from sage_acsv.helpers import LimitTheoremTerm
+        sage: LimitTheoremTerm(1, 1/sqrt(pi), 4, -1/2, None, None, None)
+        LimitTheoremTerm(coefficient=1, pi_factor=1/sqrt(pi), base=4, power=-1/2, density_symbolic=None, density_covariance_matrix=None, density_mean_vector=None)
+    """
+
+    density_symbolic: Expression | None = None
+    density_covariance_matrix: object = None
+    density_mean_vector: object = None
 
 
 def collapse_zero_part(algebraic_number: AlgebraicNumber) -> AlgebraicNumber:
@@ -604,6 +638,110 @@ def get_expansion_terms(
         decomposed_terms.append(term)
 
     return decomposed_terms
+
+
+def get_limit_theorem_terms(
+    expr,
+) -> list[LimitTheoremTerm]:
+    r"""Determines coefficients for each term in the asymptotic expressions
+    returned by :func:`~sage_acsv.asymptotics.central_limit_theorem_combinatorial`,
+    including density-related information.
+
+    INPUT:
+
+    * ``expr`` -- The return value of :func:`~sage_acsv.asymptotics.central_limit_theorem_combinatorial`,
+      either a 6-tuple ``(base, n^b, pi^b, constant, invHess, mean_vector)`` or a symbolic expression
+      (when ``as_symbolic=True`` was used).
+
+    OUTPUT:
+
+    A list of :class:`.LimitTheoremTerm` objects (with attributes ``coefficient``, ``pi_factor``,
+    ``base``, ``power``, ``density_symbolic``, ``density_covariance_matrix``, and
+    ``density_mean_vector``), each representing a summand in the fully expanded
+    asymptotic expression with associated density information.
+
+    EXAMPLES::
+
+    """
+    from sage.functions.log import exp
+
+    n = SR.var("n")
+
+    if isinstance(expr, tuple):
+        base_val, n_power, pi_power, constant, inv_hess, mean_vec = expr
+        growth_expr = SR(base_val ** n * n_power * pi_power * constant)
+        d_minus_1 = inv_hess.nrows()
+        s = matrix((SR.var('s', n=d_minus_1)))
+        density_sym = exp(-(((s - n * mean_vec) * inv_hess * (s - n * mean_vec).transpose())[0, 0]) / 2 / n)
+        base_terms = get_expansion_terms(growth_expr)
+
+        result = []
+        for term in base_terms:
+            lterm = LimitTheoremTerm(
+                coefficient=term.coefficient,
+                pi_factor=term.pi_factor,
+                base=term.base,
+                power=term.power,
+                density_symbolic=density_sym,
+                density_covariance_matrix=inv_hess,
+                density_mean_vector=mean_vec,
+            )
+            result.append(lterm)
+
+        return result
+
+    elif isinstance(expr, Expression):
+        exponent_expr = expr.operands()[4].operands()[0] * n
+        zero_subbed_exp = exponent_expr.subs(n=0)
+        s_vars = zero_subbed_exp.variables()
+        cov_matrix = -matrix([
+            [zero_subbed_exp.derivative(v1, v2) for v2 in s_vars ] for v1 in s_vars
+        ])
+
+        one_subbed_exp = exponent_expr.subs(n=1)
+        eqs = [one_subbed_exp.derivative(v) == 0 for v in s_vars]
+        sols = solve(eqs, list(s_vars), solution_dict=True)
+        if sols:
+            mean_vec = matrix([[sols[0][v] for v in s_vars]])
+        else:
+            mean_vec = matrix([[0] * len(s_vars)])
+
+        density_sym = None
+        growth_operands = []
+
+        if expr.operator() is not None:
+            for op in expr.operands():
+                op_str = str(op)
+                if 'e^' in op_str or op_str.startswith('exp('):
+                    density_sym = op
+                else:
+                    growth_operands.append(op)
+        
+        if density_sym is not None and growth_operands:
+            growth_expr = prod(growth_operands)
+        elif density_sym is None:
+            growth_expr = expr
+        else:
+            growth_expr = SR.one()
+
+        base_terms = get_expansion_terms(growth_expr)
+
+        result = []
+        for term in base_terms:
+            lterm = LimitTheoremTerm(
+                coefficient=term.coefficient,
+                pi_factor=term.pi_factor,
+                base=term.base,
+                power=term.power,
+                density_symbolic=density_sym,
+                density_covariance_matrix=cov_matrix,
+                density_mean_vector=mean_vec,
+            )
+            result.append(lterm)
+
+        return result
+    else:
+        raise ACSVException(f"Cannot process expression of type {type(expr)}")
 
 
 class ACSVException(Exception):
