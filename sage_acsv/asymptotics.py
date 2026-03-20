@@ -1779,7 +1779,7 @@ def diagonal_asymptotics_hyperplane(
         sage: diagonal_asymptotics_hyperplane(1/(1-x^2-y^2))
         Traceback (most recent call last):
         ...
-        ACSVException: H does not define a hyperplane arrangement.
+        ValueError: H does not define a hyperplane arrangement.
 
     """
     if isinstance(r, dict):
@@ -1828,7 +1828,7 @@ def diagonal_asymptotics_hyperplane(
     if H.subs({v: 0 for v in H.variables()}) == 0:
         raise ValueError("Denominator vanishes at 0.")
     if any([f.degree() > 1 for f in Hs]):
-        raise ACSVException("H does not define a hyperplane arrangement.")
+        raise ValueError("H does not define a hyperplane arrangement.")
     
     contributing_points = []
     
