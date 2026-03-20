@@ -1755,26 +1755,26 @@ def diagonal_asymptotics_hyperplane(
         sage: diagonal_asymptotics_hyperplane(1/(1-x-y))
         1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2))
 
-    Non-smooth combinatorial example.
+    Non-smooth combinatorial example::
 
         sage: diagonal_asymptotics_hyperplane(1/((1-x/3-2*y/3)*(1-2*x/3-y/3)))
         3 + O(n^(-1))
         sage: diagonal_asymptotics_hyperplane(1/((1-x/3-2*y/3)*(1-2*x/3-y/3)), r=[3,1])
         6.531972647421808?/sqrt(pi)*(2048/2187)^n*n^(-1/2) + O((2048/2187)^n*n^(-3/2))
 
-    Non-combinatorial example.
+    Non-combinatorial example::
 
         sage: diagonal_asymptotics_hyperplane(1/(1+x+y))
         1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2))
         sage: diagonal_asymptotics_hyperplane(1/(1+x+y), r=[2,1])
         0.866025403784439?/sqrt(pi)*(27/4)^n*n^(-1/2)*(e^(I*arg(-1)))^n + O((27/4)^n*n^(-3/2))
 
-    Non-smooth non-combinatorial non-smooth example.
+    Non-smooth non-combinatorial non-smooth example::
 
         sage: diagonal_asymptotics_hyperplane(1/((1+x/3+2*y/3)*(1-2*x/3-y/3)))
         8/9/sqrt(pi)*(8/9)^n*n^(-1/2) + O((8/9)^n*n^(-3/2))
 
-    Should fail if H is not a hyperplane arrangement.
+    Should fail if H is not a hyperplane arrangement::
 
         sage: diagonal_asymptotics_hyperplane(1/(1-x^2-y^2))
         Traceback (most recent call last):
@@ -1885,6 +1885,7 @@ def compute_asymptotics_at_points(
     * ``output_format`` -- (Optional) A string or :class:`.ACSVSettings.Output`
       specifying the way the asymptotic growth is returned. Allowed values
       currently are:
+
       - ``"tuple"``: the growth is returned as a list of
         tuples of the form ``(a, n^b, pi^c, d)`` such that the `r`-diagonal of `F`
         is the sum of ``a^n n^b pi^c d + O(a^n n^{b-1})`` over these tuples.
@@ -1896,6 +1897,7 @@ def compute_asymptotics_at_points(
         :class:`.ACSVSettings.Output` itself via
         :meth:`.ACSVSettings.set_default_output_format`. The default behavior
         is asymptotic output.
+
     * ``as_symbolic`` -- (Optional) deprecated in favor of the equivalent
       ``output_format="symbolic"``. Will be removed in a future release.
 
@@ -1912,7 +1914,7 @@ def compute_asymptotics_at_points(
         sage: compute_asymptotics_at_points(1/(1-x-y), [(1/2, 1/2)])
         1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2))
 
-    Note that we do not check if the input points are actually contributing.
+    Note that we do not check if the input points are actually contributing::
 
         sage: compute_asymptotics_at_points(1/(1-x-y), [(2/3, 1/3)])
         3/2/sqrt(pi)*(9/2)^n*n^(-1/2) + O((9/2)^n*n^(-3/2))
