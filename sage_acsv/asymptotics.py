@@ -2102,6 +2102,7 @@ def _compute_asymptotics_at_points(
                 acsv_logger.warning(
                     "Higher order expansions are not supported for non-simple poles. Defaulting to expansion_precision 1."
                 )
+                expansion_precision = 1
             # For non-complete intersections, we must compute the parametrized Hessian matrix
             if s != d:
                 Qw = compute_implicit_hessian(factors, vs, r, subs=subs_dict)
