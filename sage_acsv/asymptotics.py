@@ -129,6 +129,7 @@ from sage.rings.asymptotic.asymptotic_ring import AsymptoticRing
 from sage.rings.ideal import Ideal
 from sage.rings.imaginary_unit import I
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
+from sage.rings.power_series_ring import PowerSeriesRing
 from sage.rings.qqbar import AA, QQbar
 from sage.rings.rational_field import QQ
 from sage.symbolic.constants import pi
@@ -971,6 +972,73 @@ def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
         return [-term for term in res]
     else:
         raise ACSVException("Issue with computing general terms - this should never happen.")
+
+def _general_term_asymptotics_complete_intersection_hyplerplane(G, Hs, exps, r, vs, cp, expansion_precision):
+    r"""
+    Compute coefficients of general (not necessarily leading) terms of
+    the asymptotic expansion for a given critical
+    point of a rational combinatorial multivariate rational function lying on a complete intersection of hyperplanes.
+
+    Typically, this function is called as a subroutine of :func:`.diagonal_asymptotics_combinatorial`.
+
+    INPUT:
+
+    * ``G`` -- A polynomial in `vs`.
+    * ``Hs`` -- A list of polynomials in `vs` such that `[G,Hs]` have no pairwise common factors.
+    * ``exps`` -- A list of integers representing the multiplicity of each of the polynomials in ``Hs``.
+    * ``vs`` -- Tuple of variables occurring in `G` and `Hs`.
+    * ``r`` -- The direction. A length `d` vector of positive algebraic numbers (usually
+      integers).
+    * ``cp`` -- A minimal critical point of `F` with coordinates specified in the
+      same order as in ``vs``.
+    * ``expansion_precision`` -- A positive integer value. This is the number of terms
+      for which to compute coefficients in the asymptotic expansion.
+
+    OUTPUT:
+
+    List of coefficients of the asymptotic expansion.
+
+    EXAMPLES:: """
+    # Step 1: Compute the matrix M whos rows consist of the coefficients of the linear forms
+    M = matrix(
+        [
+            [
+                QQ(H.derivative(v)) for v in vs
+            ] for H in Hs
+        ]
+    )
+
+    # Step 2: Perform the change of variables z = cp + M^(-1)*t
+    subs_dict = {vs[i]: cp[i] for i in range(len(vs))}
+    tvars = SR.var("t", len(vs))
+    Rt = PowerSeriesRing(QQbar, list(tvars) + [SR.var("n")])
+    tvars = Rt.gens()[:-1]
+    n = Rt.gens()[-1]
+    N = sum(exps) + expansion_precision + 1 # todo: figure out what the expansion needs to be
+
+    # Step 3: Compute a power series expansion for G(z)/z^{nr} up to needed order
+    # For the sake of efficiency, we compute the power series of the logarithm of this function,
+    # and then use the exponential function to recover the needed power series
+    # todo: figure out what the expansion needs to be
+    tsubs = {v: subs_dict[v] - (M.inverse() * vector(tvars))[i] for i, v in enumerate(vs)}
+    log_series = log(
+        G.subs(tsubs)/prod([tsubs[v] for v in vs])
+    ).add_bigoh(N) - sum([
+        r[i]*n*log(tsubs[v]) for i, v in enumerate(vs)
+    ]).add_bigoh(N)
+    Pseries = exp(log_series).truncate(N)
+
+    # Step 4: Apply the differential operator on the given power series to the necessary order
+    # Then, substitute t=0 to get polynomial part
+    for i in range(len(exps)):
+        Pseries = Pseries.derivative(tvars[i], exps[i]-1) / factorial(exps[i]-1)
+    
+    R = PolynomialRing(QQbar, [n])
+    Pseries = R(Pseries.subs({t: 0 for t in tvars}).polynomial())
+
+    # Return the coefficients of the resulting power series in n
+    return [Pseries.coefficient(k) for k in range(min(sum(exps)-len(vs)+1,expansion_precision))]
+    
 
 def contributing_points_combinatorial_smooth(G, H, variables, r=None, linear_form=None):
     r"""Compute contributing points of a multivariate
@@ -2082,13 +2150,7 @@ def _compute_asymptotics_at_points(
             ]
         )
 
-        # Some constants appearing for higher order singularities
-        mult_fac = prod([factorial(m - 1) for m in multiplicities])
-        r_gamma_inv = prod(
-            x ** (multiplicities[i] - 1)
-            for i, x in enumerate(list(vector(r) * Gamma.inverse())[:s])
-        )
-        # If cp lies on a single smooth component, we can compute asymptotics
+        # If critical point lies on a single smooth component, we can compute asymptotics
         # like in the smooth case
         if s == 1 and sum(multiplicities) == 1:
             n = SR.var("n")
@@ -2100,6 +2162,7 @@ def _compute_asymptotics_at_points(
             )
             Det = compute_hessian(H, vs, r).determinant()
             B = SR(1 / Det.subs(subs_dict) / r[-1] ** (d - 1) / 2 ** (d - 1))
+        # We now support higher order expansions for non-smooth non-complete intersections
         elif all([p==1 for p in multiplicities]) and s != d:
             Qw = compute_implicit_hessian(factors, vs, r, subs=subs_dict)
             n = SR.var("n")
@@ -2114,8 +2177,24 @@ def _compute_asymptotics_at_points(
                     / Qw.determinant()
                     / 2 ** (d - s)
                 )
+        # When we have a complete intersection of hyperplanes, we know the degree of the polynomial expansion.
+        elif s == d and all([f.degree() == 1 for f in factors]):
+            print("Hyplerplane case")
+            n = SR.var("n")
+            expansion = sum(
+                term / n**term_order
+                for term_order, term in enumerate(
+                    _general_term_asymptotics_complete_intersection_hyplerplane(G, factors, multiplicities, r, vs, cp, expansion_precision)
+                )
+            )/unit/prod(extra_factors).subs(subs_dict)
+            B = 1
+
+            print(_general_term_asymptotics_complete_intersection_hyplerplane(G, factors, multiplicities, r, vs, cp, expansion_precision))
+            print(expansion)
+        # Higher order expansions not currently supported for higher-order poles
+        # In complete intersection case, error bound is actually exponentially lower, but we don't currently have
+        # a way to represent it using the asymptotic ring.
         else:
-            # Higher order expansions not currently supported for higher-order poles
             if expansion_precision > 1:
                 acsv_logger.warning(
                     "Higher order expansions are not supported for non-simple poles. Defaulting to expansion_precision 1."
@@ -2141,6 +2220,13 @@ def _compute_asymptotics_at_points(
                     / R(prod(extra_factors)).subs(subs_dict)
                 )
                 B = 1
+
+            # Some constants appearing for higher order singularities
+            mult_fac = prod([factorial(m - 1) for m in multiplicities])
+            r_gamma_inv = prod(
+                x ** (multiplicities[i] - 1)
+                for i, x in enumerate(list(vector(r) * Gamma.inverse())[:s])
+            )
 
             expansion *= (
                 (-1) ** sum([m - 1 for m in multiplicities]) * r_gamma_inv / mult_fac
