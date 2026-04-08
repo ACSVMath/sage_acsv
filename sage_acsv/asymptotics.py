@@ -147,7 +147,7 @@ from sage_acsv.helpers import (
     collapse_zero_part,
 )
 from sage_acsv.debug import Timer, acsv_logger
-from sage_acsv.settings import ACSVSettings
+from sage_acsv.settings import ACSVSettings, OutputFormat
 from sage_acsv.whitney import whitney_stratification
 from sage_acsv.groebner import compute_primary_decomposition, compute_saturation
 
@@ -999,7 +999,6 @@ def _general_term_asymptotics_complete_intersection_hyplerplane(G, Hs, exps, r, 
     List of coefficients of the asymptotic expansion.
 
     EXAMPLES:: """
-    # Step 1: Compute the matrix M whos rows consist of the coefficients of the linear forms
     M = matrix(
         [
             [
@@ -1008,7 +1007,7 @@ def _general_term_asymptotics_complete_intersection_hyplerplane(G, Hs, exps, r, 
         ]
     )
 
-    # Step 2: Perform the change of variables z = cp + M^(-1)*t
+    # Perform the change of variables z = cp + M^(-1)*t
     subs_dict = {vs[i]: cp[i] for i in range(len(vs))}
     tvars = SR.var("t", len(vs))
     Rt = PowerSeriesRing(QQbar, list(tvars) + [SR.var("n")])
@@ -1016,19 +1015,19 @@ def _general_term_asymptotics_complete_intersection_hyplerplane(G, Hs, exps, r, 
     n = Rt.gens()[-1]
     N = sum(exps) + expansion_precision + 1 # todo: figure out what the expansion needs to be
 
-    # Step 3: Compute a power series expansion for G(z)/z^{nr} up to needed order
-    # For the sake of efficiency, we compute the power series of the logarithm of this function,
-    # and then use the exponential function to recover the needed power series
-    # todo: figure out what the expansion needs to be
+    # Compute a power series expansion for G(z)/z^{nr} up to needed order
+    # Take exp(log) for efficiency
     tsubs = {v: subs_dict[v] - (M.inverse() * vector(tvars))[i] for i, v in enumerate(vs)}
+    GSeries = G.subs(tsubs)/prod([tsubs[v] for v in vs]).add_bigoh(N)
+    unit = AA(list(GSeries.polynomial())[0][0])
     log_series = log(
-        G.subs(tsubs)/prod([tsubs[v] for v in vs])
+        GSeries/unit
     ).add_bigoh(N) - sum([
-        r[i]*n*log(tsubs[v]) for i, v in enumerate(vs)
+        r[i]*n*log(tsubs[v]/QQbar(list(tsubs[v].polynomial())[0][0])) for i, v in enumerate(vs)
     ]).add_bigoh(N)
-    Pseries = exp(log_series).truncate(N)
+    Pseries = unit * exp(log_series).truncate(N)
 
-    # Step 4: Apply the differential operator on the given power series to the necessary order
+    # Differentiate given power series to the necessary order
     # Then, substitute t=0 to get polynomial part
     for i in range(len(exps)):
         Pseries = Pseries.derivative(tvars[i], exps[i]-1) / factorial(exps[i]-1)
@@ -1037,7 +1036,7 @@ def _general_term_asymptotics_complete_intersection_hyplerplane(G, Hs, exps, r, 
     Pseries = R(Pseries.subs({t: 0 for t in tvars}).polynomial())
 
     # Return the coefficients of the resulting power series in n
-    return [Pseries.coefficient(k) for k in range(min(sum(exps)-len(vs)+1,expansion_precision))]
+    return [Pseries.coefficient(k)/M.determinant() for k in range(sum(exps)-len(vs)+1)][::-1][:expansion_precision]
     
 
 def contributing_points_combinatorial_smooth(G, H, variables, r=None, linear_form=None):
@@ -1916,7 +1915,9 @@ def diagonal_asymptotics_hyperplane(
     if any([f.degree() > 1 for f in Hs]):
         raise ValueError("H does not define a hyperplane arrangement.")
     
-    contributing_points = []
+    minimal_contributing_points = []
+    next_cp = None
+    next_height = None
     
     # Sort all critical points by height
     cps_by_height = [(cp, prod([abs(vi)**ri for (vi, ri) in zip(cp, r)])) for cp in cps]
@@ -1925,28 +1926,38 @@ def diagonal_asymptotics_hyperplane(
     # Determine which critical points are contributing
     contributing_height = None
     for cp, h in cps_by_height:
-        # Break if we've already found all points of lowest height
-        if contributing_height is not None and h != contributing_height:
-            break
-
         subs_dict = {vs[i]:cp[i] for i in range(d)}
         if G.subs(subs_dict) == 0:
             continue
 
         factors = [f for f in Hs if f.subs(subs_dict) == 0]
         if is_contributing(vs, cp, r, factors, len(factors)):
-            contributing_height = h
-            contributing_points.append(cp)
+            if contributing_height is None or h == contributing_height:
+                contributing_height = h
+                minimal_contributing_points.append(cp)
+            else:
+                next_cp = cp
+                next_height = h
+                break
+                
 
-    if len(contributing_points) == 0:
+    if len(minimal_contributing_points) == 0:
         raise ACSVException("No contributing points found.")
 
     result = _compute_asymptotics_at_points(
-        G, H, vs, r, contributing_points, expansion_precision, output_format
+        G, H, vs, r, minimal_contributing_points, expansion_precision, output_format
     )
 
+    output_format = ACSVSettings.get_default_output_format() if output_format is None else output_format
+    if output_format == OutputFormat.ASYMPTOTIC:
+        n = result.parent().gen()
+        if next_cp is not None and next_height is not None:
+            subs_dict = {vs[i]:next_cp[i] for i in range(d)}
+            multiplicities = [p for f, p in H.factor() if f.subs(subs_dict) == 0]
+            result = result + (((1/abs(next_height)) ** n) * (n ** ((-len(Hs)-d)/2 + sum(multiplicities)))).O()
+
     if return_points:
-        return result, contributing_points
+        return result, minimal_contributing_points
 
     return result
 
@@ -2179,18 +2190,14 @@ def _compute_asymptotics_at_points(
                 )
         # When we have a complete intersection of hyperplanes, we know the degree of the polynomial expansion.
         elif s == d and all([f.degree() == 1 for f in factors]):
-            print("Hyplerplane case")
             n = SR.var("n")
             expansion = sum(
                 term / n**term_order
                 for term_order, term in enumerate(
                     _general_term_asymptotics_complete_intersection_hyplerplane(G, factors, multiplicities, r, vs, cp, expansion_precision)
                 )
-            )/unit/prod(extra_factors).subs(subs_dict)
+            )/unit.subs(subs_dict)
             B = 1
-
-            print(_general_term_asymptotics_complete_intersection_hyplerplane(G, factors, multiplicities, r, vs, cp, expansion_precision))
-            print(expansion)
         # Higher order expansions not currently supported for higher-order poles
         # In complete intersection case, error bound is actually exponentially lower, but we don't currently have
         # a way to represent it using the asymptotic ring.
@@ -2241,9 +2248,14 @@ def _compute_asymptotics_at_points(
         except (ValueError, TypeError):
             pass
 
-        asm_quantities.append([expansion, B, C, D, s])
+        # For complete intersections, the error bound is actually exponentially smaller after a certain precision
+        # But we can currently only represent this for hyplerplane intersections
+        ERR = C
+        if s == d and all([f.degree() == 1 for f in factors]) and expansion_precision > sum(multiplicities) - d:
+            ERR = 0
+        asm_quantities.append([expansion, B, C, D, ERR, s])
 
-    asm_vals = [(c, d, b.sqrt(), a, s) for a, b, c, d, s in asm_quantities]
+    asm_vals = [(c, d, b.sqrt(), a, err, s) for a, b, c, d, err, s in asm_quantities]
 
     if output_format is None:
         output_format = ACSVSettings.get_default_output_format()
@@ -2254,7 +2266,7 @@ def _compute_asymptotics_at_points(
         n = SR.var("n")
         result = [
             (base, n**exponent, (pi ** (s - d)).sqrt(), constant * expansion)
-            for (base, exponent, constant, expansion, s) in asm_vals
+            for (base, exponent, constant, expansion, _, s) in asm_vals
         ]
         if output_format == ACSVSettings.Output.SYMBOLIC:
             result = sum([a**n * b * c * d for (a, b, c, d) in result])
@@ -2271,8 +2283,8 @@ def _compute_asymptotics_at_points(
                     * collapse_zero_part(base / abs(base)) ** n
                     * n**exponent
                     * AR(expansion)
-                    + (abs(base) ** n * n ** (exponent - expansion_precision)).O()
-                    for (base, exponent, constant, expansion, s) in asm_vals
+                    + (0 if err == 0 else (abs(err) ** n * n ** (exponent - expansion_precision)).O())
+                    for (base, exponent, constant, expansion, err, s) in asm_vals
                 ]
             )
         except ValueError:
@@ -2288,8 +2300,8 @@ def _compute_asymptotics_at_points(
                     * collapse_zero_part(base / abs(base)) ** n
                     * n**exponent
                     * AR(expansion)
-                    + (abs(base) ** n * n ** (exponent - expansion_precision)).O()
-                    for (base, exponent, constant, expansion, s) in asm_vals
+                    + (0 if err == 0 else (abs(err) ** n * n ** (exponent - expansion_precision)).O())
+                    for (base, exponent, constant, expansion, err, s) in asm_vals
                 ]
             )
     else:
