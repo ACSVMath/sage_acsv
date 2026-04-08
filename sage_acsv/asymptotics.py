@@ -610,6 +610,12 @@ def diagonal_asymptotics_combinatorial(
     if isinstance(r, dict):
         r = _prepare_direction_variable_order(F, r)
 
+    if as_symbolic:
+        acsv_logger.warning(
+            "The as_symbolic argument has been deprecated in favor of output_format='symbolic'"
+        )
+        output_format = ACSVSettings.Output.SYMBOLIC
+
     G, H, variable_map = _prepare_symbolic_fraction(F)
     vs = list(variable_map.values())
 
@@ -646,6 +652,15 @@ def diagonal_asymptotics_combinatorial(
             output_format=output_format,
             as_symbolic=as_symbolic,
         )
+    if all([f.degree() == 1 for f, _ in R(H).factor()]):
+        return diagonal_asymptotics_hyperplane(
+            F,
+            r=r,
+            linear_form=linear_form,
+            expansion_precision=expansion_precision,
+            return_points=return_points,
+            output_format=output_format,
+        )
 
     t, lambda_, u_ = PolynomialRing(QQ, "t, lambda_, u_").gens()
     expanded_R = PolynomialRing(QQ, len(vs) + 3, vs + [t, lambda_, u_])
@@ -681,13 +696,6 @@ def diagonal_asymptotics_combinatorial(
                 raise e
     else:
         return
-
-
-    if as_symbolic:
-        acsv_logger.warning(
-            "The as_symbolic argument has been deprecated in favor of output_format='symbolic' "
-        )
-        output_format = ACSVSettings.Output.SYMBOLIC
 
     result = _compute_asymptotics_at_points(
         G, H, vs, r, min_crit_pts, expansion_precision, output_format
@@ -1024,17 +1032,17 @@ def _general_term_asymptotics_complete_intersection_hyplerplane(G, Hs, exps, r, 
     Rt = PowerSeriesRing(QQbar, list(tvars) + [SR.var("n")])
     tvars = Rt.gens()[:-1]
     n = Rt.gens()[-1]
-    N = sum(exps) - len(vs) + expansion_precision + 1
+    N = sum(exps) + expansion_precision + 1
 
     # Compute a power series expansion for G(z)/z^{nr} up to needed order
     # Take exp(log) for efficiency
     tsubs = {v: subs_dict[v] - (M.inverse() * vector(tvars))[i] for i, v in enumerate(vs)}
     GSeries = G.subs(tsubs)/prod([tsubs[v] for v in vs]).add_bigoh(N)
-    unit = AA(list(GSeries.polynomial())[0][0])
+    unit = GSeries.coefficients().get(QQbar(1),0)
     log_series = log(
         GSeries/unit
     ).add_bigoh(N) - sum([
-        r[i]*n*log(tsubs[v]/QQbar(list(tsubs[v].polynomial())[0][0])) for i, v in enumerate(vs)
+        r[i]*n*log(tsubs[v]/cp[i]) for i, v in enumerate(vs)
     ]).add_bigoh(N)
     Pseries = unit * exp(log_series).truncate(N)
 
@@ -1854,7 +1862,7 @@ def diagonal_asymptotics_hyperplane(
     Non-smooth combinatorial example::
 
         sage: diagonal_asymptotics_hyperplane(1/((1-x/3-2*y/3)*(1-2*x/3-y/3)))
-        3 + O(n^(-1))
+        3 + O((8/9)^n*n^(-1))
         sage: diagonal_asymptotics_hyperplane(1/((1-x/3-2*y/3)*(1-2*x/3-y/3)), r=[3,1])
         6.531972647421808?/sqrt(pi)*(2048/2187)^n*n^(-1/2) + O((2048/2187)^n*n^(-3/2))
 
