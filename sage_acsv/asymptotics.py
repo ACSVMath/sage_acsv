@@ -710,9 +710,9 @@ def _general_term_asymptotics_smooth(G, H, r, vs, cp, expansion_precision):
     INPUT:
 
     * ``G, H`` -- Coprime polynomials with `F = G/H`.
-    * ``vs`` -- Tuple of variables occurring in `G` and `H`.
     * ``r`` -- The direction. A length `d` vector of positive algebraic numbers (usually
       integers).
+    * ``vs`` -- Tuple of variables occurring in `G` and `H`.
     * ``cp`` -- A minimal critical point of `F` with coordinates specified in the
       same order as in ``vs``.
     * ``expansion_precision`` -- A positive integer value. This is the number of terms
@@ -836,9 +836,10 @@ def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
 
     * ``G`` -- A polynomial in `vs`.
     * ``Hs`` -- A list of polynomials in `vs` such that `[G,Hs]` have no pairwise common factors.
-    * ``vs`` -- Tuple of variables occurring in `G` and `Hs`.
+    * ``Hs_ext`` -- A list of polynomials in `vs` such that that do not vanish at `cp`.
     * ``r`` -- The direction. A length `d` vector of positive algebraic numbers (usually
       integers).
+    * ``vs`` -- Tuple of variables occurring in `G` and `Hs`.
     * ``cp`` -- A minimal critical point of `F` with coordinates specified in the
       same order as in ``vs``.
     * ``expansion_precision`` -- A positive integer value. This is the number of terms
@@ -975,8 +976,7 @@ def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
 
 def _general_term_asymptotics_complete_intersection_hyplerplane(G, Hs, exps, r, vs, cp, expansion_precision):
     r"""
-    Compute coefficients of general (not necessarily leading) terms of
-    the asymptotic expansion for a given critical
+    Compute coefficients of general (not necessarily leading) terms of the asymptotic expansion for a given critical
     point of a rational combinatorial multivariate rational function lying on a complete intersection of hyperplanes.
 
     Typically, this function is called as a subroutine of :func:`.diagonal_asymptotics_combinatorial`.
@@ -986,9 +986,9 @@ def _general_term_asymptotics_complete_intersection_hyplerplane(G, Hs, exps, r, 
     * ``G`` -- A polynomial in `vs`.
     * ``Hs`` -- A list of polynomials in `vs` such that `[G,Hs]` have no pairwise common factors.
     * ``exps`` -- A list of integers representing the multiplicity of each of the polynomials in ``Hs``.
-    * ``vs`` -- Tuple of variables occurring in `G` and `Hs`.
     * ``r`` -- The direction. A length `d` vector of positive algebraic numbers (usually
       integers).
+    * ``vs`` -- Tuple of variables occurring in `G` and `Hs`.
     * ``cp`` -- A minimal critical point of `F` with coordinates specified in the
       same order as in ``vs``.
     * ``expansion_precision`` -- A positive integer value. This is the number of terms
@@ -998,7 +998,18 @@ def _general_term_asymptotics_complete_intersection_hyplerplane(G, Hs, exps, r, 
 
     List of coefficients of the asymptotic expansion.
 
-    EXAMPLES:: """
+    EXAMPLES:: 
+
+        sage: from sage_acsv.asymptotics import _general_term_asymptotics_complete_intersection_hyplerplane
+        sage: R.<x, y> = QQ[]
+        sage: _general_term_asymptotics_complete_intersection_hyplerplane(1, [3-2*x-y, 3-x-2*y], [2, 3], [1, 1], [x, y], [1, 1], 2)
+        [-1/162, 0]
+    
+        sage: from sage_acsv.asymptotics import _general_term_asymptotics_complete_intersection_hyplerplane
+        sage: R.<x, y> = QQ[]
+        sage: _general_term_asymptotics_complete_intersection_hyplerplane(1, [3-2*x-y, 3-x-2*y], [2, 3], [1, 1], [x, y], [1, 1], 5)
+        [-1/162, 0, 7/162, 1/27]
+    """
     M = matrix(
         [
             [
@@ -1013,7 +1024,7 @@ def _general_term_asymptotics_complete_intersection_hyplerplane(G, Hs, exps, r, 
     Rt = PowerSeriesRing(QQbar, list(tvars) + [SR.var("n")])
     tvars = Rt.gens()[:-1]
     n = Rt.gens()[-1]
-    N = sum(exps) + expansion_precision + 1 # todo: figure out what the expansion needs to be
+    N = sum(exps) - len(vs) + expansion_precision + 1
 
     # Compute a power series expansion for G(z)/z^{nr} up to needed order
     # Take exp(log) for efficiency
