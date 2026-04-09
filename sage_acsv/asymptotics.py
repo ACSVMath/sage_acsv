@@ -568,10 +568,10 @@ def diagonal_asymptotics_combinatorial(
     is not smooth but is the transverse union of smooth varieties::
 
         sage: diagonal_asymptotics_combinatorial(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)), r = [17/24, 7/24], output_format = 'asymptotic')
-        12 + O(n^(-1))
+        12 + O(0.9960121882524521?^n*n^(-1))
 
         sage: diagonal_asymptotics_combinatorial(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)), r = [17/24, 7/24], output_format = 'asymptotic')
-        12 + O(n^(-1))
+        12 + O(0.9960121882524521?^n*n^(-1))
         sage: G = (1+x)*(1-x*y^2+x^2)
         sage: H = (1-z*(1+x^2+x*y^2))*(1-y)*(1+x^2)
         sage: strat = [
@@ -1935,8 +1935,8 @@ def diagonal_asymptotics_hyperplane(
         raise ValueError("H does not define a hyperplane arrangement.")
     
     minimal_contributing_points = []
-    next_cp = None
-    next_height = None
+    next_cps = []
+    next_heights = []
     
     # Sort all critical points by height
     cps_by_height = [(cp, prod([abs(vi)**ri for (vi, ri) in zip(cp, r)])) for cp in cps]
@@ -1955,8 +1955,8 @@ def diagonal_asymptotics_hyperplane(
                 contributing_height = h
                 minimal_contributing_points.append(cp)
             else:
-                next_cp = cp
-                next_height = h
+                next_cps.append(cp)
+                next_heights.append(h)
                 break
                 
 
@@ -1967,10 +1967,10 @@ def diagonal_asymptotics_hyperplane(
         G, H, vs, r, minimal_contributing_points, expansion_precision, output_format
     )
 
-    output_format = ACSVSettings.get_default_output_format() if output_format is None else output_format
+    output_format = ACSVSettings.get_default_output_format() if output_format is None else ACSVSettings.Output(output_format)
     if output_format == OutputFormat.ASYMPTOTIC:
         n = result.parent().gen()
-        if next_cp is not None and next_height is not None:
+        for next_cp, next_height in zip(next_cps, next_heights):
             subs_dict = {vs[i]:next_cp[i] for i in range(d)}
             multiplicities = [p for f, p in H.factor() if f.subs(subs_dict) == 0]
             result = result + (((1/abs(next_height)) ** n) * (n ** ((-len(Hs)-d)/2 + sum(multiplicities)))).O()
