@@ -608,7 +608,7 @@ def diagonal_asymptotics_combinatorial(
 
     """
     if isinstance(r, dict):
-        r = _prepare_direction_variable_order(F, r)
+        r = _dict_to_variable_order(F, r)
 
     if as_symbolic:
         acsv_logger.warning(
@@ -756,7 +756,7 @@ def _general_term_asymptotics_smooth(G, H, r, vs, cp, expansion_precision):
     cp = {v: V for (v, V) in zip(vs, cp)}
 
     W = DifferentialWeylAlgebra(PolynomialRing(QQbar, tvars))
-    TR = QQbar[[tvars]]
+    TR = PowerSeriesRing(QQbar, tvars)
     T = TR.gens()
     tvars = T
     D = list(W.differentials())
@@ -1100,7 +1100,7 @@ def contributing_points_combinatorial_smooth(G, H, variables, r=None, linear_for
     """
 
     if isinstance(r, dict):
-        r = _prepare_direction_variable_order(G/H, r)
+        r = _dict_to_variable_order(G/H, r)
 
     timer = Timer()
     (
@@ -1461,7 +1461,7 @@ def contributing_points_combinatorial(
 
     """
     if isinstance(r, dict):
-        r = _prepare_direction_variable_order(F, r)
+        r = _dict_to_variable_order(F, r)
    
     G, H, variable_map = _prepare_symbolic_fraction(F)
     variables = list(variable_map.values())
@@ -1541,7 +1541,7 @@ def minimal_critical_points_combinatorial(
     """
 
     if isinstance(r, dict):
-        r = _prepare_direction_variable_order(F, r)
+        r = _dict_to_variable_order(F, r)
 
     _, H, variable_map = _prepare_symbolic_fraction(F)
     variables = list(variable_map.values())
@@ -1714,7 +1714,7 @@ def critical_points(F, r=None, linear_form=None, whitney_strat=None):
 
     """
     if isinstance(r, dict):
-        r = _prepare_direction_variable_order(F, r)
+        r = _dict_to_variable_order(F, r)
 
     _, H, variable_map = _prepare_symbolic_fraction(F)
     variables = list(variable_map.values())
@@ -1887,7 +1887,7 @@ def diagonal_asymptotics_hyperplane(
 
     """
     if isinstance(r, dict):
-        r = _prepare_direction_variable_order(F, r)
+        r = _dict_to_variable_order(F, r)
 
     if r is None:
         n = len(F.variables())
@@ -1933,11 +1933,11 @@ def diagonal_asymptotics_hyperplane(
         raise ValueError("Denominator vanishes at 0.")
     if any([f.degree() > 1 for f in Hs]):
         raise ValueError("H does not define a hyperplane arrangement.")
-    
+
     minimal_contributing_points = []
     next_cps = []
     next_heights = []
-    
+
     # Sort all critical points by height
     cps_by_height = [(cp, prod([abs(vi)**ri for (vi, ri) in zip(cp, r)])) for cp in cps]
     cps_by_height.sort(key=lambda x: x[1])
@@ -1946,19 +1946,18 @@ def diagonal_asymptotics_hyperplane(
     contributing_height = None
     for cp, h in cps_by_height:
         subs_dict = {vs[i]:cp[i] for i in range(d)}
-        if G.subs(subs_dict) == 0:
-            continue
 
         factors = [f for f in Hs if f.subs(subs_dict) == 0]
-        if is_contributing(vs, cp, r, factors, len(factors)):
+        # If contributing_height != None, then a contributing point has been found. Any other contributing points
+        # of larger height are just for the error bound, so they don't need to be generic.
+        if is_contributing(vs, cp, r, factors, len(factors), contributing_height != None and h > contributing_height):
             if contributing_height is None or h == contributing_height:
                 contributing_height = h
                 minimal_contributing_points.append(cp)
             else:
                 next_cps.append(cp)
                 next_heights.append(h)
-                break
-                
+ 
 
     if len(minimal_contributing_points) == 0:
         raise ACSVException("No contributing points found.")
@@ -1981,7 +1980,7 @@ def diagonal_asymptotics_hyperplane(
     return result
 
 def compute_asymptotics_at_points(
-    F, 
+    F,
     contributing_points,
     r=None,
     expansion_precision=1,
@@ -2037,7 +2036,11 @@ def compute_asymptotics_at_points(
 
     """
     if isinstance(r, dict):
-        r = _prepare_direction_variable_order(F, r)
+        r = _dict_to_variable_order(F, r)
+
+    contributing_points = [
+        _dict_to_variable_order(F, cp, None) if isinstance(cp, dict) else cp for cp in contributing_points
+    ]
 
     G, H, variable_map = _prepare_symbolic_fraction(F)
     vs = list(variable_map.values())
@@ -2267,14 +2270,9 @@ def _compute_asymptotics_at_points(
         except (ValueError, TypeError):
             pass
 
-        # For complete intersections, the error bound is actually exponentially smaller after a certain precision
-        # But we can currently only represent this for hyplerplane intersections
-        ERR = C
-        if s == d and all([f.degree() == 1 for f in factors]) and expansion_precision > sum(multiplicities) - d:
-            ERR = 0
-        asm_quantities.append([expansion, B, C, D, ERR, s])
+        asm_quantities.append([expansion, B, C, D, s])
 
-    asm_vals = [(c, d, b.sqrt(), a, err, s) for a, b, c, d, err, s in asm_quantities]
+    asm_vals = [(c, d, b.sqrt(), a, s) for a, b, c, d, s in asm_quantities]
 
     if output_format is None:
         output_format = ACSVSettings.get_default_output_format()
@@ -2285,7 +2283,7 @@ def _compute_asymptotics_at_points(
         n = SR.var("n")
         result = [
             (base, n**exponent, (pi ** (s - d)).sqrt(), constant * expansion)
-            for (base, exponent, constant, expansion, _, s) in asm_vals
+            for (base, exponent, constant, expansion, s) in asm_vals
         ]
         if output_format == ACSVSettings.Output.SYMBOLIC:
             result = sum([a**n * b * c * d for (a, b, c, d) in result])
@@ -2302,8 +2300,8 @@ def _compute_asymptotics_at_points(
                     * collapse_zero_part(base / abs(base)) ** n
                     * n**exponent
                     * AR(expansion)
-                    + (0 if err == 0 else (abs(err) ** n * n ** (exponent - expansion_precision)).O())
-                    for (base, exponent, constant, expansion, err, s) in asm_vals
+                    + (abs(base) ** n * n ** (exponent - expansion_precision)).O()
+                    for (base, exponent, constant, expansion, s) in asm_vals
                 ]
             )
         except ValueError:
@@ -2319,10 +2317,15 @@ def _compute_asymptotics_at_points(
                     * collapse_zero_part(base / abs(base)) ** n
                     * n**exponent
                     * AR(expansion)
-                    + (0 if err == 0 else (abs(err) ** n * n ** (exponent - expansion_precision)).O())
-                    for (base, exponent, constant, expansion, err, s) in asm_vals
+                    + (abs(base) ** n * n ** (exponent - expansion_precision)).O()
+                    for (base, exponent, constant, expansion, s) in asm_vals
                 ]
             )
+
+        # For complete intersections, the error bound is actually exponentially smaller after a certain precision
+        # But we can currently only represent this for hyplerplane intersections
+        if s == d and all([f.degree() == 1 for f in factors]) and expansion_precision > sum(multiplicities) - d:
+            result = result.exact_part()
     else:
         raise NotImplementedError(f"Missing implementation for {output_format}")
 
@@ -2348,7 +2351,7 @@ def _prepare_symbolic_fraction(F):
     return G / frac_gcd, H / frac_gcd, variable_map
 
 
-def _prepare_direction_variable_order(F, r):
+def _dict_to_variable_order(F, d, default=1):
     r"""Converts a direction dictionary `r` to a direction vector in the variable order
     given by `F.variables()`
 
@@ -2359,7 +2362,9 @@ def _prepare_direction_variable_order(F, r):
     """
 
     vs = F.variables()
-    return [r.get(v, 1) for v in vs]
+    if default is None and any(v not in d for v in vs):
+        raise ValueError(f"Provided dictionary {d} is missing entries for some variables {vs}.")
+    return [d.get(v, default) for v in vs]
 
 def _prepare_expanded_polynomial_ring(variables, direction=None, include_t=True):
     r"""Prepare an auxiliary polynomial ring for computing diagonal asymptotics.

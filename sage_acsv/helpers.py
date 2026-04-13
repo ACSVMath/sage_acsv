@@ -385,7 +385,7 @@ def compute_implicit_hessian(Hs, vs, r, subs):
     return Hess
 
 
-def is_contributing(vs, pt, r, factors, c):
+def is_contributing(vs, pt, r, factors, c, allow_boundary = False):
     r"""Determines if a minimal critical point ``pt`` such that the singular
     variety has transverse square-free factorization
     is contributing; that is, whether `r` is in the interior
@@ -398,6 +398,8 @@ def is_contributing(vs, pt, r, factors, c):
     * ``r`` -- A direction vector
     * ``factors`` -- A list of factors of `H` for which `pt` vanishes
     * ``c`` -- The co-dimension of the intersection of factors
+    * ``allow_boundary`` -- Whether or not to allow 'non-generic' directions, where the critical
+      point lies on the boundary of the normal cone.
 
     OUTPUT:
 
@@ -451,7 +453,7 @@ def is_contributing(vs, pt, r, factors, c):
     polytope = Polyhedron(rays=normals)
     if r not in polytope:
         return False
-    elif any([r in f for f in polytope.faces(c - 1)]):
+    elif not allow_boundary and any([r in f for f in polytope.faces(c - 1)]):
         # If r is in the boundary of the log normal cone, point is non-generic
         raise ACSVException(
             f"Non-generic direction detected - critical point {pt} is contained in {len(vs) - c}-dimensional stratum"
