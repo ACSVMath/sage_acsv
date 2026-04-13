@@ -713,7 +713,7 @@ def _general_term_asymptotics_smooth(G, H, r, vs, cp, expansion_precision):
     the asymptotic expansion for a given critical
     point of a rational combinatorial multivariate rational function lying on a smooth point of `V(H)`.
 
-    Typically, this function is called as a subroutine of :func:`.diagonal_asymptotics_combinatorial`.
+    Typically, this function is called as a subroutine of :func:`._compute_asymptotics_at_points`.
 
     INPUT:
 
@@ -838,7 +838,7 @@ def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
     the asymptotic expansion for a given critical
     point of a rational combinatorial multivariate rational function.
 
-    Typically, this function is called as a subroutine of :func:`.diagonal_asymptotics_combinatorial`.
+    Typically, this function is called as a subroutine of :func:`._compute_asymptotics_at_points`.
 
     INPUT:
 
@@ -987,7 +987,7 @@ def _general_term_asymptotics_complete_intersection_hyplerplane(G, Hs, exps, r, 
     Compute coefficients of general (not necessarily leading) terms of the asymptotic expansion for a given critical
     point of a rational combinatorial multivariate rational function lying on a complete intersection of hyperplanes.
 
-    Typically, this function is called as a subroutine of :func:`.diagonal_asymptotics_combinatorial`.
+    Typically, this function is called as a subroutine of :func:`._compute_asymptotics_at_points`.
 
     INPUT:
 
@@ -1972,7 +1972,7 @@ def diagonal_asymptotics_hyperplane(
         for next_cp, next_height in zip(next_cps, next_heights):
             subs_dict = {vs[i]:next_cp[i] for i in range(d)}
             multiplicities = [p for f, p in H.factor() if f.subs(subs_dict) == 0]
-            result = result + (((1/abs(next_height)) ** n) * (n ** ((-len(Hs)-d)/2 + sum(multiplicities)))).O()
+            result = result + (((1/abs(next_height)) ** n) * (n ** (QQ((-len(Hs)-d)/2 + sum(multiplicities))))).O()
 
     if return_points:
         return result, minimal_contributing_points
