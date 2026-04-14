@@ -129,6 +129,7 @@ from sage.rings.asymptotic.asymptotic_ring import AsymptoticRing
 from sage.rings.ideal import Ideal
 from sage.rings.imaginary_unit import I
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
+from sage.rings.power_series_ring import PowerSeriesRing
 from sage.rings.qqbar import AA, QQbar
 from sage.rings.rational_field import QQ
 from sage.symbolic.constants import pi
@@ -146,7 +147,7 @@ from sage_acsv.helpers import (
     collapse_zero_part,
 )
 from sage_acsv.debug import Timer, acsv_logger
-from sage_acsv.settings import ACSVSettings
+from sage_acsv.settings import ACSVSettings, OutputFormat
 from sage_acsv.whitney import whitney_stratification
 from sage_acsv.groebner import compute_primary_decomposition, compute_saturation
 
@@ -567,10 +568,10 @@ def diagonal_asymptotics_combinatorial(
     is not smooth but is the transverse union of smooth varieties::
 
         sage: diagonal_asymptotics_combinatorial(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)), r = [17/24, 7/24], output_format = 'asymptotic')
-        12 + O(n^(-1))
+        12 + O(0.9960121882524521?^n*n^(-1))
 
         sage: diagonal_asymptotics_combinatorial(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)), r = [17/24, 7/24], output_format = 'asymptotic')
-        12 + O(n^(-1))
+        12 + O(0.9960121882524521?^n*n^(-1))
         sage: G = (1+x)*(1-x*y^2+x^2)
         sage: H = (1-z*(1+x^2+x*y^2))*(1-y)*(1+x^2)
         sage: strat = [
@@ -607,7 +608,13 @@ def diagonal_asymptotics_combinatorial(
 
     """
     if isinstance(r, dict):
-        r = _prepare_direction_variable_order(F, r)
+        r = _dict_to_variable_order(F, r)
+
+    if as_symbolic:
+        acsv_logger.warning(
+            "The as_symbolic argument has been deprecated in favor of output_format='symbolic'"
+        )
+        output_format = ACSVSettings.Output.SYMBOLIC
 
     G, H, variable_map = _prepare_symbolic_fraction(F)
     vs = list(variable_map.values())
@@ -645,6 +652,15 @@ def diagonal_asymptotics_combinatorial(
             output_format=output_format,
             as_symbolic=as_symbolic,
         )
+    if all([f.degree() == 1 for f, _ in R(H).factor()]):
+        return diagonal_asymptotics_hyperplane(
+            F,
+            r=r,
+            linear_form=linear_form,
+            expansion_precision=expansion_precision,
+            return_points=return_points,
+            output_format=output_format,
+        )
 
     t, lambda_, u_ = PolynomialRing(QQ, "t, lambda_, u_").gens()
     expanded_R = PolynomialRing(QQ, len(vs) + 3, vs + [t, lambda_, u_])
@@ -681,13 +697,6 @@ def diagonal_asymptotics_combinatorial(
     else:
         return
 
-
-    if as_symbolic:
-        acsv_logger.warning(
-            "The as_symbolic argument has been deprecated in favor of output_format='symbolic' "
-        )
-        output_format = ACSVSettings.Output.SYMBOLIC
-
     result = _compute_asymptotics_at_points(
         G, H, vs, r, min_crit_pts, expansion_precision, output_format
     )
@@ -704,14 +713,14 @@ def _general_term_asymptotics_smooth(G, H, r, vs, cp, expansion_precision):
     the asymptotic expansion for a given critical
     point of a rational combinatorial multivariate rational function lying on a smooth point of `V(H)`.
 
-    Typically, this function is called as a subroutine of :func:`.diagonal_asymptotics_combinatorial`.
+    Typically, this function is called as a subroutine of :func:`._compute_asymptotics_at_points`.
 
     INPUT:
 
     * ``G, H`` -- Coprime polynomials with `F = G/H`.
-    * ``vs`` -- Tuple of variables occurring in `G` and `H`.
     * ``r`` -- The direction. A length `d` vector of positive algebraic numbers (usually
       integers).
+    * ``vs`` -- Tuple of variables occurring in `G` and `H`.
     * ``cp`` -- A minimal critical point of `F` with coordinates specified in the
       same order as in ``vs``.
     * ``expansion_precision`` -- A positive integer value. This is the number of terms
@@ -747,7 +756,7 @@ def _general_term_asymptotics_smooth(G, H, r, vs, cp, expansion_precision):
     cp = {v: V for (v, V) in zip(vs, cp)}
 
     W = DifferentialWeylAlgebra(PolynomialRing(QQbar, tvars))
-    TR = QQbar[[tvars]]
+    TR = PowerSeriesRing(QQbar, tvars)
     T = TR.gens()
     tvars = T
     D = list(W.differentials())
@@ -829,15 +838,16 @@ def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
     the asymptotic expansion for a given critical
     point of a rational combinatorial multivariate rational function.
 
-    Typically, this function is called as a subroutine of :func:`.diagonal_asymptotics_combinatorial`.
+    Typically, this function is called as a subroutine of :func:`._compute_asymptotics_at_points`.
 
     INPUT:
 
     * ``G`` -- A polynomial in `vs`.
     * ``Hs`` -- A list of polynomials in `vs` such that `[G,Hs]` have no pairwise common factors.
-    * ``vs`` -- Tuple of variables occurring in `G` and `Hs`.
+    * ``Hs_ext`` -- A list of polynomials in `vs` such that that do not vanish at `cp`.
     * ``r`` -- The direction. A length `d` vector of positive algebraic numbers (usually
       integers).
+    * ``vs`` -- Tuple of variables occurring in `G` and `Hs`.
     * ``cp`` -- A minimal critical point of `F` with coordinates specified in the
       same order as in ``vs``.
     * ``expansion_precision`` -- A positive integer value. This is the number of terms
@@ -972,6 +982,82 @@ def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
     else:
         raise ACSVException("Issue with computing general terms - this should never happen.")
 
+def _general_term_asymptotics_complete_intersection_hyplerplane(G, Hs, exps, r, vs, cp, expansion_precision):
+    r"""
+    Compute coefficients of general (not necessarily leading) terms of the asymptotic expansion for a given critical
+    point of a rational combinatorial multivariate rational function lying on a complete intersection of hyperplanes.
+
+    Typically, this function is called as a subroutine of :func:`._compute_asymptotics_at_points`.
+
+    INPUT:
+
+    * ``G`` -- A polynomial in `vs`.
+    * ``Hs`` -- A list of polynomials in `vs` such that `[G,Hs]` have no pairwise common factors.
+    * ``exps`` -- A list of integers representing the multiplicity of each of the polynomials in ``Hs``.
+    * ``r`` -- The direction. A length `d` vector of positive algebraic numbers (usually
+      integers).
+    * ``vs`` -- Tuple of variables occurring in `G` and `Hs`.
+    * ``cp`` -- A minimal critical point of `F` with coordinates specified in the
+      same order as in ``vs``.
+    * ``expansion_precision`` -- A positive integer value. This is the number of terms
+      for which to compute coefficients in the asymptotic expansion.
+
+    OUTPUT:
+
+    List of coefficients of the asymptotic expansion.
+
+    EXAMPLES:: 
+
+        sage: from sage_acsv.asymptotics import _general_term_asymptotics_complete_intersection_hyplerplane
+        sage: R.<x, y> = QQ[]
+        sage: _general_term_asymptotics_complete_intersection_hyplerplane(1, [3-2*x-y, 3-x-2*y], [2, 3], [1, 1], [x, y], [1, 1], 2)
+        [-1/162, 0]
+    
+        sage: from sage_acsv.asymptotics import _general_term_asymptotics_complete_intersection_hyplerplane
+        sage: R.<x, y> = QQ[]
+        sage: _general_term_asymptotics_complete_intersection_hyplerplane(1, [3-2*x-y, 3-x-2*y], [2, 3], [1, 1], [x, y], [1, 1], 5)
+        [-1/162, 0, 7/162, 1/27]
+    """
+    M = matrix(
+        [
+            [
+                QQ(H.derivative(v)) for v in vs
+            ] for H in Hs
+        ]
+    )
+
+    # Perform the change of variables z = cp + M^(-1)*t
+    subs_dict = {vs[i]: cp[i] for i in range(len(vs))}
+    tvars = SR.var("t", len(vs))
+    Rt = PowerSeriesRing(QQbar, list(tvars) + [SR.var("n")])
+    tvars = Rt.gens()[:-1]
+    n = Rt.gens()[-1]
+    N = sum(exps) + expansion_precision + 1
+
+    # Compute a power series expansion for G(z)/z^{nr} up to needed order
+    # Take exp(log) for efficiency
+    tsubs = {v: subs_dict[v] - (M.inverse() * vector(tvars))[i] for i, v in enumerate(vs)}
+    GSeries = G.subs(tsubs)/prod([tsubs[v] for v in vs]).add_bigoh(N)
+    unit = GSeries.coefficients().get(QQbar(1),0)
+    log_series = log(
+        GSeries/unit
+    ).add_bigoh(N) - sum([
+        r[i]*n*log(tsubs[v]/cp[i]) for i, v in enumerate(vs)
+    ]).add_bigoh(N)
+    Pseries = unit * exp(log_series).truncate(N)
+
+    # Differentiate given power series to the necessary order
+    # Then, substitute t=0 to get polynomial part
+    for i in range(len(exps)):
+        Pseries = Pseries.derivative(tvars[i], exps[i]-1) / factorial(exps[i]-1)
+    
+    R = PolynomialRing(QQbar, [n])
+    Pseries = R(Pseries.subs({t: 0 for t in tvars}).polynomial())
+
+    # Return the coefficients of the resulting power series in n
+    return [Pseries.coefficient(k)/M.determinant() for k in range(sum(exps)-len(vs)+1)][::-1][:expansion_precision]
+    
+
 def contributing_points_combinatorial_smooth(G, H, variables, r=None, linear_form=None):
     r"""Compute contributing points of a multivariate
     rational function `F=G/H` admitting a finite number of critical points.
@@ -1014,7 +1100,7 @@ def contributing_points_combinatorial_smooth(G, H, variables, r=None, linear_for
     """
 
     if isinstance(r, dict):
-        r = _prepare_direction_variable_order(G/H, r)
+        r = _dict_to_variable_order(G/H, r)
 
     timer = Timer()
     (
@@ -1375,7 +1461,7 @@ def contributing_points_combinatorial(
 
     """
     if isinstance(r, dict):
-        r = _prepare_direction_variable_order(F, r)
+        r = _dict_to_variable_order(F, r)
    
     G, H, variable_map = _prepare_symbolic_fraction(F)
     variables = list(variable_map.values())
@@ -1455,7 +1541,7 @@ def minimal_critical_points_combinatorial(
     """
 
     if isinstance(r, dict):
-        r = _prepare_direction_variable_order(F, r)
+        r = _dict_to_variable_order(F, r)
 
     _, H, variable_map = _prepare_symbolic_fraction(F)
     variables = list(variable_map.values())
@@ -1628,7 +1714,7 @@ def critical_points(F, r=None, linear_form=None, whitney_strat=None):
 
     """
     if isinstance(r, dict):
-        r = _prepare_direction_variable_order(F, r)
+        r = _dict_to_variable_order(F, r)
 
     _, H, variable_map = _prepare_symbolic_fraction(F)
     variables = list(variable_map.values())
@@ -1776,7 +1862,7 @@ def diagonal_asymptotics_hyperplane(
     Non-smooth combinatorial example::
 
         sage: diagonal_asymptotics_hyperplane(1/((1-x/3-2*y/3)*(1-2*x/3-y/3)))
-        3 + O(n^(-1))
+        3 + O((8/9)^n*n^(-1))
         sage: diagonal_asymptotics_hyperplane(1/((1-x/3-2*y/3)*(1-2*x/3-y/3)), r=[3,1])
         6.531972647421808?/sqrt(pi)*(2048/2187)^n*n^(-1/2) + O((2048/2187)^n*n^(-3/2))
 
@@ -1801,7 +1887,7 @@ def diagonal_asymptotics_hyperplane(
 
     """
     if isinstance(r, dict):
-        r = _prepare_direction_variable_order(F, r)
+        r = _dict_to_variable_order(F, r)
 
     if r is None:
         n = len(F.variables())
@@ -1847,9 +1933,11 @@ def diagonal_asymptotics_hyperplane(
         raise ValueError("Denominator vanishes at 0.")
     if any([f.degree() > 1 for f in Hs]):
         raise ValueError("H does not define a hyperplane arrangement.")
-    
-    contributing_points = []
-    
+
+    minimal_contributing_points = []
+    next_cps = []
+    next_heights = []
+
     # Sort all critical points by height
     cps_by_height = [(cp, prod([abs(vi)**ri for (vi, ri) in zip(cp, r)])) for cp in cps]
     cps_by_height.sort(key=lambda x: x[1])
@@ -1857,33 +1945,42 @@ def diagonal_asymptotics_hyperplane(
     # Determine which critical points are contributing
     contributing_height = None
     for cp, h in cps_by_height:
-        # Break if we've already found all points of lowest height
-        if contributing_height is not None and h != contributing_height:
-            break
-
         subs_dict = {vs[i]:cp[i] for i in range(d)}
-        if G.subs(subs_dict) == 0:
-            continue
 
         factors = [f for f in Hs if f.subs(subs_dict) == 0]
-        if is_contributing(vs, cp, r, factors, len(factors)):
-            contributing_height = h
-            contributing_points.append(cp)
+        # If contributing_height != None, then a contributing point has been found. Any other contributing points
+        # of larger height are just for the error bound, so they don't need to be generic.
+        if is_contributing(vs, cp, r, factors, len(factors), contributing_height != None and h > contributing_height):
+            if contributing_height is None or h == contributing_height:
+                contributing_height = h
+                minimal_contributing_points.append(cp)
+            else:
+                next_cps.append(cp)
+                next_heights.append(h)
+ 
 
-    if len(contributing_points) == 0:
+    if len(minimal_contributing_points) == 0:
         raise ACSVException("No contributing points found.")
 
     result = _compute_asymptotics_at_points(
-        G, H, vs, r, contributing_points, expansion_precision, output_format
+        G, H, vs, r, minimal_contributing_points, expansion_precision, output_format
     )
 
+    output_format = ACSVSettings.get_default_output_format() if output_format is None else ACSVSettings.Output(output_format)
+    if output_format == OutputFormat.ASYMPTOTIC:
+        n = result.parent().gen()
+        for next_cp, next_height in zip(next_cps, next_heights):
+            subs_dict = {vs[i]:next_cp[i] for i in range(d)}
+            multiplicities = [p for f, p in H.factor() if f.subs(subs_dict) == 0]
+            result = result + (((1/abs(next_height)) ** n) * (n ** (QQ((-len(Hs)-d)/2 + sum(multiplicities))))).O()
+
     if return_points:
-        return result, contributing_points
+        return result, minimal_contributing_points
 
     return result
 
 def compute_asymptotics_at_points(
-    F, 
+    F,
     contributing_points,
     r=None,
     expansion_precision=1,
@@ -1939,7 +2036,11 @@ def compute_asymptotics_at_points(
 
     """
     if isinstance(r, dict):
-        r = _prepare_direction_variable_order(F, r)
+        r = _dict_to_variable_order(F, r)
+
+    contributing_points = [
+        _dict_to_variable_order(F, cp, None) if isinstance(cp, dict) else cp for cp in contributing_points
+    ]
 
     G, H, variable_map = _prepare_symbolic_fraction(F)
     vs = list(variable_map.values())
@@ -2082,13 +2183,7 @@ def _compute_asymptotics_at_points(
             ]
         )
 
-        # Some constants appearing for higher order singularities
-        mult_fac = prod([factorial(m - 1) for m in multiplicities])
-        r_gamma_inv = prod(
-            x ** (multiplicities[i] - 1)
-            for i, x in enumerate(list(vector(r) * Gamma.inverse())[:s])
-        )
-        # If cp lies on a single smooth component, we can compute asymptotics
+        # If critical point lies on a single smooth component, we can compute asymptotics
         # like in the smooth case
         if s == 1 and sum(multiplicities) == 1:
             n = SR.var("n")
@@ -2100,6 +2195,7 @@ def _compute_asymptotics_at_points(
             )
             Det = compute_hessian(H, vs, r).determinant()
             B = SR(1 / Det.subs(subs_dict) / r[-1] ** (d - 1) / 2 ** (d - 1))
+        # We now support higher order expansions for non-smooth non-complete intersections
         elif all([p==1 for p in multiplicities]) and s != d:
             Qw = compute_implicit_hessian(factors, vs, r, subs=subs_dict)
             n = SR.var("n")
@@ -2114,8 +2210,20 @@ def _compute_asymptotics_at_points(
                     / Qw.determinant()
                     / 2 ** (d - s)
                 )
+        # When we have a complete intersection of hyperplanes, we know the degree of the polynomial expansion.
+        elif s == d and all([f.degree() == 1 for f in factors]):
+            n = SR.var("n")
+            expansion = sum(
+                term / n**term_order
+                for term_order, term in enumerate(
+                    _general_term_asymptotics_complete_intersection_hyplerplane(G, factors, multiplicities, r, vs, cp, expansion_precision)
+                )
+            )/unit.subs(subs_dict)
+            B = 1
+        # Higher order expansions not currently supported for higher-order poles
+        # In complete intersection case, error bound is actually exponentially lower, but we don't currently have
+        # a way to represent it using the asymptotic ring.
         else:
-            # Higher order expansions not currently supported for higher-order poles
             if expansion_precision > 1:
                 acsv_logger.warning(
                     "Higher order expansions are not supported for non-simple poles. Defaulting to expansion_precision 1."
@@ -2141,6 +2249,13 @@ def _compute_asymptotics_at_points(
                     / R(prod(extra_factors)).subs(subs_dict)
                 )
                 B = 1
+
+            # Some constants appearing for higher order singularities
+            mult_fac = prod([factorial(m - 1) for m in multiplicities])
+            r_gamma_inv = prod(
+                x ** (multiplicities[i] - 1)
+                for i, x in enumerate(list(vector(r) * Gamma.inverse())[:s])
+            )
 
             expansion *= (
                 (-1) ** sum([m - 1 for m in multiplicities]) * r_gamma_inv / mult_fac
@@ -2206,6 +2321,11 @@ def _compute_asymptotics_at_points(
                     for (base, exponent, constant, expansion, s) in asm_vals
                 ]
             )
+
+        # For complete intersections, the error bound is actually exponentially smaller after a certain precision
+        # But we can currently only represent this for hyplerplane intersections
+        if s == d and all([f.degree() == 1 for f in factors]) and expansion_precision > sum(multiplicities) - d:
+            result = result.exact_part()
     else:
         raise NotImplementedError(f"Missing implementation for {output_format}")
 
@@ -2231,7 +2351,7 @@ def _prepare_symbolic_fraction(F):
     return G / frac_gcd, H / frac_gcd, variable_map
 
 
-def _prepare_direction_variable_order(F, r):
+def _dict_to_variable_order(F, d, default=1):
     r"""Converts a direction dictionary `r` to a direction vector in the variable order
     given by `F.variables()`
 
@@ -2242,7 +2362,9 @@ def _prepare_direction_variable_order(F, r):
     """
 
     vs = F.variables()
-    return [r.get(v, 1) for v in vs]
+    if default is None and any(v not in d for v in vs):
+        raise ValueError(f"Provided dictionary {d} is missing entries for some variables {vs}.")
+    return [d.get(v, default) for v in vs]
 
 def _prepare_expanded_polynomial_ring(variables, direction=None, include_t=True):
     r"""Prepare an auxiliary polynomial ring for computing diagonal asymptotics.
