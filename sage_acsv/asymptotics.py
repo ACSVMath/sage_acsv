@@ -1981,7 +1981,7 @@ def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False, r=None):
         sage: from sage_acsv import central_limit_theorem_combinatorial
         sage: var('z t')
         (z, t)
-        sage: central_limit_theorem_combinatorial(F = 1/(1-t-z*t^2), t, as_symbolic = True)
+        sage: central_limit_theorem_combinatorial(1/(1-t-z*t^2), t, as_symbolic = True)
         1.710862642974252?*(1/2*sqrt(5) + 1/2)^n*e^(1/8*(n*(sqrt(5) - 1) - 2*sqrt(5)*s0)*(n*(sqrt(5) - 5) + 10*s0)/n)/(sqrt(pi)*sqrt(n))
     """
 

@@ -665,7 +665,7 @@ def get_limit_theorem_terms(
         sage: from sage_acsv import central_limit_theorem_combinatorial
         sage: var('z t')
         (z, t)
-        sage: expr = central_limit_theorem_combinatorial(F = 1/(1-t-z*t^2), t)
+        sage: expr = central_limit_theorem_combinatorial(1/(1-t-z*t^2), t)
         sage: get_limit_theorem_terms(expr)
         [LimitTheoremTerm(coefficient=1.710862642974252?, pi_factor=1/sqrt(pi), base=1.618033988749895?, power=-0.5, density_symbolic=e^(-1/2*(-0.2763932022500211?*n + s0)*(-3.090169943749475?*n + 11.18033988749895?*s0)/n), density_covariance_matrix=[11.18033988749895?], density_mean_vector=[0.2763932022500211?])]
     """
@@ -681,7 +681,7 @@ def get_limit_theorem_terms(
         density_sym = exp(-(((s - n * mean_vec) * inv_hess * (s - n * mean_vec).transpose())[0, 0]) / 2 / n)
         base_terms = get_expansion_terms(growth_expr)
 
-        result = []
+        result = None
         for term in base_terms:
             lterm = LimitTheoremTerm(
                 coefficient=term.coefficient,
@@ -692,26 +692,11 @@ def get_limit_theorem_terms(
                 density_covariance_matrix=inv_hess,
                 density_mean_vector=mean_vec,
             )
-            result.append(lterm)
+            result = lterm
 
         return result
 
     elif isinstance(expr, Expression):
-        exponent_expr = expr.operands()[3].operands()[0] * n
-        zero_subbed_exp = exponent_expr.subs(n=0)
-        s_vars = zero_subbed_exp.variables()
-        cov_matrix = -matrix([
-            [zero_subbed_exp.derivative(v1, v2) for v2 in s_vars ] for v1 in s_vars
-        ])
-
-        one_subbed_exp = exponent_expr.subs(n=1)
-        eqs = [one_subbed_exp.derivative(v) == 0 for v in s_vars]
-        sols = solve(eqs, list(s_vars), solution_dict=True)
-        if sols:
-            mean_vec = matrix([[sols[0][v] for v in s_vars]])
-        else:
-            mean_vec = matrix([[0] * len(s_vars)])
-
         density_sym = None
         growth_operands = []
 
@@ -723,6 +708,32 @@ def get_limit_theorem_terms(
                 else:
                     growth_operands.append(op)
         
+        if density_sym is not None:
+            exponent_expr = density_sym.operands()[0] * n
+            zero_subbed_exp = exponent_expr.subs(n=0)
+            s_vars = zero_subbed_exp.variables()
+            cov_matrix = -matrix([
+                [zero_subbed_exp.derivative(v1, v2) for v2 in s_vars ] for v1 in s_vars
+            ])
+
+            if len(s_vars) > 0:
+                try:
+                    grad_n = matrix([[exponent_expr.derivative(v).derivative(n) for v in s_vars]])
+                    mean_vec = grad_n * cov_matrix.inverse()
+                except Exception:
+                    one_subbed_exp = exponent_expr.subs(n=1)
+                    eqs = [one_subbed_exp.derivative(v) == 0 for v in s_vars]
+                    sols = solve(eqs, list(s_vars), solution_dict=True)
+                    if sols:
+                        mean_vec = matrix([[sols[0][v] for v in s_vars]])
+                    else:
+                        mean_vec = matrix([[0] * len(s_vars)])
+            else:
+                mean_vec = matrix([[0] * len(s_vars)])
+        else:
+            cov_matrix = matrix([])
+            mean_vec = matrix([])
+
         if density_sym is not None and growth_operands:
             growth_expr = prod(growth_operands)
         elif density_sym is None:
@@ -732,7 +743,7 @@ def get_limit_theorem_terms(
 
         base_terms = get_expansion_terms(growth_expr)
 
-        result = []
+        result = None
         for term in base_terms:
             lterm = LimitTheoremTerm(
                 coefficient=term.coefficient,
@@ -743,7 +754,7 @@ def get_limit_theorem_terms(
                 density_covariance_matrix=cov_matrix,
                 density_mean_vector=mean_vec,
             )
-            result.append(lterm)
+            result = lterm
 
         return result
     else:
