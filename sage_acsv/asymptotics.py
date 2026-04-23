@@ -1967,7 +1967,7 @@ def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False, r=None):
     * ``as_symbolic`` -- If ``True``, returns the limit theorem as an expression from the symbolic
         ring ``SR`` in the variable ``n``. If ``False``, the default, returns a tuple 
         (a, n^b, pi^b, C, D, v) such that the local central limit theorem is specified by the
-        function f(s) = a^n * n^b * pi^b * C * exp(-((s-n*v)*D*(s-n*v).transpose())/2/n)
+        function ``f(s) = a^n * n^b * pi^b * C * exp(-((s-n*v)*D*(s-n*v).transpose())/2/n)``
     * ``r`` -- (Optional) A dictionary specifying the variables in the direction vector. If not provided, the direction is
         determined by ``H.variables()``.
 
@@ -1975,6 +1975,14 @@ def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False, r=None):
 
     A representation of the local central limit theorem, either as a list of tuples,
     or as a symbolic expression.
+
+    EXAMPLES::
+
+        sage: from sage_acsv import central_limit_theorem_combinatorial
+        sage: var('z t')
+        (z, t)
+        sage: central_limit_theorem_combinatorial(F = 1/(1-t-z*t^2), t, as_symbolic = True)
+        1.710862642974252?*(1/2*sqrt(5) + 1/2)^n*e^(1/8*(n*(sqrt(5) - 1) - 2*sqrt(5)*s0)*(n*(sqrt(5) - 5) + 10*s0)/n)/(sqrt(pi)*sqrt(n))
     """
 
     if (isinstance(r, dict)):
