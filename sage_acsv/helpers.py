@@ -663,11 +663,12 @@ def get_limit_theorem_terms(
     EXAMPLES::
 
         sage: from sage_acsv import central_limit_theorem_combinatorial
+        sage: from sage_acsv.helpers import get_limit_theorem_terms
         sage: var('z t')
         (z, t)
-        sage: expr = central_limit_theorem_combinatorial(1/(1-t-z*t^2), t)
+        sage: expr = central_limit_theorem_combinatorial(1/(1-t-z*t^2), t, as_symbolic=True)
         sage: get_limit_theorem_terms(expr)
-        [LimitTheoremTerm(coefficient=1.710862642974252?, pi_factor=1/sqrt(pi), base=1.618033988749895?, power=-0.5, density_symbolic=e^(-1/2*(-0.2763932022500211?*n + s0)*(-3.090169943749475?*n + 11.18033988749895?*s0)/n), density_covariance_matrix=[11.18033988749895?], density_mean_vector=[0.2763932022500211?])]
+        LimitTheoremTerm(coefficient=1.710862642974252?, pi_factor=1/sqrt(pi), base=1.618033988749895?, power=-0.5, density_symbolic=e^(-1/2*(-0.2763932022500211?*n + s0)*(-3.090169943749475?*n + 11.18033988749895?*s0)/n), density_covariance_matrix=[11.18033988749895?], density_mean_vector=[0.2763932022500211?])
     """
     from sage.functions.log import exp
 
