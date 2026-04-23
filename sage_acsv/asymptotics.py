@@ -1982,7 +1982,7 @@ def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False, r=None):
         sage: var('z t')
         (z, t)
         sage: central_limit_theorem_combinatorial(1/(1-t-z*t^2), t, as_symbolic = True)
-        1.710862642974252?*(1/2*sqrt(5) + 1/2)^n*e^(1/8*(n*(sqrt(5) - 1) - 2*sqrt(5)*s0)*(n*(sqrt(5) - 5) + 10*s0)/n)/(sqrt(pi)*sqrt(n))
+        1.710862642974252?*(1/2*sqrt(5) + 1/2)^n*e^(-1/2*(-0.2763932022500211?*n + s0)*(-3.090169943749475?*n + 11.18033988749895?*s0)/n)/(sqrt(pi)*sqrt(n))
     """
 
     if (isinstance(r, dict)):
@@ -2089,10 +2089,7 @@ def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False, r=None):
         if d.degree() <= 2:
             d = constant.radical_expression()
             
-        if max([AA(k).degree() for k in e.list()] + [AA(k).degree() for k in m[:-1]]) <=2:
-            sfactor = exp(-(((s-n*f)*e*(s-n*f).transpose())[0,0]).simplify()/2/n)
-        else: 
-            sfactor = exp(-(((s-n*f)*e*(s-n*f).transpose())[0,0])/2/n)
+        sfactor = exp(-(((s-n*f)*e*(s-n*f).transpose())[0,0])/2/n)
         
         result = a**n * b * c * d * sfactor
 
