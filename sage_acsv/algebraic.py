@@ -22,12 +22,40 @@ def algebraic_diagonal(f, params=[], output_vars=None):
     A polynomial P(t,y) in K[t][y] such that the diagonal d(t) of f satisfies P(t,d(t)) = 0,
     where output_vars = (t,y). Note, in particular, that the dependent variable for the diagonal
     is the first element of output_vars.
-    """
 
-    # TODO: Verify local variable names don't clash with input variables
-    # TODO: Take more care with variable names in final section of code
-    # TODO: Fix case with parameters (need to use proof.WithProof('polynomial', False) when factoring) 
+    EXAMPLES::
+
+        sage: from sage_acsv.algebraic import algebraic_diagonal
+        sage: var('x y')
+        sage: algebraic_diagonal(1 / (1 - x - y))
+        (t - 1/4)*y^2 + 1/4
+
+    ::
+        sage: var('x y')
+        sage: algebraic_diagonal(1/(1-x-y-x*y))
+        (t^2 - 6*t + 1)*y^2 - 1
+
+    ::
+        sage: var('x y')
+        sage: A = (1-x)*(1-y)
+        sage: B = 1-2*x-2*y+2*x*y
+        sage: algebraic_diagonal(A/B)
+        (t^2 - 3*t + 1/4)*y^2 + (-t^2 + 3*t - 1/4)*y + 1/4*t^2 - 3/4*t
     
+    ::
+        sage: var('x y')
+        sage: A = 2*y^3*x + 3*y^2*x + 2*y*x - y + x - 1
+        sage: B = y^2*x + 2*y*x + x - 1
+        sage: algebraic_diagonal(A/B)
+        t*y^2 - y + 1
+    
+    ::
+        sage: var('x y')
+        sage: A = 2*x^2*y*(2*x^5*y^2 - 3*x^3*y + x + 2*x^2*y - 1)
+        sage: B = x^5*y^2 + 2*x^2*y - 2*x^3*y + 4*y + x - 2
+        sage: algebraic_diagonal(A/B)
+        y^4 - 2*y^3 + (2*t + 1)*y^2 - 2*t*y + 4*t^3
+    """
     # Extract variables and define ring structure
     f_variables = [v for v in f.variables() if v not in params]
 
