@@ -290,10 +290,10 @@ def compute_newton_series_general(phis, variables, series_precision):
     Y = variables[-s:]
 
     def ModX(Fs, N):
-        return vector([F.mod(Ideal(X) ** N) for F in Fs])
+        return vector([sum([c*f for c,f in F if sum([f.degree(x) for x in X]) < N]) for F in Fs])
 
     def ModY(Fs, N):
-        return vector([F.mod(Ideal(Y) ** N) for F in Fs])
+        return vector([sum([c*f for c,f in F if sum([f.degree(y) for y in Y]) < N]) for F in Fs])
 
     def Mod(Fs, N):
         return ModX(ModY(Fs, N), N)
