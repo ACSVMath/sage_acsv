@@ -139,6 +139,7 @@ from sage.symbolic.ring import SR
 from sage_acsv.kronecker import _kronecker_representation
 from sage_acsv.helpers import (
     ACSVException,
+    Term,
     is_contributing,
     compute_newton_series,
     compute_newton_series_general,
@@ -342,6 +343,13 @@ def _diagonal_asymptotics_combinatorial_smooth(
         if output_format == ACSVSettings.Output.SYMBOLIC:
             result = sum([a**n * b * c * d for (a, b, c, d) in result])
 
+    elif output_format == ACSVSettings.Output.TERMS:
+        result = [
+            Term(constant*expansion, pi ** exponent, base, exponent) 
+            for (base, exponent, constant, expansion) in asm_vals
+            if constant*expansion != 0
+        ]
+
     elif output_format == ACSVSettings.Output.ASYMPTOTIC:
         AR = AsymptoticRing("QQbar^n * n^QQ", QQbar)
         n = AR.gen()
@@ -525,6 +533,16 @@ def diagonal_asymptotics_combinatorial(
         1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2))
         sage: growth.parent()
         Asymptotic Ring <(Algebraic Real Field)^n * n^QQ * (Arg_(Algebraic Field))^n> over Symbolic Ring
+
+    The argument ``"terms"`` lets the function return a list of Term objects. See ``sage_acsv.helpers.Term`` for
+    a type definition. The output given here should match that of using :func:`.get_expansion_terms`::
+
+        sage: from sage_acsv import get_expansion_terms
+        sage: growth_symbolic = diagonal_asymptotics_combinatorial(1/(1 - x - y), output_format="asymptotic")
+        sage: growth_terms = diagonal_asymptotics_combinatorial(1/(1 - x - y), output_format="terms"); growth_terms
+        [Term(coefficient=1, pi_factor=1/sqrt(pi), base=4, power=-1/2)]
+        sage: get_expansion_terms(growth_symbolic) == growth_terms
+        True
 
     Increasing the precision of the expansion returns an expansion with more terms
     (works for all available output formats)::
@@ -2288,6 +2306,13 @@ def _compute_asymptotics_at_points(
         ]
         if output_format == ACSVSettings.Output.SYMBOLIC:
             result = sum([a**n * b * c * d for (a, b, c, d) in result])
+
+    elif output_format == ACSVSettings.Output.TERMS:
+        result = [
+            Term(constant*expansion, (pi ** (s - d)).sqrt(), base, exponent) 
+            for (base, exponent, constant, expansion, s) in asm_vals
+            if constant*expansion != 0
+        ]
 
     elif output_format == ACSVSettings.Output.ASYMPTOTIC:
         AR = AsymptoticRing("QQbar^n * n^QQ", QQbar)

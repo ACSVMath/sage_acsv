@@ -23,6 +23,7 @@ class OutputFormat(Enum):
     ASYMPTOTIC = "asymptotic"
     SYMBOLIC = "symbolic"
     TUPLE = "tuple"
+    TERMS = "terms"
 
 
 class KroneckerBackend(Enum):
@@ -79,7 +80,8 @@ class ACSVSettings:
         sage: list(ACSVSettings.Output)
         [<OutputFormat.ASYMPTOTIC: 'asymptotic'>,
          <OutputFormat.SYMBOLIC: 'symbolic'>,
-         <OutputFormat.TUPLE: 'tuple'>]
+         <OutputFormat.TUPLE: 'tuple'>,
+         <OutputFormat.TERMS: 'terms'>]
         sage: ACSVSettings.Output.ASYMPTOTIC
         <OutputFormat.ASYMPTOTIC: 'asymptotic'>
         sage: ACSVSettings.set_default_output_format("tuple")
