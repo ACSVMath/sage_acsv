@@ -1,5 +1,6 @@
 from sage.all import Ideal, SR, PolynomialRing, Set
 from sage.all import prod, xgcd, jacobian
+from sage.arith.functions import lcm
 
 from copy import copy
 
@@ -241,9 +242,9 @@ def compute_cohomology_decomposition(R, G, H):
         sage: compute_cohomology_decomposition(R, 1, (x*y-1)*(x^2+y^2-1)^2)
         (-4/3*x^2*y^2 + 4/3*x*y + 1/3, x^3*y + x*y^3 - x^2 - x*y - y^2 + 1)
     """
-    G,H = rational_function_reduce(G,H)
     if len(H.factor()) == 0:
         return G,H
+    G = SR(G)
 
     Hs, multiplicities = zip(*list(H.factor()))
     Hs, multiplicities = list(Hs), list(multiplicities)
@@ -310,7 +311,9 @@ def compute_cohomology_decomposition(R, G, H):
     # Now decompose each term
     for num, denom, mults in tmp_terms:
         denom = prod([denom[i] ** mults[i] for i in range(len(denom))])
-        decomp_terms.append(compute_cohomology_decomposition(R, R(num), R(denom)))
+        decomp_terms.append(compute_cohomology_decomposition(R, num, R(denom)))
 
-    new_F = sum([new_G/new_H for new_G, new_H in decomp_terms])
-    return new_F.numerator(), new_F.denominator()
+    newH = lcm([H_ for _, H_ in decomp_terms])
+    newG = sum([G_*SR(newH)/H_ for G_, H_ in decomp_terms]).simplify_full()
+    #new_F = sum([new_G/new_H for new_G, new_H in decomp_terms])
+    return newG, newH
