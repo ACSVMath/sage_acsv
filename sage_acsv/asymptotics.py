@@ -127,6 +127,7 @@ from sage.misc.misc_c import prod
 from sage.misc.prandom import shuffle
 from sage.modules.free_module_element import vector
 from sage.rings.asymptotic.asymptotic_ring import AsymptoticRing
+from sage.rings.complex_interval_field import ComplexIntervalField
 from sage.rings.ideal import Ideal
 from sage.rings.imaginary_unit import I
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
@@ -1161,7 +1162,7 @@ def contributing_points_combinatorial_smooth(G, H, variables, r=None, linear_for
     Pt, _ = P.quo_rem(one_minus_t)
     rts_t_zo = list(
         filter(
-            lambda k: (Qt / Pd).subs(u_=k) > 0 and (Qt / Pd).subs(u_=k) < 1,
+            lambda k: _subs(Qt, u_, k) / _subs(Pd, u_, k) > 0 and _subs(Qt, u_, k) / _subs(Pd, u_, k) < 1,
             Pt.roots(AA, multiplicities=False),
         )
     )
@@ -2585,3 +2586,8 @@ def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False, r=None):
         result = a**n * b * c * d * sfactor
 
     return result
+
+def _subs(F, u, k):
+    CIF = ComplexIntervalField()
+    a = F.subs({u:k}); CIF(a)
+    return a
