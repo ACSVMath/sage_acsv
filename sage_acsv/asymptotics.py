@@ -653,7 +653,7 @@ def diagonal_asymptotics_combinatorial(
             output_format=output_format,
             as_symbolic=as_symbolic,
         )
-    if all([f.degree() == 1 for f, _ in R(H).factor()]):
+    if all(f.degree() == 1 for f, _ in R(H).factor()):
         return diagonal_asymptotics_hyperplane(
             F,
             r=r,
@@ -668,8 +668,6 @@ def diagonal_asymptotics_combinatorial(
 
     vs = [expanded_R(v) for v in vs]
     t, lambda_, u_ = expanded_R(t), expanded_R(lambda_), expanded_R(u_)
-
-    d = len(vs)
 
     # Make sure G and H are coprime, and that H does not vanish at 0
     G, H = rational_function_reduce(G, H)
@@ -833,6 +831,7 @@ def _general_term_asymptotics_smooth(G, H, r, vs, cp, expansion_precision):
 
     return res
 
+
 def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
     r"""
     Compute coefficients of general (not necessarily leading) terms of
@@ -890,10 +889,10 @@ def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
     )
 
     leading_term = (
-        _general_term_asymptotics_smooth(G, prod(Hs+Hs_ext), r, vs, cp, 1)[0] 
-        if s == 1 else 
-        SR(G.subs(subs_dict) * abs(prod([v for v in vs[: d - s]]).subs(subs_dict)) 
-        / abs(Gamma.determinant().subs(subs_dict)))
+        _general_term_asymptotics_smooth(G, prod(Hs+Hs_ext), r, vs, cp, 1)[0]
+        if s == 1 else
+        SR(G.subs(subs_dict) * abs(prod([v for v in vs[: d - s]]).subs(subs_dict))
+           / abs(Gamma.determinant().subs(subs_dict)))
         / prod(Hs_ext).subs(subs_dict)
     )
 
@@ -937,7 +936,7 @@ def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
     for i in range(s):
         tsubs[vs[d-s+i]] = gs[i].subs(tsubs)
 
-    psi = sum([r[d-s+i]*log(g.subs(tsubs)/ g.subs(subs_dict)) for i, g in enumerate(gs)]).add_bigoh(N)
+    psi = sum([r[d-s+i]*log(g.subs(tsubs) / g.subs(subs_dict)) for i, g in enumerate(gs)]).add_bigoh(N)
     psi += I * sum([r[k] * tvars[k] for k in range(d - s)])
     v = matrix(TR, [tvars[k] for k in range(d - s)])
     psiTilde = psi - (v * Hess.change_ring(TR) * v.transpose())[0, 0] / 2
@@ -983,6 +982,7 @@ def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
     else:
         raise ACSVException("Issue with computing general terms - this should never happen.")
 
+
 def _general_term_asymptotics_complete_intersection_hyplerplane(G, Hs, exps, r, vs, cp, expansion_precision):
     r"""
     Compute coefficients of general (not necessarily leading) terms of the asymptotic expansion for a given critical
@@ -1007,13 +1007,13 @@ def _general_term_asymptotics_complete_intersection_hyplerplane(G, Hs, exps, r, 
 
     List of coefficients of the asymptotic expansion.
 
-    EXAMPLES:: 
+    EXAMPLES::
 
         sage: from sage_acsv.asymptotics import _general_term_asymptotics_complete_intersection_hyplerplane
         sage: R.<x, y> = QQ[]
         sage: _general_term_asymptotics_complete_intersection_hyplerplane(1, [3-2*x-y, 3-x-2*y], [2, 3], [1, 1], [x, y], [1, 1], 2)
         [-1/162, 0]
-    
+
         sage: from sage_acsv.asymptotics import _general_term_asymptotics_complete_intersection_hyplerplane
         sage: R.<x, y> = QQ[]
         sage: _general_term_asymptotics_complete_intersection_hyplerplane(1, [3-2*x-y, 3-x-2*y], [2, 3], [1, 1], [x, y], [1, 1], 5)
@@ -1039,7 +1039,7 @@ def _general_term_asymptotics_complete_intersection_hyplerplane(G, Hs, exps, r, 
     # Take exp(log) for efficiency
     tsubs = {v: subs_dict[v] - (M.inverse() * vector(tvars))[i] for i, v in enumerate(vs)}
     GSeries = G.subs(tsubs)/prod([tsubs[v] for v in vs]).add_bigoh(N)
-    unit = GSeries.coefficients().get(QQbar(1),0)
+    unit = GSeries.coefficients().get(QQbar.one(), 0)
     log_series = log(
         GSeries/unit
     ).add_bigoh(N) - sum([
@@ -1051,13 +1051,13 @@ def _general_term_asymptotics_complete_intersection_hyplerplane(G, Hs, exps, r, 
     # Then, substitute t=0 to get polynomial part
     for i in range(len(exps)):
         Pseries = Pseries.derivative(tvars[i], exps[i]-1) / factorial(exps[i]-1)
-    
+
     R = PolynomialRing(QQbar, [n])
     Pseries = R(Pseries.subs({t: 0 for t in tvars}).polynomial())
 
     # Return the coefficients of the resulting power series in n
     return [Pseries.coefficient(k)/M.determinant() for k in range(sum(exps)-len(vs)+1)][::-1][:expansion_precision]
-    
+
 
 def contributing_points_combinatorial_smooth(G, H, variables, r=None, linear_form=None):
     r"""Compute contributing points of a multivariate
@@ -1156,14 +1156,14 @@ def contributing_points_combinatorial_smooth(G, H, variables, r=None, linear_for
         v = [(q / Pd).subs(u_=u) for q in Qs[: len(vs)]]
         rv = {
             ri: (q / Pd).subs(u_=u)
-            for (ri, q) in zip(r_variable_values, Qs[len(vs) : -2])
+            for (ri, q) in zip(r_variable_values, Qs[len(vs):-2])
         }
-        if any([rv[ri] != ri_value for ri, ri_value in r_variable_values.items()]):
+        if any(rv[ri] != ri_value for ri, ri_value in r_variable_values.items()):
             continue
-        if any([value <= 0 for value in v[: len(vs)]]):
+        if any(value <= 0 for value in v[: len(vs)]):
             continue
         for pt in non_min:
-            if all([a == b for (a, b) in zip(v, pt)]):
+            if all(a == b for a, b in zip(v, pt)):
                 is_min = False
                 break
         if is_min:
@@ -1180,7 +1180,7 @@ def contributing_points_combinatorial_smooth(G, H, variables, r=None, linear_for
             pos_minimals.pop(i)
 
     # Verify necessary assumptions
-    if len(pos_minimals) == 0:
+    if not pos_minimals:
         raise ACSVException("No smooth minimal critical points found.")
     elif len(pos_minimals) > 1:
         raise ACSVException(
@@ -1195,11 +1195,11 @@ def contributing_points_combinatorial_smooth(G, H, variables, r=None, linear_for
         v = [(q / Pd).subs(u_=u) for q in Qs[: len(vs)]]
         rv = {
             ri: (q / Pd).subs(u_=u)
-            for (ri, q) in zip(r_variable_values, Qs[len(vs) : -2])
+            for (ri, q) in zip(r_variable_values, Qs[len(vs):-2])
         }
-        if any([rv[r_var] != r_value for r_var, r_value in r_variable_values.items()]):
+        if any(rv[r_var] != r_value for r_var, r_value in r_variable_values.items()):
             continue
-        if all([a.abs() == b.abs() for (a, b) in zip(minCP, v)]):
+        if all(a.abs() == b.abs() for a, b in zip(minCP, v)):
             minimals.append(u)
 
     # Get minimal point coords, and make exact if possible
@@ -1330,16 +1330,16 @@ def _find_contributing_points_combinatorial(
                 v = [(q / Pd).subs(u_=u) for q in Qs[: len(vs)]]
                 rv = {
                     ri: (q / Pd).subs(u_=u)
-                    for (ri, q) in zip(r_variable_values, Qs[len(vs) : -2])
+                    for (ri, q) in zip(r_variable_values, Qs[len(vs):-2])
                 }
                 if any(
-                    [rv[ri] != ri_value for ri, ri_value in r_variable_values.items()]
+                    rv[ri] != ri_value for ri, ri_value in r_variable_values.items()
                 ):
                     continue
-                if any([value <= 0 for value in v[: len(vs)]]):
+                if any(value <= 0 for value in v[: len(vs)]):
                     continue
                 for pt in non_min:
-                    if all([a == b for (a, b) in zip(v, pt)]):
+                    if all(a == b for (a, b) in zip(v, pt)):
                         is_min = False
                         break
                 if is_min:
@@ -1359,7 +1359,7 @@ def _find_contributing_points_combinatorial(
             for u in one_minus_t.roots(QQbar, multiplicities=False):
                 rv = {
                     ri: (q / Pd).subs(u_=u)
-                    for (ri, q) in zip(r_variable_values, Qs[len(vs) : -2])
+                    for (ri, q) in zip(r_variable_values, Qs[len(vs):-2])
                 }
                 if any(
                     rv[r_var] != r_value for r_var, r_value in r_variable_values.items()
@@ -1408,7 +1408,7 @@ def _find_contributing_points_combinatorial(
     for d in reversed(range(len(critical_point_ideals))):
         for w in critical_points_by_stratum[d]:
             if all(
-                [abs(w_i) == abs(min_i) for w_i, min_i in zip(w, minimal)]
+                    abs(w_i) == abs(min_i) for w_i, min_i in zip(w, minimal)
             ) and is_contributing(vs, w, r, all_factors, len(vs) - d):
                 contributing_points.append(w)
 
@@ -1422,9 +1422,9 @@ def contributing_points_combinatorial(
     whitney_strat=None,
 ):
     r"""Compute contributing points of a multivariate
-    rational function `F=G/H` admitting a finite number of critical points. 
+    rational function `F=G/H` admitting a finite number of critical points.
 
-    The function is assumed to have a combinatorial expansion. 
+    The function is assumed to have a combinatorial expansion.
 
     INPUT:
 
@@ -1463,7 +1463,7 @@ def contributing_points_combinatorial(
     """
     if isinstance(r, dict):
         r = _dict_to_variable_order(F, r)
-   
+
     G, H, variable_map = _prepare_symbolic_fraction(F)
     variables = list(variable_map.values())
     if whitney_strat is not None:
@@ -1627,16 +1627,16 @@ def minimal_critical_points_combinatorial(
                 v = [(q / Pd).subs(u_=u) for q in Qs[: len(vs)]]
                 rv = {
                     ri: (q / Pd).subs(u_=u)
-                    for (ri, q) in zip(r_variable_values, Qs[len(vs) : -2])
+                    for (ri, q) in zip(r_variable_values, Qs[len(vs):-2])
                 }
                 if any(
-                    [rv[ri] != ri_value for ri, ri_value in r_variable_values.items()]
+                    rv[ri] != ri_value for ri, ri_value in r_variable_values.items()
                 ):
                     continue
-                if any([value <= 0 for value in v[: len(vs)]]):
+                if any(value <= 0 for value in v[: len(vs)]):
                     continue
                 for pt in non_min:
-                    if all([a == b for (a, b) in zip(v, pt)]):
+                    if all(a == b for a, b in zip(v, pt)):
                         is_min = False
                         break
                 if is_min:
@@ -1646,7 +1646,7 @@ def minimal_critical_points_combinatorial(
             for u in one_minus_t.roots(QQbar, multiplicities=False):
                 rv = {
                     ri: (q / Pd).subs(u_=u)
-                    for (ri, q) in zip(r_variable_values, Qs[len(vs) : -2])
+                    for (ri, q) in zip(r_variable_values, Qs[len(vs):-2])
                 }
                 if any(
                     rv[r_var] != r_value for r_var, r_value in r_variable_values.items()
@@ -1663,8 +1663,8 @@ def minimal_critical_points_combinatorial(
     minimal_criticals = []
     for w in critical_points:
         if any(
-            all([abs(w_i) == abs(min_i) for w_i, min_i in zip(w, minimal)])
-            for minimal in pos_minimals
+                all(abs(w_i) == abs(min_i) for w_i, min_i in zip(w, minimal))
+                for minimal in pos_minimals
         ):
             minimal_criticals.append(w)
 
@@ -1783,7 +1783,7 @@ def critical_points(F, r=None, linear_form=None, whitney_strat=None):
             for u in P.roots(QQbar, multiplicities=False):
                 rv = {
                     ri: (q / Pd).subs(u_=u)
-                    for (ri, q) in zip(r_variable_values, Qs[len(vs) : -1])
+                    for (ri, q) in zip(r_variable_values, Qs[len(vs):-1])
                 }
                 if any(
                     rv[r_var] != r_value for r_var, r_value in r_variable_values.items()
@@ -1797,6 +1797,7 @@ def critical_points(F, r=None, linear_form=None, whitney_strat=None):
                 critical_points.append(w)
 
     return critical_points
+
 
 def diagonal_asymptotics_hyperplane(
     F,
@@ -1812,7 +1813,7 @@ def diagonal_asymptotics_hyperplane(
 
     INPUT:
 
-    * ``F`` -- The rational function `G/H` in `d` variables. 
+    * ``F`` -- The rational function `G/H` in `d` variables.
     * ``r`` -- (Optional) A vector or dictionary of length `d` of positive algebraic numbers.
       Defaults to the appropriate vector of all 1's if not specified.
       If a vector is given, assumes the variable order is given by ``F.variables()``.
@@ -1932,7 +1933,7 @@ def diagonal_asymptotics_hyperplane(
     Hs = [f for f, _ in H.factor()]
     if H.subs({v: 0 for v in H.variables()}) == 0:
         raise ValueError("Denominator vanishes at 0.")
-    if any([f.degree() > 1 for f in Hs]):
+    if any(f.degree() > 1 for f in Hs):
         raise ValueError("H does not define a hyperplane arrangement.")
 
     minimal_contributing_points = []
@@ -1946,21 +1947,20 @@ def diagonal_asymptotics_hyperplane(
     # Determine which critical points are contributing
     contributing_height = None
     for cp, h in cps_by_height:
-        subs_dict = {vs[i]:cp[i] for i in range(d)}
+        subs_dict = {vs[i]: cp[i] for i in range(d)}
 
         factors = [f for f in Hs if f.subs(subs_dict) == 0]
         # If contributing_height != None, then a contributing point has been found. Any other contributing points
         # of larger height are just for the error bound, so they don't need to be generic.
-        if is_contributing(vs, cp, r, factors, len(factors), contributing_height != None and h > contributing_height):
+        if is_contributing(vs, cp, r, factors, len(factors), contributing_height is not None and h > contributing_height):
             if contributing_height is None or h == contributing_height:
                 contributing_height = h
                 minimal_contributing_points.append(cp)
             else:
                 next_cps.append(cp)
                 next_heights.append(h)
- 
 
-    if len(minimal_contributing_points) == 0:
+    if not minimal_contributing_points:
         raise ACSVException("No contributing points found.")
 
     result = _compute_asymptotics_at_points(
@@ -1971,7 +1971,7 @@ def diagonal_asymptotics_hyperplane(
     if output_format == OutputFormat.ASYMPTOTIC:
         n = result.parent().gen()
         for next_cp, next_height in zip(next_cps, next_heights):
-            subs_dict = {vs[i]:next_cp[i] for i in range(d)}
+            subs_dict = {vs[i]: next_cp[i] for i in range(d)}
             multiplicities = [p for f, p in H.factor() if f.subs(subs_dict) == 0]
             result = result + (((1/abs(next_height)) ** n) * (n ** (QQ((-len(Hs)-d)/2 + sum(multiplicities))))).O()
 
@@ -1979,6 +1979,7 @@ def diagonal_asymptotics_hyperplane(
         return result, minimal_contributing_points
 
     return result
+
 
 def compute_asymptotics_at_points(
     F,
@@ -2019,7 +2020,7 @@ def compute_asymptotics_at_points(
 
     OUTPUT:
 
-    A representation of the asymptotic contributions from the ``contributing_points`` 
+    A representation of the asymptotic contributions from the ``contributing_points``
     of the coefficient array of `F` along the specified direction.
 
     EXAMPLES::
@@ -2061,13 +2062,14 @@ def compute_asymptotics_at_points(
     G, H = rational_function_reduce(G, H)
     G, H = R(G), R(H)
     return _compute_asymptotics_at_points(
-        G, H, 
-        vs, 
-        r, 
-        contributing_points, 
+        G, H,
+        vs,
+        r,
+        contributing_points,
         expansion_precision,
         output_format
     )
+
 
 def _compute_asymptotics_at_points(
     G, H,
@@ -2107,10 +2109,10 @@ def _compute_asymptotics_at_points(
         is asymptotic output.
     * ``as_symbolic`` -- (Optional) deprecated in favor of the equivalent
       ``output_format="symbolic"``. Will be removed in a future release.
-    
+
     OUTPUT:
 
-    A representation of the asymptotic contributions from the ``contributing_points`` 
+    A representation of the asymptotic contributions from the ``contributing_points``
     of the coefficient array of `F` along the specified direction.
     """
     d = len(vs)
@@ -2161,7 +2163,7 @@ def _compute_asymptotics_at_points(
         for _ in range(s**2):
             Jac = matrix(
                 [
-                    [(v * Q.derivative(v)).subs(subs_dict) for v in vs[d - s :]]
+                    [(v * Q.derivative(v)).subs(subs_dict) for v in vs[d - s:]]
                     for Q in factors
                 ]
             )
@@ -2197,7 +2199,7 @@ def _compute_asymptotics_at_points(
             Det = compute_hessian(H, vs, r).determinant()
             B = SR(1 / Det.subs(subs_dict) / r[-1] ** (d - 1) / 2 ** (d - 1))
         # We now support higher order expansions for non-smooth non-complete intersections
-        elif all([p==1 for p in multiplicities]) and s != d:
+        elif all(p == 1 for p in multiplicities) and s != d:
             Qw = compute_implicit_hessian(factors, vs, r, subs=subs_dict)
             n = SR.var("n")
             expansion = sum(
@@ -2207,12 +2209,12 @@ def _compute_asymptotics_at_points(
                 )
             )/unit
             B = SR(
-                    1
-                    / Qw.determinant()
-                    / 2 ** (d - s)
-                )
+                1
+                / Qw.determinant()
+                / 2 ** (d - s)
+            )
         # When we have a complete intersection of hyperplanes, we know the degree of the polynomial expansion.
-        elif s == d and all([f.degree() == 1 for f in factors]):
+        elif s == d and all(f.degree() == 1 for f in factors):
             n = SR.var("n")
             expansion = sum(
                 term / n**term_order
@@ -2235,7 +2237,7 @@ def _compute_asymptotics_at_points(
                 Qw = compute_implicit_hessian(factors, vs, r, subs=subs_dict)
                 expansion = SR(
                     abs(prod([v for v in vs[: d - s]]).subs(subs_dict)) * G.subs(subs_dict)
-                    / abs(Gamma.determinant()) 
+                    / abs(Gamma.determinant())
                     / unit / R(prod(extra_factors)).subs(subs_dict)
                 )
                 B = SR(
@@ -2245,7 +2247,7 @@ def _compute_asymptotics_at_points(
                 )
             else:
                 expansion = SR(
-                    G.subs(subs_dict) 
+                    G.subs(subs_dict)
                     / unit / abs(Gamma.determinant())
                     / R(prod(extra_factors)).subs(subs_dict)
                 )
@@ -2325,12 +2327,13 @@ def _compute_asymptotics_at_points(
 
         # For complete intersections, the error bound is actually exponentially smaller after a certain precision
         # But we can currently only represent this for hyplerplane intersections
-        if s == d and all([f.degree() == 1 for f in factors]) and expansion_precision > sum(multiplicities) - d:
+        if s == d and all(f.degree() == 1 for f in factors) and expansion_precision > sum(multiplicities) - d:
             result = result.exact_part()
     else:
         raise NotImplementedError(f"Missing implementation for {output_format}")
 
     return result
+
 
 def _prepare_symbolic_fraction(F):
     r"""Extract polynomial numerators and denomiators from a symbolic fraction,
@@ -2366,6 +2369,7 @@ def _dict_to_variable_order(F, d, default=1):
     if default is None and any(v not in d for v in vs):
         raise ValueError(f"Provided dictionary {d} is missing entries for some variables {vs}.")
     return [d.get(v, default) for v in vs]
+
 
 def _prepare_expanded_polynomial_ring(variables, direction=None, include_t=True):
     r"""Prepare an auxiliary polynomial ring for computing diagonal asymptotics.
@@ -2420,7 +2424,7 @@ def _prepare_expanded_polynomial_ring(variables, direction=None, include_t=True)
 
 
 def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False, r=None):
-    r"""Take a multivariate rational generating function, check if it admits a 
+    r"""Take a multivariate rational generating function, check if it admits a
     minimal critical point of a form implying a local central limit theorem, and
     (if so) return the local central limit theorem.
 
@@ -2431,7 +2435,7 @@ def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False, r=None):
     * ``main_var`` -- The variable that marks the ``size`` of the objects (so that the limit
         theorem holds as the exponent of ``main_var`` goes to infinity).
     * ``as_symbolic`` -- If ``True``, returns the limit theorem as an expression from the symbolic
-        ring ``SR`` in the variable ``n``. If ``False``, the default, returns a tuple 
+        ring ``SR`` in the variable ``n``. If ``False``, the default, returns a tuple
         (a, n^b, pi^b, C, D, v) such that the local central limit theorem is specified by the
         function ``f(s) = a^n * n^b * pi^b * C * exp(-((s-n*v)*D*(s-n*v).transpose())/2/n)``
     * ``r`` -- (Optional) A dictionary specifying the variables in the direction vector. If not provided, the direction is
@@ -2451,7 +2455,7 @@ def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False, r=None):
         1.710862642974252?*(1/2*sqrt(5) + 1/2)^n*e^(-1/2*(-0.2763932022500211?*n + s0)*(-3.090169943749475?*n + 11.18033988749895?*s0)/n)/(sqrt(pi)*sqrt(n))
     """
 
-    if (isinstance(r, dict)):
+    if isinstance(r, dict):
         r = _prepare_direction_variable_order(F, r)
 
     G, H, variable_map = _prepare_symbolic_fraction(F)
@@ -2459,9 +2463,9 @@ def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False, r=None):
     main_var = variable_map[main_var]
     zvariables = [v for v in variable_map.values() if v != main_var]
 
-    R = PolynomialRing(QQ,zvariables + [main_var])
+    R = PolynomialRing(QQ, zvariables + [main_var])
     vs = R.gens()
-    
+
     # Make sure G and H are coprime, and that H does not vanish at 0
     G, H = rational_function_reduce(G, H)
     G, H = R(G), R(H)
@@ -2470,16 +2474,16 @@ def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False, r=None):
 
     # Find rho
     P = H.subs({v: 1 for v in vs[0:-1]})
-    rts = [rt for rt in QQ[vs[-1]](P).roots(AA, multiplicities=False) if rt>0]
-    if len(rts) == 0:
+    rts = [rt for rt in QQ[vs[-1]](P).roots(AA, multiplicities=False) if rt > 0]
+    if not rts:
         raise ValueError("H(1,rho)=0 has no positive solution.")
     rho = min(rts)
-    sbs = {v: 1 for v in vs[0:-1]} | {vs[-1]:rho}
+    sbs = {v: 1 for v in vs[0:-1]} | {vs[-1]: rho}
 
     # Check numerator and denominator requirements are met
     if (H.derivative(vs[-1])).subs(sbs) == 0:
         raise ValueError("The partial derivative of the denominator at (1, rho) is 0.")
-    
+
     if G.subs(sbs) == 0:
         raise ValueError("The numerator at (1, rho) is 0.")
 
@@ -2527,10 +2531,10 @@ def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False, r=None):
                 continue
             else:
                 raise e
-    
-    sbs = {v:1 for v in vsT[0:-3]} | {vsT[-3]:rho}
+
+    sbs = {v: 1 for v in vsT[0:-3]} | {vsT[-3]: rho}
     Hess = compute_hessian(H, vsT[0:-2], r)
-    Hess = Hess.subs({v:1 for v in Hess.base_ring().gens()[0:-4]} | {Hess.base_ring().gens()[-4]:rho})
+    Hess = Hess.subs({v: 1 for v in Hess.base_ring().gens()[0:-4]} | {Hess.base_ring().gens()[-4]: rho})
     Det = Hess.determinant()
 
     if Det == 0:
@@ -2543,20 +2547,20 @@ def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False, r=None):
 
     s = matrix((SR.var('s', n=d-1)))
     invHess = Hess.inverse()
-    
+
     n = SR.var('n')
     result = (base, n**exponent, pi**exponent, constant, invHess, matrix(m[:-1]))
-    
+
     if as_symbolic:
-        (a, b, c, d, e, f) = result
-        
+        a, b, c, d, e, f = result
+
         if a.degree() <= 2:
             a = base.radical_expression()
         if d.degree() <= 2:
             d = constant.radical_expression()
-            
-        sfactor = exp(-(((s-n*f)*e*(s-n*f).transpose())[0,0])/2/n)
-        
+
+        sfactor = exp(-(((s-n*f)*e*(s-n*f).transpose())[0, 0])/2/n)
+
         result = a**n * b * c * d * sfactor
 
     return result
