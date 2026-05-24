@@ -1,7 +1,4 @@
-from sage.misc.misc_c import prod
-from sage.rings.fraction_field import FractionField
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
-from sage.rings.power_series_ring import PowerSeriesRing
 from sage.rings.rational_field import QQ
 
 from sage_acsv.helpers import algebraic_residues, pure_composed_sum
@@ -9,6 +6,7 @@ from sage_acsv.helpers import algebraic_residues, pure_composed_sum
 
 def algebraic_diagonal(f, params=[], output_vars=None):
     r"""Compute annihilating polynomial for the (main) diagonal of a bivariate rational function.
+
     Taken from Algorithm 3 of Bostan, Dumont, and Salvy (2017).
 
     INPUT:
@@ -40,13 +38,13 @@ def algebraic_diagonal(f, params=[], output_vars=None):
         sage: B = 1-2*x-2*y+2*x*y
         sage: algebraic_diagonal(A/B)
         (t^2 - 3*t + 1/4)*y^2 + (-t^2 + 3*t - 1/4)*y + 1/4*t^2 - 3/4*t
-    
+
     ::
         sage: A = 2*y^3*x + 3*y^2*x + 2*y*x - y + x - 1
         sage: B = y^2*x + 2*y*x + x - 1
         sage: algebraic_diagonal(A/B)
         t*y^2 - y + 1
-    
+
     ::
         sage: A = 2*x^2*y*(2*x^5*y^2 - 3*x^3*y + x + 2*x^2*y - 1)
         sage: B = x^5*y^2 + 2*x^2*y - 2*x^3*y + 4*y + x - 2
@@ -56,44 +54,44 @@ def algebraic_diagonal(f, params=[], output_vars=None):
     # Extract variables and define ring structure
     f_variables = [v for v in f.variables() if v not in params]
 
-    if len(params) == 0:
+    if not params:
         K = QQ
     else:
         raise NotImplementedError("The case with parameters is still in progress")
-        
-    R = PolynomialRing(K, names = f_variables)
+
+    R = PolynomialRing(K, names=f_variables)
 
     # Verify f has two (non-parameter) variables
     if len(f_variables) != 2:
         raise ValueError("Input f needs to have exactly 2 non-parameter variables")
-        
+
     local_x, local_y = R.gens()
 
     # Verify f is a bivariate rational function (possibly with parameters)
     try:
         A, B = R(f.numerator()), R(f.denominator())
-    except:
+    except (TypeError, ValueError, AttributeError):
         raise ValueError("Input f not a rational function in all variables and parameters")
 
     # Compute needed quantities
-    dA = max(i - j for (i,j) in A.dict())
-    dB = max(i - j for (i,j) in B.dict())
+    dA = max(i - j for i, j in A.dict())
+    dB = max(i - j for i, j in B.dict())
     a = dB - dA - 1
 
     # Compute number of branches that go to 0 as the dependent variable goes to 0
-    pol = R(local_y**dB * B(local_x/local_y, local_y))
-    pol_star = prod([p for (p,_) in pol.factor()])
+    pol = R(local_y**dB * B(local_x / local_y, local_y))
+    pol_star = R.prod([p for p, _ in pol.factor()])
     pol_star_lowest = pol_star.polynomial(local_x)[pol_star.polynomial(local_x).valuation()]
     c = pol_star_lowest.polynomial(local_y).valuation()
 
     # Define quantities we use to compute residues
-    Kt = FractionField(PolynomialRing(K, 't'))
+    Kt = PolynomialRing(K, 't').fraction_field()
     t = Kt.gen()
     Kt_Y = PolynomialRing(Kt, 'Y')
     Y = Kt_Y.gen()
-    P = Y**dA * A(t/Y, Y)
-    Q = Y**dB * B(t/Y, Y)
-    
+    P = Y**dA * A(t / Y, Y)
+    Q = Y**dB * B(t / Y, Y)
+
     Pt = Kt_Y(P)
     Qt = Kt_Y(Q)
 
@@ -102,23 +100,23 @@ def algebraic_diagonal(f, params=[], output_vars=None):
         R = algebraic_residues(Pt, Y**(-a) * Qt, Qt)
     else:
         R = algebraic_residues(Y**a * Pt, Qt, Qt)
-    
+
     T = PolynomialRing(R.parent().base_ring(), 'Z')
     Z = T.gen()
     R = R(Z)
-    
-    Phi = (pure_composed_sum(R,c,'Z')).numerator()
-    
+
+    Phi = pure_composed_sum(R, c, 'Z').numerator()
+
     if a < 0:
-        r = algebraic_residues(Pt, Y**(-a)*Qt, Y**(-a))
+        r = algebraic_residues(Pt, Y**(-a) * Qt, Y**(-a))
         r = Phi.parent()(r)
-    
+
     # Determine desired output variables
     y = Phi.parent()(local_y)
-    if output_vars == None:
-        output_t, output_y  = (t, y)
+    if output_vars is None:
+        output_t, output_y = (t, y)
     elif len(output_vars) == 2:
-        output_t, output_y  = output_vars
+        output_t, output_y = output_vars
     else:
         raise ValueError("output_vars needs to specify exactly 2 variables")
 
