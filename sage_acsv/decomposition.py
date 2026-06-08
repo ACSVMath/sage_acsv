@@ -58,7 +58,6 @@ def compute_nullstellensatz_decomposition(R, G, H):
         [(-1, x*y + y), (1, x*y)]
     """
     G,H = rational_function_reduce(G,H)
-    G /= H.factor().unit()
 
     if len(H.factor()) == 0:
         return [(G,H)]
@@ -68,6 +67,7 @@ def compute_nullstellensatz_decomposition(R, G, H):
     if cert is None:
         return [(G, H)]
 
+    G /= H.factor().unit()
     decomp = []
     m = len(Hs)
     partial_decomp = [
@@ -152,7 +152,6 @@ def compute_algebraic_dependence_decomposition(R, G, H):
         [(2, x^2*y), (-x*y - 1, x^2*y), (y, x*y + 1)]
     """
     G,H = rational_function_reduce(G,H)
-    G /= H.factor().unit()
 
     if len(H.factor()) == 0:
         return [(G,H)]
@@ -163,6 +162,8 @@ def compute_algebraic_dependence_decomposition(R, G, H):
     #print(J)
     if not J:
         return [(G, H)]
+    
+    G /= H.factor().unit()
 
     decomp = []
     m = len(Hs)
@@ -252,6 +253,8 @@ def compute_cohomology_decomposition(R, G, H):
     if sum(multiplicities) <= n:
         # No decomposing possible.
         return G, H
+    
+    G /= H.factor().unit()
 
     # Otherwise decompose recursively.
     decomp_terms = []
