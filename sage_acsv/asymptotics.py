@@ -2213,8 +2213,8 @@ def _compute_asymptotics_at_points(
                     _general_term_asymptotics_smooth(G, H, r, vs, cp, expansion_precision)
                 )
             )
-            Det = compute_hessian(H, vs, r).determinant()
-            B = SR(1 / Det.subs(subs_dict) / r[-1] ** (d - 1) / 2 ** (d - 1))
+            Det = compute_hessian(H, vs, r, subs_dict).determinant()
+            B = SR(1 / Det / r[-1] ** (d - 1) / 2 ** (d - 1))
         # We now support higher order expansions for non-smooth non-complete intersections
         elif all([p==1 for p in multiplicities]) and s != d:
             Qw = compute_implicit_hessian(factors, vs, r, subs=subs_dict)
