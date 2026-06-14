@@ -889,7 +889,7 @@ def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
     )
 
     leading_term = (
-        _general_term_asymptotics_smooth(G, prod(Hs+Hs_ext), r, vs, cp, 1)[0]
+        _general_term_asymptotics_smooth(G, prod(Hs + Hs_ext), r, vs, cp, 1)[0]
         if s == 1 else
         SR(G.subs(subs_dict) * abs(prod([v for v in vs[: d - s]]).subs(subs_dict))
            / abs(Gamma.determinant().subs(subs_dict)))
@@ -977,10 +977,9 @@ def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
 
     if res[0] == leading_term:
         return res
-    elif res[0] == -leading_term:
+    if res[0] == -leading_term:
         return [-term for term in res]
-    else:
-        raise ACSVException("Issue with computing general terms - this should never happen.")
+    raise ACSVException("Issue with computing general terms - this should never happen.")
 
 
 def _general_term_asymptotics_complete_intersection_hyplerplane(G, Hs, exps, r, vs, cp, expansion_precision):
@@ -1656,22 +1655,17 @@ def minimal_critical_points_combinatorial(
                 w = [QQbar((q / Pd).subs(u_=u)) for q in Qs[: len(vs)]]
                 critical_points.append(w)
 
-    if len(pos_minimals) == 0:
+    if not pos_minimals:
         raise ACSVException("No critical points found.")
 
     # Characterize all complex contributing points
-    minimal_criticals = []
-    for w in critical_points:
-        if any(
-                all(abs(w_i) == abs(min_i) for w_i, min_i in zip(w, minimal))
-                for minimal in pos_minimals
-        ):
-            minimal_criticals.append(w)
+    minimal_criticals = (
+        w for w in critical_points
+        if any(all(abs(w_i) == abs(min_i) for w_i, min_i in zip(w, minimal))
+               for minimal in pos_minimals)
+    )
 
-    minimal_criticals = [
-        [collapse_zero_part(w_i) for w_i in w] for w in minimal_criticals
-    ]
-    return minimal_criticals
+    return [[collapse_zero_part(w_i) for w_i in w] for w in minimal_criticals]
 
 
 def critical_points(F, r=None, linear_form=None, whitney_strat=None):
@@ -1973,7 +1967,7 @@ def diagonal_asymptotics_hyperplane(
         for next_cp, next_height in zip(next_cps, next_heights):
             subs_dict = {vs[i]: next_cp[i] for i in range(d)}
             multiplicities = [p for f, p in H.factor() if f.subs(subs_dict) == 0]
-            result = result + (((1/abs(next_height)) ** n) * (n ** (QQ((-len(Hs)-d)/2 + sum(multiplicities))))).O()
+            result = result + (((1 / abs(next_height)) ** n) * (n ** (QQ((-len(Hs) - d) / 2 + sum(multiplicities))))).O()
 
     if return_points:
         return result, minimal_contributing_points
@@ -2203,11 +2197,11 @@ def _compute_asymptotics_at_points(
             Qw = compute_implicit_hessian(factors, vs, r, subs=subs_dict)
             n = SR.var("n")
             expansion = sum(
-                term/n ** term_order
+                term / n ** term_order
                 for term_order, term in enumerate(
                     _general_term_asymptotics(G, factors, extra_factors, r, vs, cp, expansion_precision)
                 )
-            )/unit
+            ) / unit
             B = SR(
                 1
                 / Qw.determinant()
@@ -2221,7 +2215,7 @@ def _compute_asymptotics_at_points(
                 for term_order, term in enumerate(
                     _general_term_asymptotics_complete_intersection_hyplerplane(G, factors, multiplicities, r, vs, cp, expansion_precision)
                 )
-            )/unit.subs(subs_dict)
+            ) / unit.subs(subs_dict)
             B = 1
         # Higher order expansions not currently supported for higher-order poles
         # In complete intersection case, error bound is actually exponentially lower, but we don't currently have
@@ -2481,24 +2475,24 @@ def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False, r=None):
     sbs = {v: 1 for v in vs[0:-1]} | {vs[-1]: rho}
 
     # Check numerator and denominator requirements are met
-    if (H.derivative(vs[-1])).subs(sbs) == 0:
+    if H.derivative(vs[-1]).subs(sbs) == 0:
         raise ValueError("The partial derivative of the denominator at (1, rho) is 0.")
 
     if G.subs(sbs) == 0:
         raise ValueError("The numerator at (1, rho) is 0.")
 
     # Get direction for LCLT
-    m = [H.derivative(v).subs(sbs)/(rho*H.derivative(vs[-1]).subs(sbs)) for v in vs[0:-1]] + [ZZ(1)]
+    m = [H.derivative(v).subs(sbs) / (rho * H.derivative(vs[-1]).subs(sbs)) for v in vs[0:-1]] + [ZZ.one()]
 
     # Determine direction type and set r accordingly
     if max([k.degree() for k in m[0:-1]]) == 1:
         multiple = lcm([QQ(k).denom() for k in m])
-        r = [ZZ(multiple*k) for k in m]
+        r = [ZZ(multiple * k) for k in m]
     else:
         r = m
 
-    _, (q, lambda_, u_) = PolynomialRing(QQ, 'q, lambda_, u_').objgens()
-    expanded_R, _ = PolynomialRing(QQ, len(vs)+3, vs + (q, lambda_, u_)).objgens()
+    q, lambda_, u_ = PolynomialRing(QQ, 'q, lambda_, u_').gens()
+    expanded_R = PolynomialRing(QQ, len(vs) + 3, vs + (q, lambda_, u_))
 
     vs = [expanded_R(v) for v in vs]
     q, lambda_, u_ = expanded_R(q), expanded_R(lambda_), expanded_R(u_)
@@ -2541,11 +2535,11 @@ def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False, r=None):
         raise ValueError("Hessian determinant is 0.")
 
     # Values appearing in asymptotics
-    base = 1/rho
-    constant = - AA(G.subs(sbs) / rho / H.derivative(vs[-1]).subs(sbs) / (2**(d-1) * Det).sqrt())
-    exponent = (1-d)/2
+    base = 1 / rho
+    constant = - AA(G.subs(sbs) / rho / H.derivative(vs[-1]).subs(sbs) / (2**(d - 1) * Det).sqrt())
+    exponent = (1 - d) / 2
 
-    s = matrix((SR.var('s', n=d-1)))
+    s = matrix((SR.var('s', n=d - 1)))
     invHess = Hess.inverse()
 
     n = SR.var('n')
@@ -2559,7 +2553,7 @@ def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False, r=None):
         if d.degree() <= 2:
             d = constant.radical_expression()
 
-        sfactor = exp(-(((s-n*f)*e*(s-n*f).transpose())[0, 0])/2/n)
+        sfactor = exp(-(((s - n * f) * e * (s - n * f).transpose())[0, 0]) / 2 / n)
 
         result = a**n * b * c * d * sfactor
 
