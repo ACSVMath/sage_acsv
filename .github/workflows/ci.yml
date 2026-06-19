@@ -30,6 +30,13 @@ jobs:
         shell: bash -l {0}
         run: |
           pip install --verbose .
+      - name: Debug sage version
+        shell: bash -l {0}
+        run: |
+          which sage
+          sage --version
+          mamba list | grep -i sage
+          sage -help
       - name: Run SageMath doctests
         shell: bash -l {0}
         run: |
