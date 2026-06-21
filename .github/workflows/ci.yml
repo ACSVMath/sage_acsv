@@ -23,8 +23,7 @@ jobs:
       - name: Install dependencies
         shell: bash -l {0}
         run: |
-          mamba install -n test sagelib=${{ matrix.sagelib }}
-          mamba install --quiet -n test numpy sympy gap-defaults matplotlib-base maxima ipywidgets
+          mamba install -n test sagelib=${{ matrix.sagelib }} numpy sympy gap-defaults matplotlib-base maxima ipywidgets
           conda list
       - name: Install sage-acsv
         shell: bash -l {0}
