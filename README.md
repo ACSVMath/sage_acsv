@@ -10,7 +10,7 @@ This repository hosts the implementation of a SageMath package
 containing algorithms for analytic combinatorics in several variables.
 
 The package works with any version of SageMath after 10.2, but we
-recommend to have SageMath 9.4 (released in August 2021) or newer.
+recommend to have SageMath 10.5 (released in December 2024) or newer.
 Documentation is available at <https://acsvmath.github.io/sage_acsv/>.
 
 
