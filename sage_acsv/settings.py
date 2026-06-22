@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from enum import Enum
 
-from sage.interfaces.macaulay2 import Macaulay2
-
 from sage_acsv.debug import acsv_logger
 
 
@@ -100,7 +98,7 @@ class ACSVSettings:
     _default_output_format = DEFAULT_OUTPUT_FORMAT
     _default_kronecker_backend = DEFAULT_KRONECKER_BACKEND
     _default_groebner_backend = DEFAULT_GROEBNER_BACKEND
-    _m2 = Macaulay2()
+    _m2 = None
 
     MAX_MIN_CRIT_RETRIES = 5  # Maximum number of retries for critical point detection
 
@@ -212,9 +210,13 @@ class ACSVSettings:
 
         * ``path`` -- a filepath string or `None` to run from anywhere
         """
+        from sage.interfaces.macaulay2 import Macaulay2
         cls._m2 = Macaulay2(command=path)
 
     @classmethod
     def get_macaulay2(cls) -> KroneckerBackend:
         """Get the Macaulay2 installation path."""
+        if cls._m2 is None:
+            from sage.interfaces.macaulay2 import Macaulay2
+            _m2 = Macaulay2()
         return cls._m2

@@ -25,6 +25,18 @@ dev = [
     "sphinx>=7,<8",
 ]
 
+[project.optional-dependencies]
+passagemath = [
+    "passagemath-graphs",
+    "passagemath-polyhedra",
+    "passagemath-singular",
+    "passagemath-symbolics",
+    "passagemath-repl",
+]
+macaulay2 = [
+    "passagemath-macaulay2",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
