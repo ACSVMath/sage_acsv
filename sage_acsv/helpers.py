@@ -533,7 +533,7 @@ def pure_composed_sum(P, c, var):
 
     # Compute terms in generating function for Newton Sum of P and take Hadamard product with exp(Y)
     # Note: for now S lies in K[[Y,Z]] even though it depends only on Y
-    NP = recP_der / (recP + O(Y**(D + 1)))
+    NP = recP_der / (recP + recP.parent()(O(Y**(D + 1)))) # convert everything to same ring for sage versions <= 10.4
     S = sum((NP[n] / factorial(n)) * Y**n for n in range(D + 1))
 
     # Compute intermediate sum, take its exponential, and extract desired term

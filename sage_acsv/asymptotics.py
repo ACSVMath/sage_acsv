@@ -1051,11 +1051,18 @@ def _general_term_asymptotics_complete_intersection_hyplerplane(G, Hs, exps, r, 
     for i in range(len(exps)):
         Pseries = Pseries.derivative(tvars[i], exps[i]-1) / factorial(exps[i]-1)
 
-    R = PolynomialRing(QQbar, [n])
+    R = PolynomialRing(QQbar, 1, [n])
+    n = R.gens()[0]
     Pseries = R(Pseries.subs({t: 0 for t in tvars}).polynomial())
 
+    # helper function since getting coefficients is unreliable for sage versions <= 10.4
+    def get_coefficient(P, n, deg):
+        if deg == 0:
+            return P.subs({n:0})
+        return P.coefficient(n**deg)
+
     # Return the coefficients of the resulting power series in n
-    return [Pseries.coefficient(k)/M.determinant() for k in range(sum(exps)-len(vs)+1)][::-1][:expansion_precision]
+    return [get_coefficient(Pseries, n, k)/M.determinant() for k in range(sum(exps)-len(vs)+1)][::-1][:expansion_precision]
 
 
 def contributing_points_combinatorial_smooth(G, H, variables, r=None, linear_form=None):
