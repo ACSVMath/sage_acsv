@@ -6,6 +6,7 @@ from copy import copy
 
 from sage_acsv.helpers import rational_function_reduce
 
+
 def get_nullstellensatz_certificate(R, Hs, multiplicities):
     r"""Finds a Nullstellensatz ceritificate of a set of polynomials, or
     None if one doesn't exist.
@@ -15,6 +16,7 @@ def get_nullstellensatz_certificate(R, Hs, multiplicities):
     It is a list of polynomials `p_1,\dots,p_s` such that `p_1H_1 + \dots + p_sH_s = 1`.
 
     INPUT:
+
     * ``R`` -- A ``PolynomialRing``.
     * ``Hs`` -- A list of square-free polynomials in ``R``.
     * ``multiplicities`` -- A list of integers representing powers of ``Hs``.
@@ -22,7 +24,7 @@ def get_nullstellensatz_certificate(R, Hs, multiplicities):
     OUTPUT:
 
     A list of polynomials in ``R``.
-    
+
     EXAMPLES::
 
         sage: from sage_acsv.decomposition import get_nullstellensatz_certificate
@@ -30,16 +32,17 @@ def get_nullstellensatz_certificate(R, Hs, multiplicities):
         sage: get_nullstellensatz_certificate(R, [1-x,1-y,1-x-y], [1,1,2])
         [x + 1, 2*x + y - 1, 1]
     """
-    Id = Ideal([H**m for H,m in zip(Hs, multiplicities)])
+    Id = Ideal([H**m for H, m in zip(Hs, multiplicities)])
     if R.one() in Id:
         return R.one().lift(Id)
     return None
+
 
 def compute_nullstellensatz_decomposition(R, G, H):
     r"""Computes a Nullstellensatz decomposition of the rational function `G/H`.
 
     A Nullstellensatz decomposition for `G/H` is a sum of rational functions of the form
-    `G/H = \sum_{k}\frac{p_k}{q_{k_1}^{e_{k_1}}\dots q_{k_i}^{e_{k_i}}` such that 
+    `G/H = \sum_{k}\frac{p_k}{q_{k_1}^{e_{k_1}}\dots q_{k_i}^{e_{k_i}}` such that
     `q_{k_1}, ..., q_{k_i}` are factors of `H` that do not generate the ideal `R`.
 
     INPUT:
@@ -49,7 +52,7 @@ def compute_nullstellensatz_decomposition(R, G, H):
     OUTPUT:
 
     A list of tuples ``(G_i,H_i)`` where ``G_i, H_i`` are in ``R``.
-    
+
     EXAMPLES::
 
         sage: from sage_acsv.decomposition import compute_nullstellensatz_decomposition
@@ -57,10 +60,10 @@ def compute_nullstellensatz_decomposition(R, G, H):
         sage: compute_nullstellensatz_decomposition(R, 1, x*y*(x+1))
         [(-1, x*y + y), (1, x*y)]
     """
-    G,H = rational_function_reduce(G,H)
+    G, H = rational_function_reduce(G, H)
 
     if len(H.factor()) == 0:
-        return [(G,H)]
+        return [(G, H)]
 
     Hs, multiplicities = zip(*list(H.factor()))
     cert = get_nullstellensatz_certificate(R, Hs, multiplicities)
@@ -71,7 +74,8 @@ def compute_nullstellensatz_decomposition(R, G, H):
     decomp = []
     m = len(Hs)
     partial_decomp = [
-        (G*cert[i], prod([Hs[j]**multiplicities[j] for j in range(m) if j != i]))
+        (G * cert[i], prod([Hs[j]**multiplicities[j]
+                            for j in range(m) if j != i]))
         for i in range(m)
     ]
 
@@ -79,12 +83,13 @@ def compute_nullstellensatz_decomposition(R, G, H):
         decomp.extend(compute_nullstellensatz_decomposition(R, num, denom))
 
     decomp = [term for term in decomp if term[0] != 0]
-    return decomp # todo: combine parts
-    
+    return decomp  # todo: combine parts
+
+
 def get_algebraic_independence_certificate(R, Hs, multiplicities):
     r"""Finds an algebraic independence certificate of a list ``Hs`` of polynomials.
 
-    An algebraic independence ceritificate is an annhilating polynomial of `Hs` over
+    An algebraic independence ceritificate is an annihilating polynomial of `Hs` over
     the same base ring.
 
     INPUT:
@@ -96,7 +101,7 @@ def get_algebraic_independence_certificate(R, Hs, multiplicities):
 
     A list of polynomials in variables ``T_1,...,T_m`` over the same base ring as ``R``,
     where ``m`` is the length of ``Hs``.
-    
+
     EXAMPLES::
 
         sage: from sage_acsv.decomposition import get_algebraic_independence_certificate
@@ -117,33 +122,35 @@ def get_algebraic_independence_certificate(R, Hs, multiplicities):
     Ts = list(SR.var('T', m))
     R_ext = PolynomialRing(F, vs + Ss + Ts)
     vs = R_ext.gens()[:d]
-    Ss = R_ext.gens()[d:d+m]
-    Ts = R_ext.gens()[d+m:]
+    Ss = R_ext.gens()[d:d + m]
+    Ts = R_ext.gens()[d + m:]
 
     J = R_ext.ideal(
-        [Ss[j] - R_ext(Hs[j]) for j in range(m)] + 
-        [Ss[j] ** multiplicities[j] - Ts[j] for j in range(m)
-    ])
+        [Ss[j] - R_ext(Hs[j]) for j in range(m)] +
+        [Ss[j] ** multiplicities[j] - Ts[j] for j in range(m)]
+    )
     J = J.elimination_ideal(vs + Ss)
 
     R_T = PolynomialRing(F, [str(T) for T in Ts], order='negdeglex')
     return R_T.ideal(J)
-    
+
+
 def compute_algebraic_dependence_decomposition(R, G, H):
     r"""Computes an algebraic dependence decomposition of the rational function `G/H`.
 
-    An algebraic dependence decomposition for `G/H` is a sum of rational functions of the 
-    form `G/H = \sum_{k}\frac{p_k}{q_{k_1}^{e_{k_1}}\dots q_{k_i}^{e_{k_i}}` such that 
+    An algebraic dependence decomposition for `G/H` is a sum of rational functions of the
+    form `G/H = \sum_{k}\frac{p_k}{q_{k_1}^{e_{k_1}}\dots q_{k_i}^{e_{k_i}}` such that
     `q_{k_1},\dots,q_{k_i}` are algebraically independent factors of `H`.
 
     INPUT:
+
     * ``R`` -- A ``PolynomialRing``.
     * ``G, H`` -- Polynomials representing the rational function `G/H`.
 
     OUTPUT:
 
     A list of tuples `(G_i,H_i)` where `G_i, H_i` are in `R`.
-    
+
     EXAMPLES::
 
         sage: from sage_acsv.decomposition import compute_algebraic_dependence_decomposition
@@ -151,15 +158,15 @@ def compute_algebraic_dependence_decomposition(R, G, H):
         sage: compute_algebraic_dependence_decomposition(R, 1, x^2*(x*y+1)*y)
         [(2, x^2*y), (-x*y - 1, x^2*y), (y, x*y + 1)]
     """
-    G,H = rational_function_reduce(G,H)
+    G, H = rational_function_reduce(G, H)
 
     if len(H.factor()) == 0:
-        return [(G,H)]
+        return [(G, H)]
 
     Hs, multiplicities = zip(*list(H.factor()))
 
     J = get_algebraic_independence_certificate(R, Hs, multiplicities)
-    #print(J)
+    # print(J)
     if not J:
         return [(G, H)]
     
@@ -167,13 +174,13 @@ def compute_algebraic_dependence_decomposition(R, G, H):
 
     decomp = []
     m = len(Hs)
-    g = J.gens()[0] # annhilating poly of Hs**multiplicities
+    g = J.gens()[0]  # annihilating poly of Hs**multiplicities
     Ts = J.ring().gens()
-    gg = (g.lt()-g)/(g.lc())
-    T_nums = [c*f for c, f in zip(gg.coefficients(), gg.monomials())]
+    gg = (g.lt() - g) / (g.lc())
+    T_nums = [c * f for c, f in zip(gg.coefficients(), gg.monomials())]
     e = list(g.lt().exponents())[:m]
     T_denoms = [Ts[j] for j in range(m)]
-    T_mults = [e[0][j]+1 for j in range(m)]
+    T_mults = [e[0][j] + 1 for j in range(m)]
 
     T_decomp = [(T_num, T_denoms, T_mults) for T_num in T_nums]
     subs_dict = {Ts[j]: Hs[j]**multiplicities[j] for j in range(m)}
@@ -182,17 +189,18 @@ def compute_algebraic_dependence_decomposition(R, G, H):
         denom = 1
         for T_denom, T_mult in zip(T_denoms, T_mults):
             j = Ts.index(T_denom)
-            denom *= Hs[j]**(multiplicities[j]*T_mult)
+            denom *= Hs[j]**(multiplicities[j] * T_mult)
 
         decomp.extend(compute_algebraic_dependence_decomposition(R, num, denom))
 
     return decomp
 
+
 def compute_leinartas_decomposition(R, G, H):
     r"""Computes a Leinartas decomposition of the rational function `G/H`.
 
-    An Leinartas decomposition for `G/H` is a sum of rational functions of the 
-    form `G/H = \sum_{k}\frac{p_k}{q_{k_1}^{e_{k_1}}\dots q_{k_i}^{e_{k_i}}` such that 
+    An Leinartas decomposition for `G/H` is a sum of rational functions of the
+    form `G/H = \sum_{k}\frac{p_k}{q_{k_1}^{e_{k_1}}\dots q_{k_i}^{e_{k_i}}` such that
     `q_{k_1},\dots,q_{k_i}` are algebraically independent factors of `H`  that do not
     generate the ideal `R`.
 
@@ -203,7 +211,7 @@ def compute_leinartas_decomposition(R, G, H):
     OUTPUT:
 
     A list of tuples ``(G_i,H_i)`` where ``G_i, H_i`` are in ``R``.
-    
+
     EXAMPLES::
 
         sage: from sage_acsv.decomposition import compute_leinartas_decomposition
@@ -212,14 +220,15 @@ def compute_leinartas_decomposition(R, G, H):
         [(1, x*y*z^2), (-1, x*y*z^2 + z^3)]
     """
     if len(R.gens()) == 1:
-        return # just do partial fraction here
+        return  # just do partial fraction here
 
     null_decomp = compute_nullstellensatz_decomposition(R, G, H)
     decomp = []
     for num, denom in null_decomp:
-        decomp.extend(compute_algebraic_dependence_decomposition(R, num, denom)) 
+        decomp.extend(compute_algebraic_dependence_decomposition(R, num, denom))
 
     return decomp
+
 
 def compute_cohomology_decomposition(R, G, H):
     r"""Computes a cohomology decomposition of the rational function `G/H`.
@@ -235,7 +244,7 @@ def compute_cohomology_decomposition(R, G, H):
     OUTPUT:
 
     A tuple ``(G',H')`` where ``G_i, H_i`` are in ``R`` and ``H'`` is square-free
-    
+
     EXAMPLES::
 
         sage: from sage_acsv.decomposition import compute_cohomology_decomposition
@@ -244,7 +253,7 @@ def compute_cohomology_decomposition(R, G, H):
         (-4/3*x^2*y^2 + 4/3*x*y + 1/3, x^3*y + x*y^3 - x^2 - x*y - y^2 + 1)
     """
     if len(H.factor()) == 0:
-        return G,H
+        return G, H
     G = SR(G)
 
     Hs, multiplicities = zip(*list(H.factor()))
@@ -317,6 +326,5 @@ def compute_cohomology_decomposition(R, G, H):
         decomp_terms.append(compute_cohomology_decomposition(R, num, R(denom)))
 
     newH = lcm([H_ for _, H_ in decomp_terms])
-    newG = sum([G_*SR(newH)/H_ for G_, H_ in decomp_terms]).simplify_full()
-    #new_F = sum([new_G/new_H for new_G, new_H in decomp_terms])
+    newG = sum([G_ * SR(newH) / H_ for G_, H_ in decomp_terms]).simplify_full()
     return newG, newH

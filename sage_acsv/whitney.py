@@ -54,12 +54,10 @@ def merge_stratifications(Xs, Ys):
     if len(Ys) > len(Xs):
         return merge_stratifications(Ys, Xs)
 
-    res = []
-    for i in range(len(Ys)):
-        res.append(Xs[i].union(Ys[i]))
-    for i in range(len(Ys), len(Xs)):
-        res.append(Xs[i].union(Ys[-1]))
-
+    res = [Xs[i].union(Ys[i])
+           for i in range(len(Ys))]
+    res.extend(Xs[i].union(Ys[-1])
+               for i in range(len(Ys), len(Xs)))
     return res
 
 

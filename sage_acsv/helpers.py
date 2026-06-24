@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-from sage.arith.misc import gcd
+from sage.arith.misc import binomial, gcd
 from sage.functions.generalized import kronecker_delta
-from sage.functions.other import ceil
+from sage.functions.other import ceil, factorial
 from sage.geometry.polyhedron.constructor import Polyhedron
 from sage.groups.misc_gps.argument_groups import ArgumentByElementGroup
 from sage.matrix.constructor import matrix
@@ -14,11 +14,15 @@ from sage.misc.misc_c import prod
 from sage.misc.prandom import randint
 from sage.modules.free_module_element import vector
 from sage.rings.asymptotic.asymptotic_ring import AsymptoticRing, AsymptoticExpansion
+from sage.rings.big_oh import O
 from sage.rings.asymptotic.growth_group import (
     ExponentialGrowthGroup,
     MonomialGrowthGroup,
 )
+from sage.rings.fraction_field import FractionField
 from sage.rings.ideal import Ideal
+from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
+from sage.rings.power_series_ring import PowerSeriesRing
 from sage.rings.qqbar import AA, AlgebraicNumber, QQbar
 from sage.rings.rational_field import QQ
 from sage.symbolic.expression import Expression
@@ -120,8 +124,8 @@ def generate_linear_form(system, vsT, u_, linear_form=None):
     r"""Generate a linear form for the input system.
 
     This is an integer linear combination of the variables that,
-    with high probability, takes unique values on the solutions of 
-    the system. 
+    with high probability, takes unique values on the solutions of
+    the system.
 
     INPUT:
 
@@ -159,7 +163,7 @@ def compute_hessian(H, variables, r, critical_point=None):
     .. math::
 
         (t_1,...t_{d-1}) \mapsto \log(g(z_1t_1,...,z_{d-1}t_{d-1}))/g(z_1,...,z_{d-1})
-        + I\cdot (r_1t_1+...+r_{d-1}t_{d-1})/r_d 
+        + I\cdot (r_1t_1+...+r_{d-1}t_{d-1})/r_d
 
     at a critical point where the partial derivative of `H` with respect to `z_d` is non-zero, and
     `g` determined implicitly by
@@ -264,6 +268,7 @@ def compute_newton_series(phi, variables, series_precision):
 
     return compute_newton_series_general([phi], variables, series_precision)[0]
 
+
 def compute_newton_series_general(phis, variables, series_precision):
     r"""Computes the series expansion of implicitly defined functions.
 
@@ -319,8 +324,8 @@ def compute_newton_series_general(phis, variables, series_precision):
         if N == 1:
             return vector([0 for _ in range(s)]), Jacobian(Hs).inverse().subs({v: 0 for v in variables})
         Fs, Gs = NewtonRecur(Hs, ceil(N / 2))
-        Gs = Gs + (matrix.identity(s) - Gs * Jacobian(Hs).subs({Y[j]:Fs[j] for j in range(s)})) * Gs
-        Fs = Fs - Gs * Hs.subs({Y[j]:Fs[j] for j in range(s)})
+        Gs = Gs + (matrix.identity(s) - Gs * Jacobian(Hs).subs({Y[j]: Fs[j] for j in range(s)})) * Gs
+        Fs = Fs - Gs * Hs.subs({Y[j]: Fs[j] for j in range(s)})
         return ModX(Fs, N), matrix([ModX(G, ceil(N / 2)) for G in Gs])
 
     return NewtonRecur(Mod(phis, series_precision), series_precision)[0]
@@ -364,8 +369,8 @@ def compute_implicit_hessian(Hs, vs, r, subs):
     Hs, vs = [SR(H) for H in Hs], [SR(v) for v in vs]
     if subs:
         subs = {SR(v): val for v, val in subs.items()}
-    dHdg = matrix([[H.derivative(v) for v in vs[d - s :]] for H in Hs])
-    dHdv = matrix([[H.derivative(v) for v in vs[: d - s]] for H in Hs])
+    dHdg = matrix([[H.derivative(v) for v in vs[d - s:]] for H in Hs])
+    dHdv = matrix([[H.derivative(v) for v in vs[:d - s]] for H in Hs])
     dgdv = -dHdg.inverse() * dHdv
 
     d2gdv2 = [
@@ -375,14 +380,14 @@ def compute_implicit_hessian(Hs, vs, r, subs):
                 vector([H.derivative(vs[i]).derivative(vs[j]) for H in Hs])
                 + matrix(
                     [
-                        [H.derivative(vs[i]).derivative(g) for g in vs[d - s :]]
+                        [H.derivative(vs[i]).derivative(g) for g in vs[d - s:]]
                         for H in Hs
                     ]
                 )
                 * dgdv.column(j)
                 + matrix(
                     [
-                        [H.derivative(g).derivative(vs[j]) for g in vs[d - s :]]
+                        [H.derivative(g).derivative(vs[j]) for g in vs[d - s:]]
                         for H in Hs
                     ]
                 )
@@ -391,8 +396,8 @@ def compute_implicit_hessian(Hs, vs, r, subs):
                     [
                         matrix(
                             [
-                                [H.derivative(g1).derivative(g2) for g1 in vs[d - s :]]
-                                for g2 in vs[d - s :]
+                                [H.derivative(g1).derivative(g2) for g1 in vs[d - s:]]
+                                for g2 in vs[d - s:]
                             ]
                         )
                         * dgdv.column(i)
@@ -430,7 +435,141 @@ def compute_implicit_hessian(Hs, vs, r, subs):
     return Hess
 
 
-def is_contributing(vs, pt, r, factors, c, allow_boundary = False):
+def algebraic_residues(P, Q, S):
+    r"""Compute annihilating polynomial of the residues of a rational function at the zeroes of another polynomial.
+
+    Taken from Algorithm 1 of Bostan, Dumont, and Salvy (2017).
+
+    INPUT:
+
+    * ``P``      -- Polynomial in K[y].
+    * ``Q``      -- Polynomial in K[y] with non-zero constant.
+    * ``S``      -- Polynomial in K[y] that is a divisor of Q such that S and Q/S are coprime (S can be Q).
+
+    OUTPUT:
+
+    A polynomial R(z) in K[z] that annihilates the residues of P/Q at the roots of S.
+    """
+    # Build needed Sage objects
+    R = P.parent()                                 # R = K[y]
+    y = R.gen()
+    B = PowerSeriesRing(FractionField(R), 't')  # B = K(y)[[t]]
+    t = B.gen()
+
+    # Compute square-free decomposition of S
+    decomp = list(S.squarefree_decomposition())
+    m = len(decomp)
+    Result = [1] * m
+
+    # Iterate over factors in square-free decomposition
+    for i in range(m):
+        # decomp[i] = (Q_{i+1}, d_{i+1})
+        Qi = decomp[i][0]
+        di = decomp[i][1]
+
+        if Qi.degree() == 0:
+            R[i] = 1                                # Ri = 1
+        else:
+            Ui = Q // Qi**di                        # Ui = Q/Q_i^i
+            Vi = (Qi(y + t) - Qi(y)).quo_rem(t)[0]    # Vi = (Qi(y+t)-Qi(y))/t
+
+            # Take coefficient Si = [t^(di-1)] P(y+t) / (Ui(y+t) * Vi^di)
+            # by expanding the rational function as a power series to O(t^di)
+            Di = Ui(y + t) * Vi**di
+            Yi = P(y + t) / (Di + O(t**di))
+            Si = Yi[di - 1]
+
+            # Extract numerator and denominator of Si, and make sure they are coprime
+            Ai = Si.numerator()
+            Bi = Si.denominator()
+            G = Ai.gcd(Bi)
+            Ai = Ai // G
+            Bi = Bi // G
+
+            # Create polynomial rings to perform resultant computation
+            Lz = PolynomialRing(R.base_ring(), 'z')     # Lz = K[z]
+            z = Lz.gen()
+            Ly = PolynomialRing(Lz, 'y')                # Ly = K[z][y]
+            y = Ly.gen()
+
+            # Compute desired resultant for the term in the square-free decomposition
+            H = Ly(Ai) - z * Ly(Bi)
+            Result[i] = H.resultant(Ly(Qi))  # Resultant taken over y, so result is in K[z]
+
+    return prod(Result[i] for i in range(m)).monic()  # Other formulas require our output to be monic
+
+
+def pure_composed_sum(P, c, var):
+    r"""Compute annihilating polynomial for all sums of c roots of a polynomial.
+    Taken from Algorithm 2 of Bostan, Dumont, and Salvy (2017).
+
+    INPUT:
+
+    * ``P``      -- A univariate or multivariate polynomial WITHOUT y and z among its variables
+    * ``c``      -- An integer between 1 and deg(P) (inclusive)
+    * ``var``    -- A string or variable specifying a variable that appears in P
+
+    OUTPUT:
+
+    A polynomial (Σ_cP)(y) in K[y] whose roots are the sums of all c-subsets of the roots of P.
+    """
+
+    # TODO: Add tests that var is a variable of P and that z and y do not appear in P
+    # TODO: Fix overloading of Y and y in univariate and multivariate rings
+
+    # Convert P to a polynomial in var
+    # K is the polynomial ring in the remaining variables
+    P_var = P.polynomial(P.parent()(var))
+    K = P_var.base_ring()
+    d = P_var.degree()
+    D = binomial(d, c)
+
+    # Create rings needed for our computations
+    R1 = PolynomialRing(K, names=(var, 'z'))
+    R2 = PowerSeriesRing(K, 'Y')
+    Y = R2.gen()
+    y, z = R1.gens()
+
+    # Cast P into K[[Y]]
+    P_Y = P_var(Y)
+    P_Y_der = P_Y.derivative()
+
+    # Compute reciprocal polynomials of P and P' (polynomials with reversed coefficient sequences)
+    recP = Y**d * P_Y(1 / Y)
+    recP_der = Y**(d - 1) * P_Y_der(1 / Y)
+
+    # Introduce bivariate power series ring
+    R3 = PowerSeriesRing(K, names=('Y', 'Z'))
+    Y, Z = R3.gens()
+
+    # Compute terms in generating function for Newton Sum of P and take Hadamard product with exp(Y)
+    # Note: for now S lies in K[[Y,Z]] even though it depends only on Y
+    NP = recP_der / (recP + recP.parent()(O(Y**(D + 1)))) # convert everything to same ring for sage versions <= 10.4
+    S = sum((NP[n] / factorial(n)) * Y**n for n in range(D + 1))
+
+    # Compute intermediate sum, take its exponential, and extract desired term
+    Sum = sum((-1)**(n - 1) * (S(n * Y, 0) / n) * Z**n
+              for n in range(1, c + 1))
+    F = (Sum + O(Y**(c + D + 1))).exp()
+    Fc = sum(C * y**e[0] for e, C in F.polynomial().dict().items()
+             if e[0] < D + 1 and e[1] == c)
+
+    # Compute the Newton Sum of Σ_cP and cast into K[[Y]]
+    NSumP = sum(Fc[n, 0] * factorial(n) * Y**n for n in range(D + 1))
+    NSumP_Y = R2(NSumP)
+
+    # Recover Σ_cP by integrating and taking an exponential
+    integrand = (D - NSumP_Y) / R2(Y)
+    IntegralEXP = (integrand.integral() + O(R2(Y)**(D + 1))).exp()
+    U = IntegralEXP.truncate(D + 1)(y)
+    recU = y**(U.degree()) * U(1 / y, 0)
+
+    R4 = PolynomialRing(K, 'y')
+    y = R4.gen()
+    return R4(recU(y, 0))
+
+
+def is_contributing(vs, pt, r, factors, c, allow_boundary=False) -> bool:
     r"""Determines if a minimal critical point ``pt`` such that the singular
     variety has transverse square-free factorization
     is contributing; that is, whether `r` is in the interior
@@ -464,7 +603,7 @@ def is_contributing(vs, pt, r, factors, c, allow_boundary = False):
     # Compute irreducible components of H that contain the point
     vanishing_factors = list(f for f in factors if f.subs(critical_subs) == 0)
     for f in vanishing_factors:
-        if all([f.derivative(v).subs(critical_subs) == 0 for v in vs]):
+        if all(f.derivative(v).subs(critical_subs) == 0 for v in vs):
             raise ACSVException(
                 f"Critical point {pt} lies in non-smooth part of component {f}"
             )
@@ -498,7 +637,7 @@ def is_contributing(vs, pt, r, factors, c, allow_boundary = False):
     polytope = Polyhedron(rays=normals)
     if r not in polytope:
         return False
-    elif not allow_boundary and any([r in f for f in polytope.faces(c - 1)]):
+    elif not allow_boundary and any(r in f for f in polytope.faces(c - 1)):
         # If r is in the boundary of the log normal cone, point is non-generic
         raise ACSVException(
             f"Non-generic direction detected - critical point {pt} is contained in {len(vs) - c}-dimensional stratum"
@@ -721,13 +860,13 @@ def get_limit_theorem_terms(
                     density_sym = op
                 else:
                     growth_operands.append(op)
-        
+
         if density_sym is not None:
             exponent_expr = density_sym.operands()[0] * n
             zero_subbed_exp = exponent_expr.subs(n=0)
             s_vars = zero_subbed_exp.variables()
             cov_matrix = -matrix([
-                [zero_subbed_exp.derivative(v1, v2) for v2 in s_vars ] for v1 in s_vars
+                [zero_subbed_exp.derivative(v1, v2) for v2 in s_vars] for v1 in s_vars
             ])
 
             if len(s_vars) > 0:
