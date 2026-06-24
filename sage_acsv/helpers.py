@@ -189,14 +189,27 @@ def compute_hessian(H, variables, r, critical_point=None):
     z_d = variables[-1]
     d = len(variables)
 
-    # Build d x d matrix of U[i,j] = z_i * z_j * H'_{z_i * z_j}
+    zdHz = z_d * H.derivative(z_d)
+    v2dH2 = [
+        [
+            v1 * v2 * H.derivative(v1, v2) for v2 in variables
+        ] for v1 in variables
+    ]
+    if critical_point:
+        zdHz = zdHz.subs(critical_point)
+        v2dH2 = [
+            [
+                f.subs(critical_point) for f in row
+            ]
+            for row in v2dH2
+        ]
     U = matrix(
         [
             [
-                v1 * v2 * H.derivative(v1, v2) / (z_d * H.derivative(z_d))
-                for v2 in variables
+                f / zdHz
+                for f in row
             ]
-            for v1 in variables
+            for row in v2dH2
         ]
     )
 
@@ -221,8 +234,6 @@ def compute_hessian(H, variables, r, critical_point=None):
         hessian[i][i] = hessian[i][i] + V[i]
 
     hessian = matrix(hessian)
-    if critical_point is not None:
-        hessian = hessian.subs(critical_point)
     return hessian
 
 
@@ -295,10 +306,10 @@ def compute_newton_series_general(phis, variables, series_precision):
     Y = variables[-s:]
 
     def ModX(Fs, N):
-        return vector([F.mod(Ideal(X) ** N) for F in Fs])
+        return vector([sum([c*f for c,f in F if sum([f.degree(x) for x in X]) < N]) for F in Fs])
 
     def ModY(Fs, N):
-        return vector([F.mod(Ideal(Y) ** N) for F in Fs])
+        return vector([sum([c*f for c,f in F if sum([f.degree(y) for y in Y]) < N]) for F in Fs])
 
     def Mod(Fs, N):
         return ModX(ModY(Fs, N), N)

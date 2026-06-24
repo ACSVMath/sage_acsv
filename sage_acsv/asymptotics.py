@@ -127,6 +127,7 @@ from sage.misc.misc_c import prod
 from sage.misc.prandom import shuffle
 from sage.modules.free_module_element import vector
 from sage.rings.asymptotic.asymptotic_ring import AsymptoticRing
+from sage.rings.complex_interval_field import ComplexIntervalField
 from sage.rings.ideal import Ideal
 from sage.rings.imaginary_unit import I
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
@@ -139,6 +140,7 @@ from sage.symbolic.ring import SR
 from sage_acsv.kronecker import _kronecker_representation
 from sage_acsv.helpers import (
     ACSVException,
+    Term,
     is_contributing,
     compute_newton_series,
     compute_newton_series_general,
@@ -342,6 +344,13 @@ def _diagonal_asymptotics_combinatorial_smooth(
         if output_format == ACSVSettings.Output.SYMBOLIC:
             result = sum([a**n * b * c * d for (a, b, c, d) in result])
 
+    elif output_format == ACSVSettings.Output.TERMS:
+        result = [
+            Term(constant*expansion, pi ** exponent, base, exponent) 
+            for (base, exponent, constant, expansion) in asm_vals
+            if constant*expansion != 0
+        ]
+
     elif output_format == ACSVSettings.Output.ASYMPTOTIC:
         AR = AsymptoticRing("QQbar^n * n^QQ", QQbar)
         n = AR.gen()
@@ -525,6 +534,16 @@ def diagonal_asymptotics_combinatorial(
         1/sqrt(pi)*4^n*n^(-1/2) + O(4^n*n^(-3/2))
         sage: growth.parent()
         Asymptotic Ring <(Algebraic Real Field)^n * n^QQ * (Arg_(Algebraic Field))^n> over Symbolic Ring
+
+    The argument ``"terms"`` lets the function return a list of Term objects. See ``sage_acsv.helpers.Term`` for
+    a type definition. The output given here should match that of using :func:`.get_expansion_terms`::
+
+        sage: from sage_acsv import get_expansion_terms
+        sage: growth_symbolic = diagonal_asymptotics_combinatorial(1/(1 - x - y), output_format="asymptotic")
+        sage: growth_terms = diagonal_asymptotics_combinatorial(1/(1 - x - y), output_format="terms"); growth_terms
+        [Term(coefficient=1, pi_factor=1/sqrt(pi), base=4, power=-1/2)]
+        sage: get_expansion_terms(growth_symbolic) == growth_terms
+        True
 
     Increasing the precision of the expansion returns an expansion with more terms
     (works for all available output formats)::
@@ -1149,7 +1168,7 @@ def contributing_points_combinatorial_smooth(G, H, variables, r=None, linear_for
     Pt, _ = P.quo_rem(one_minus_t)
     rts_t_zo = list(
         filter(
-            lambda k: (Qt / Pd).subs(u_=k) > 0 and (Qt / Pd).subs(u_=k) < 1,
+            lambda k: _subs(Qt, u_, k) / _subs(Pd, u_, k) > 0 and _subs(Qt, u_, k) / _subs(Pd, u_, k) < 1,
             Pt.roots(AA, multiplicities=False),
         )
     )
@@ -1323,7 +1342,7 @@ def _find_contributing_points_combinatorial(
             Pt, _ = P.quo_rem(one_minus_t)
             rts_t_zo = list(
                 filter(
-                    lambda k: (Qt / Pd).subs(u_=k) > 0 and (Qt / Pd).subs(u_=k) < 1,
+                    lambda k: _subs(Qt, u_, k) / _subs(Pd, u_, k) > 0 and _subs(Qt, u_, k) / _subs(Pd, u_, k) < 1,
                     Pt.roots(AA, multiplicities=False),
                 )
             )
@@ -1621,7 +1640,7 @@ def minimal_critical_points_combinatorial(
             Pt, _ = P.quo_rem(one_minus_t)
             rts_t_zo = list(
                 filter(
-                    lambda k: (Qt / Pd).subs(u_=k) > 0 and (Qt / Pd).subs(u_=k) < 1,
+                    lambda k: _subs(Qt, u_, k) / _subs(Pd, u_, k) > 0 and _subs(Qt, u_, k) / _subs(Pd, u_, k) < 1,
                     Pt.roots(AA, multiplicities=False),
                 )
             )
@@ -2197,8 +2216,8 @@ def _compute_asymptotics_at_points(
                     _general_term_asymptotics_smooth(G, H, r, vs, cp, expansion_precision)
                 )
             )
-            Det = compute_hessian(H, vs, r).determinant()
-            B = SR(1 / Det.subs(subs_dict) / r[-1] ** (d - 1) / 2 ** (d - 1))
+            Det = compute_hessian(H, vs, r, subs_dict).determinant()
+            B = SR(1 / Det / r[-1] ** (d - 1) / 2 ** (d - 1))
         # We now support higher order expansions for non-smooth non-complete intersections
         elif all(p == 1 for p in multiplicities) and s != d:
             Qw = compute_implicit_hessian(factors, vs, r, subs=subs_dict)
@@ -2291,6 +2310,13 @@ def _compute_asymptotics_at_points(
         ]
         if output_format == ACSVSettings.Output.SYMBOLIC:
             result = sum([a**n * b * c * d for (a, b, c, d) in result])
+
+    elif output_format == ACSVSettings.Output.TERMS:
+        result = [
+            Term(constant*expansion, (pi ** (s - d)).sqrt(), base, exponent) 
+            for (base, exponent, constant, expansion, s) in asm_vals
+            if constant*expansion != 0
+        ]
 
     elif output_format == ACSVSettings.Output.ASYMPTOTIC:
         AR = AsymptoticRing("QQbar^n * n^QQ", QQbar)
@@ -2565,3 +2591,11 @@ def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False, r=None):
         result = a**n * b * c * d * sfactor
 
     return result
+
+def _subs(F, u, k):
+    """
+    Monkey patch for Sage's algebraic numbers implementation being slow.
+    """
+    CIF = ComplexIntervalField()
+    a = F.subs({u:k}); CIF(a)
+    return a

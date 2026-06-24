@@ -1,5 +1,6 @@
 from sage.all import Ideal, SR, PolynomialRing, Set
 from sage.all import prod, xgcd, jacobian
+from sage.arith.functions import lcm
 
 from copy import copy
 
@@ -60,7 +61,6 @@ def compute_nullstellensatz_decomposition(R, G, H):
         [(-1, x*y + y), (1, x*y)]
     """
     G, H = rational_function_reduce(G, H)
-    G /= H.factor().unit()
 
     if len(H.factor()) == 0:
         return [(G, H)]
@@ -70,6 +70,7 @@ def compute_nullstellensatz_decomposition(R, G, H):
     if cert is None:
         return [(G, H)]
 
+    G /= H.factor().unit()
     decomp = []
     m = len(Hs)
     partial_decomp = [
@@ -158,7 +159,6 @@ def compute_algebraic_dependence_decomposition(R, G, H):
         [(2, x^2*y), (-x*y - 1, x^2*y), (y, x*y + 1)]
     """
     G, H = rational_function_reduce(G, H)
-    G /= H.factor().unit()
 
     if len(H.factor()) == 0:
         return [(G, H)]
@@ -169,6 +169,8 @@ def compute_algebraic_dependence_decomposition(R, G, H):
     # print(J)
     if not J:
         return [(G, H)]
+    
+    G /= H.factor().unit()
 
     decomp = []
     m = len(Hs)
@@ -250,9 +252,9 @@ def compute_cohomology_decomposition(R, G, H):
         sage: compute_cohomology_decomposition(R, 1, (x*y-1)*(x^2+y^2-1)^2)
         (-4/3*x^2*y^2 + 4/3*x*y + 1/3, x^3*y + x*y^3 - x^2 - x*y - y^2 + 1)
     """
-    G, H = rational_function_reduce(G, H)
     if len(H.factor()) == 0:
         return G, H
+    G = SR(G)
 
     Hs, multiplicities = zip(*list(H.factor()))
     Hs, multiplicities = list(Hs), list(multiplicities)
@@ -260,6 +262,8 @@ def compute_cohomology_decomposition(R, G, H):
     if sum(multiplicities) <= n:
         # No decomposing possible.
         return G, H
+    
+    G /= H.factor().unit()
 
     # Otherwise decompose recursively.
     decomp_terms = []
@@ -319,7 +323,8 @@ def compute_cohomology_decomposition(R, G, H):
     # Now decompose each term
     for num, denom, mults in tmp_terms:
         denom = prod([denom[i] ** mults[i] for i in range(len(denom))])
-        decomp_terms.append(compute_cohomology_decomposition(R, R(num), R(denom)))
+        decomp_terms.append(compute_cohomology_decomposition(R, num, R(denom)))
 
-    new_F = sum([new_G / new_H for new_G, new_H in decomp_terms])
-    return new_F.numerator(), new_F.denominator()
+    newH = lcm([H_ for _, H_ in decomp_terms])
+    newG = sum([G_ * SR(newH) / H_ for G_, H_ in decomp_terms]).simplify_full()
+    return newG, newH
