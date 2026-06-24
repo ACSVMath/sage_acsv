@@ -1,4 +1,7 @@
+from functools import cmp_to_key
+
 from sage.geometry.newton_polygon import NewtonPolygon
+from sage.all import AA, PolynomialRing, PuiseuxSeriesRing, QQ, QQbar, ZZ, lcm
 
 # Wrapper that calls main function below and converts output to list of Puiseux series prefixes
 def compute_separating_puiseux_terms(P, x_var, y_var, max_depth=50, fractional_power_series=False):
@@ -74,18 +77,9 @@ def _compute_separating_puiseux_terms(P, x_var, y_var, max_depth, fractional_pow
         p = Rxy(p_dict)
 
         for lc, mult in char_poly.roots():
-            # =========================================================
-            # MODIFICATION 1: Simple root case
-            # Branches have separated! We just record this term and stop.
-            # =========================================================
             if mult == 1:
                 current_sol = [(lc, alpha)]
                 sols.append(current_sol)
-                
-            # =========================================================
-            # MODIFICATION 2: Multiple root case
-            # Branches share this prefix. We must recurse until mult == 1.
-            # =========================================================
             else:
                 # Shift and scale for the next level of recursion
                 p_shift = p(y_gen + lc)
@@ -109,20 +103,28 @@ def _compute_separating_puiseux_terms(P, x_var, y_var, max_depth, fractional_pow
     return sols
 
 
-def sort_puiseux_branches(branches, test_point=QQ(1)/1000):
-    r"""Sort Puiseux branches by evaluation at a small positive real point.
+def sort_puiseux_branches(branches, side='auto', real_only=False):
+    r"""Sort Puiseux branches in decreasing lexicographic order.
 
-    Branches are ordered so that complex-valued branches (those with nonzero
-    imaginary part at the test point) come first, followed by real-valued
-    branches sorted in ascending order by their real part.  The **dominating
-    branch** (i.e. the largest real branch) therefore appears last.
+    This follows the real branch sorting described by Chabaud's ``SuiviReel``:
+    branches are compared lexicographically by increasing exponent, with larger
+    coefficients appearing first.  To sort on the left of a point, use
+    ``side='left'``; this applies the substitution `x -> -x` before sorting.
+
+    The default ``side='auto'`` applies that substitution only to branches with
+    negative real leading coefficient, matching the convention used by this
+    package for selecting a leading branch.
 
     INPUT:
 
     * ``branches`` -- A list of Puiseux series elements, as returned by
       :func:`compute_separating_puiseux_terms`.
-    * ``test_point`` -- (default: ``1/1000``) A small positive rational number
-      at which each branch is evaluated numerically.
+    * ``side`` -- (default: ``'auto'``) one of ``'auto'``, ``'right'``, or
+      ``'left'``.  ``'right'`` sorts the expansions as written, while
+      ``'left'`` first applies `x -> -x` to every branch.
+    * ``real_only`` -- (default: ``False``) if ``True``, discard branches whose
+      transformed coefficients are not all real, as in the real branch tracing
+      algorithm.
 
     OUTPUT:
 
@@ -135,108 +137,102 @@ def sort_puiseux_branches(branches, test_point=QQ(1)/1000):
         sage: P = y^2 - (1 + x)
         sage: branches = compute_separating_puiseux_terms(P, x, y)
         sage: sorted_branches = sort_puiseux_branches(branches)
-        sage: sorted_branches[-1]  # dominating branch is last
+        sage: sorted_branches
         ...
 
     """
-    def sort_key(branch):
-        # Evaluate the Puiseux prefix at the test point.
-        # Use AA(test_point) so that nth_root works for fractional exponents.
-        val = QQbar(branch(AA(test_point)))
+    if side not in {'auto', 'right', 'left'}:
+        raise ValueError("side must be one of 'auto', 'right', or 'left'.")
 
-        # Determine whether the branch is real-valued at the test point
-        is_real = bool(val.imag().is_zero())
+    def coefficient_cmp(left, right):
+        left = QQbar(left)
+        right = QQbar(right)
+        if left == right:
+            return 0
 
-        # Real branches are sorted after complex ones; among real branches
-        # sort by real value ascending so the largest is last.
-        return (is_real, AA(val.real()) if is_real else AA(0))
+        left_real = bool(left.imag().is_zero())
+        right_real = bool(right.imag().is_zero())
+        if left_real and right_real:
+            return -1 if AA(left.real()) > AA(right.real()) else 1
 
-    branches.sort(key=sort_key)
+        left_tuple = (AA(left.real()), AA(left.imag()))
+        right_tuple = (AA(right.real()), AA(right.imag()))
+        return -1 if left_tuple > right_tuple else 1
+
+    def leading_sign(branch):
+        coeffs = branch.coefficients()
+        if not coeffs:
+            return 0
+
+        lc = QQbar(coeffs[0])
+        if not lc.imag().is_zero():
+            return 0
+        if AA(lc.real()) > 0:
+            return 1
+        if AA(lc.real()) < 0:
+            return -1
+        return 0
+
+    def use_left_substitution(branch):
+        if side == 'left':
+            return True
+        if side == 'right':
+            return False
+        return leading_sign(branch) < 0
+
+    def transformed_terms(branch):
+        coeffs = branch.coefficients()
+        exponents = [QQ(exp) for exp in branch.exponents()]
+        if not coeffs:
+            return {}
+
+        if not use_left_substitution(branch):
+            return {
+                exp: QQbar(coeff)
+                for exp, coeff in zip(exponents, coeffs)
+            }
+
+        r = ZZ(1)
+        for exp in exponents:
+            r = lcm(r, exp.denominator())
+        w = QQbar.zeta(2 * r)
+
+        terms = {}
+        for coeff, expnt in zip(coeffs, exponents):
+            coeff = QQbar(coeff)
+            if expnt.denominator() == 1:
+                coeff *= QQbar((-1) ** ZZ(expnt))
+            else:
+                coeff *= w ** ZZ(r * expnt)
+            terms[expnt] = coeff
+        return terms
+
+    transformed_cache = {}
+
+    def cached_terms(branch):
+        cache_key = id(branch)
+        if cache_key not in transformed_cache:
+            transformed_cache[cache_key] = transformed_terms(branch)
+        return transformed_cache[cache_key]
+
+    def has_real_terms(branch):
+        return all(coeff.imag().is_zero() for coeff in cached_terms(branch).values())
+
+    def branch_cmp(left, right):
+        left_terms = cached_terms(left)
+        right_terms = cached_terms(right)
+
+        for expnt in sorted(set(left_terms) | set(right_terms)):
+            cmp = coefficient_cmp(
+                left_terms.get(expnt, QQbar(0)),
+                right_terms.get(expnt, QQbar(0)),
+            )
+            if cmp != 0:
+                return cmp
+
+        return 0
+
+    if real_only:
+        branches[:] = [branch for branch in branches if has_real_terms(branch)]
+    branches.sort(key=cmp_to_key(branch_cmp))
     return branches
-
-
-def newton_series_dominating(P, x_var, y_var, sorted_branches, series_precision):
-    r"""Compute the power series expansion of the dominating branch via Newton's method.
-
-    The dominating branch is the last element of ``sorted_branches`` (the
-    largest real branch, as returned by :func:`sort_puiseux_branches`).
-    The full Puiseux prefix is used to shift `P` so the branch passes
-    through the origin, fractional exponents are rationalized via
-    `x = t^e`, and :func:`~sage_acsv.helpers.compute_newton_series`
-    extends the expansion.
-
-    INPUT:
-
-    * ``P`` -- A bivariate polynomial `P(x, y) = 0` defining the algebraic curve.
-    * ``x_var`` -- The independent variable `x`.
-    * ``y_var`` -- The dependent variable `y`.
-    * ``sorted_branches`` -- A list of Puiseux series prefixes sorted by
-      :func:`sort_puiseux_branches`.  The last element is taken as the
-      dominating branch.
-    * ``series_precision`` -- A positive integer giving the number of terms
-      to compute.
-
-    OUTPUT:
-
-    A polynomial representing the power series expansion of the dominating
-    branch.  When the ramification index is 1 the result is a polynomial
-    in ``x_var``; otherwise it is a polynomial in an auxiliary variable
-    ``t`` where `x = t^e`.
-
-    EXAMPLES::
-
-        sage: from sage_acsv.algebraic import compute_separating_puiseux_terms, sort_puiseux_branches, newton_series_dominating
-        sage: R.<x, y> = PolynomialRing(QQ, 2)
-        sage: P = x*y^2 - y + 1
-        sage: branches = sort_puiseux_branches(compute_separating_puiseux_terms(P, x, y))
-        sage: newton_series_dominating(P, x, y, branches, 7)
-        132*x^6 + 42*x^5 + 14*x^4 + 5*x^3 + 2*x^2 + x + 1
-
-    """
-    from sage_acsv.helpers import compute_newton_series
-
-    # The dominating branch is the last (largest real) branch
-    dominating = sorted_branches[-1]
-
-    # Extract coefficients and exponents from the Puiseux prefix
-    coeffs = dominating.coefficients()
-    exponents = dominating.exponents()
-
-    # Compute the ramification index e (LCD of exponent denominators).
-    # When e > 1 the branch has fractional exponents; we substitute
-    # x = t^e to obtain integer exponents.
-    e = ZZ(1)
-    for exp in exponents:
-        e = lcm(e, QQ(exp).denominator())
-
-    # Use the original variable name when e == 1, otherwise introduce t
-    t_name = str(x_var) if e == 1 else 't'
-
-    # Build a flat multivariate polynomial ring over QQbar.
-    # compute_newton_series uses Ideal().mod() which requires a true
-    # multivariate ring, not a nested univariate ring like QQbar[x][y].
-    Rty = PolynomialRing(QQbar, [t_name, str(y_var)])
-    t_gen, y_gen = Rty.gens()
-
-    # Convert P(x, y) -> P(t^e, y) by rewriting each monomial
-    P_xy = PolynomialRing(QQbar, [str(x_var), str(y_var)])(P)
-    P_ty = Rty.zero()
-    for monom, c in P_xy.dict().items():
-        P_ty += QQbar(c) * t_gen ** ZZ(monom[0] * e) * y_gen ** ZZ(monom[1])
-
-    # Build the known Puiseux prefix as a polynomial in t
-    prefix = Rty.zero()
-    for c, exp in zip(coeffs, exponents):
-        prefix += QQbar(c) * t_gen ** ZZ(exp * e)
-
-    # Shift: P(t^e, y + prefix(t)) so the dominating branch goes through origin
-    P_shifted = P_ty.subs({y_gen: y_gen + prefix})
-
-    # We need enough terms in t to cover series_precision terms in x
-    t_precision = series_precision * e
-
-    # Run Newton's method on the shifted polynomial
-    series_t = compute_newton_series(P_shifted, [t_gen, y_gen], t_precision)
-
-    # Shift back: add the known prefix
-    return series_t + prefix
