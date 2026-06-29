@@ -14,7 +14,7 @@ from sage_acsv.groebner import compute_groebner_basis, compute_radical
 from sage_acsv.settings import ACSVSettings
 
 
-def _kronecker_representation_sage(system, u_, vs, linear_form=None):
+def _kronecker_representation_sage(system, u_, vs, linear_form=None, return_linear_form=False):
     r"""Computes the Kronecker Representation of a system of polynomials.
 
     This method is intended for internal use and requires a consistent
@@ -119,12 +119,14 @@ def _kronecker_representation_sage(system, u_, vs, linear_form=None):
     # Forget base ring, move to univariate polynomial ring in u over a field
     Qs = [R(Q) for Q in Qs]
 
+    if return_linear_form:
+        return P, Qs, linear_form
     return P, Qs
 
 
-def _kronecker_representation_msolve(system, u_, vs):
+def _kronecker_representation_msolve(system, u_, vs, return_linear_form=False):
     result = get_parametrization(vs, system)
-    _, nvars, _, msvars, _, param = result[1]
+    _, nvars, _, msvars, form, param = result[1]
 
     # msolve may reorder the variables, so order them back
     Qparams = param[1][2]
@@ -151,10 +153,13 @@ def _kronecker_representation_msolve(system, u_, vs):
         Q = -sum([c * u_**i for (i, c) in enumerate(Q_coeffs)]) / c_div
         Qs.append(Q)
 
+    if return_linear_form:
+        linear_form = sum([form[pidx[i]]*vs[i] for i in range(len(vs))])
+        return P, Qs, linear_form
     return P, Qs
 
 
-def _kronecker_representation(system, u_, vs, linear_form=None):
+def _kronecker_representation(system, u_, vs, linear_form=None, return_linear_form=False):
     r"""Computes the Kronecker Representation of a system of polynomials
 
     Internal intermediate function for choosing the Kronecker backend implementation
@@ -173,8 +178,12 @@ def _kronecker_representation(system, u_, vs, linear_form=None):
     ``z_i = Q_i(u)/P'(u)`` for ``u`` ranging over the roots of ``P``.
     """
     if ACSVSettings.get_default_kronecker_backend() == ACSVSettings.Kronecker.MSOLVE:
-        return _kronecker_representation_msolve(system, u_, vs)
-    return _kronecker_representation_sage(system, u_, vs, linear_form=linear_form)
+        if linear_form is not None:
+            acsv_logger.warning(
+                "msolve chooses its own linear form by default. The provided linear form will be dropped."
+            )
+        return _kronecker_representation_msolve(system, u_, vs, return_linear_form=return_linear_form)
+    return _kronecker_representation_sage(system, u_, vs, linear_form=linear_form, return_linear_form=return_linear_form)
 
 def kronecker(system, vs, linear_form=None):
     acsv_logger.warning(
@@ -185,7 +194,7 @@ def kronecker(system, vs, linear_form=None):
     return kronecker_representation(system, vs, linear_form=linear_form)
 
 
-def kronecker_representation(system, vs, linear_form=None):
+def kronecker_representation(system, vs, linear_form=None, return_linear_form=False):
     r"""Computes the Kronecker Representation of a system of polynomials.
 
     INPUT:
@@ -214,4 +223,4 @@ def kronecker_representation(system, vs, linear_form=None):
     system = [R(f) for f in system]
     vs = [R(v) for v in vs]
     u_ = R(u_)
-    return _kronecker_representation(system, u_, vs, linear_form)
+    return _kronecker_representation(system, u_, vs, linear_form, return_linear_form)
