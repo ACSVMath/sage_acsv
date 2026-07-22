@@ -1957,8 +1957,7 @@ def diagonal_asymptotics_hyperplane(
         raise ValueError("H does not define a hyperplane arrangement.")
 
     minimal_contributing_points = []
-    next_cps = []
-    next_heights = []
+    next_contrib_vals = []
 
     # Sort all critical points by height
     cps_by_height = [(cp, prod([abs(vi)**ri for (vi, ri) in zip(cp, r)])) for cp in cps]
@@ -1970,15 +1969,23 @@ def diagonal_asymptotics_hyperplane(
         subs_dict = {vs[i]: cp[i] for i in range(d)}
 
         factors = [f for f in Hs if f.subs(subs_dict) == 0]
+        s = len(factors)
+        normals = matrix(
+            [[f.derivative(v).subs(subs_dict) for v in vs] for f in factors]
+        )
+        if normals.rank() < s:
+            raise ACSVException(
+                "Not a transverse intersection. Cannot deal with this case."
+            )
+
         # If contributing_height != None, then a contributing point has been found. Any other contributing points
         # of larger height are just for the error bound, so they don't need to be generic.
-        if is_contributing(vs, cp, r, factors, len(factors), contributing_height is not None and h > contributing_height):
+        if is_contributing(vs, cp, r, factors, s, contributing_height is not None and h > contributing_height):
             if contributing_height is None or h == contributing_height:
                 contributing_height = h
                 minimal_contributing_points.append(cp)
             else:
-                next_cps.append(cp)
-                next_heights.append(h)
+                next_contrib_vals.append((cp, h, s))
 
     if not minimal_contributing_points:
         raise ACSVException("No contributing points found.")
@@ -1990,10 +1997,10 @@ def diagonal_asymptotics_hyperplane(
     output_format = ACSVSettings.get_default_output_format() if output_format is None else ACSVSettings.Output(output_format)
     if output_format == OutputFormat.ASYMPTOTIC:
         n = result.parent().gen()
-        for next_cp, next_height in zip(next_cps, next_heights):
+        for next_cp, next_height, s in next_contrib_vals:
             subs_dict = {vs[i]: next_cp[i] for i in range(d)}
             multiplicities = [p for f, p in H.factor() if f.subs(subs_dict) == 0]
-            result = result + (((1 / abs(next_height)) ** n) * (n ** (QQ((-len(Hs) - d) / 2 + sum(multiplicities))))).O()
+            result = result + (((1 / abs(next_height)) ** n) * (n ** (QQ((-s - d) / 2 + sum(multiplicities))))).O()
 
     if return_points:
         return result, minimal_contributing_points
