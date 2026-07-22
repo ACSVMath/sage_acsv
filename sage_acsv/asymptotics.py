@@ -2336,7 +2336,7 @@ def _compute_asymptotics_at_points(
             )
         except ValueError:
             # Issue with Sage algebraic numbers equality checking
-            for a, _, c, _ in asm_vals:
+            for a, _, c, _, _ in asm_vals:
                 a.simplify()
                 c.simplify()
             result = sum(
