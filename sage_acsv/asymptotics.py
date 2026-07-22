@@ -2483,7 +2483,7 @@ def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False, r=None):
     """
 
     if isinstance(r, dict):
-        r = _prepare_direction_variable_order(F, r)
+        r = _dict_to_variable_order(F, r)
 
     G, H, variable_map = _prepare_symbolic_fraction(F)
 
