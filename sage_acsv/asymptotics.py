@@ -1887,6 +1887,8 @@ def diagonal_asymptotics_hyperplane(
         3 + O((8/9)^n*n^(-1))
         sage: diagonal_asymptotics_hyperplane(1/((1-x/3-2*y/3)*(1-2*x/3-y/3)), r=[3,1])
         6.531972647421808?/sqrt(pi)*(2048/2187)^n*n^(-1/2) + O((2048/2187)^n*n^(-3/2))
+        sage: diagonal_asymptotics_hyperplane(SR(1/((3-2*x-y)*(3-x-2*y)*(1-x/4-y/4))))
+        1/3 + O((8/9)^n*n^(-1/2))
 
     Non-combinatorial example::
 
@@ -1906,6 +1908,13 @@ def diagonal_asymptotics_hyperplane(
         Traceback (most recent call last):
         ...
         ValueError: H does not define a hyperplane arrangement.
+
+    Should fail if H is not transverse::
+
+        sage: diagonal_asymptotics_hyperplane(SR(1/((3-2*x-y)*(3-x-2*y)*(2-x-y))))
+        Traceback (most recent call last):
+        ...
+        ACSVException: Not a transverse intersection. Cannot deal with this case.
 
     """
     if isinstance(r, dict):
