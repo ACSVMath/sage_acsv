@@ -1030,12 +1030,12 @@ def _general_term_asymptotics_complete_intersection_hyplerplane(G, Hs, exps, r, 
         sage: from sage_acsv.asymptotics import _general_term_asymptotics_complete_intersection_hyplerplane
         sage: R.<x, y> = QQ[]
         sage: _general_term_asymptotics_complete_intersection_hyplerplane(1, [3-2*x-y, 3-x-2*y], [2, 3], [1, 1], [x, y], [1, 1], 2)
-        [-1/162, 0]
+        [1/162, 0]
 
         sage: from sage_acsv.asymptotics import _general_term_asymptotics_complete_intersection_hyplerplane
         sage: R.<x, y> = QQ[]
         sage: _general_term_asymptotics_complete_intersection_hyplerplane(1, [3-2*x-y, 3-x-2*y], [2, 3], [1, 1], [x, y], [1, 1], 5)
-        [-1/162, 0, 7/162, 1/27]
+        [1/162, 0, -7/162, -1/27]
     """
     M = matrix(
         [
@@ -1081,7 +1081,7 @@ def _general_term_asymptotics_complete_intersection_hyplerplane(G, Hs, exps, r, 
         return P.coefficient(n**deg)
 
     # Return the coefficients of the resulting power series in n
-    return [get_coefficient(Pseries, n, k)/M.determinant() for k in range(sum(exps)-len(vs)+1)][::-1][:expansion_precision]
+    return [(-1)**(sum(exps) + len(vs))*get_coefficient(Pseries, n, k)/M.determinant().abs() for k in range(sum(exps)-len(vs)+1)][::-1][:expansion_precision]
 
 
 def contributing_points_combinatorial_smooth(G, H, variables, r=None, linear_form=None):
