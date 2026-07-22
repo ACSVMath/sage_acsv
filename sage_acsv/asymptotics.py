@@ -2373,7 +2373,7 @@ def _compute_asymptotics_at_points(
 
         # For complete intersections, the error bound is actually exponentially smaller after a certain precision
         # But we can currently only represent this for hyplerplane intersections
-        if s == d and all(f.degree() == 1 for f in factors) and expansion_precision > sum(multiplicities) - d:
+        if all(asm_val[-1] == d for asm_val in asm_vals) and all(f.degree() == 1 for f in factors) and expansion_precision > sum(multiplicities) - d:
             result = result.exact_part()
     else:
         raise NotImplementedError(f"Missing implementation for {output_format}")
