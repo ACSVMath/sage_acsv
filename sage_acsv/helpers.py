@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from sage.arith.misc import binomial, gcd
 from sage.functions.generalized import kronecker_delta
+from sage.functions.log import exp
 from sage.functions.other import ceil, factorial
 from sage.geometry.polyhedron.constructor import Polyhedron
 from sage.groups.misc_gps.argument_groups import ArgumentByElementGroup
@@ -468,7 +469,7 @@ def algebraic_residues(P, Q, S):
         di = decomp[i][1]
 
         if Qi.degree() == 0:
-            R[i] = 1                                # Ri = 1
+            Result[i] = 1                                # Ri = 1
         else:
             Ui = Q // Qi**di                        # Ui = Q/Q_i^i
             Vi = (Qi(y + t) - Qi(y)).quo_rem(t)[0]    # Vi = (Qi(y+t)-Qi(y))/t
@@ -890,11 +891,9 @@ def get_limit_theorem_terms(
         sage: var('z t')
         (z, t)
         sage: expr = central_limit_theorem_combinatorial(1/(1-t-z*t^2), t, as_symbolic=True)
-        sage: get_limit_theorem_terms(expr)
+        sage: get_limit_theorem_terms(expr)[0]
         LimitTheoremTerm(coefficient=1.710862642974252?, pi_factor=1/sqrt(pi), base=1.618033988749895?, power=-0.5, density_symbolic=e^(-1/2*(-0.2763932022500211?*n + s0)*(-3.090169943749475?*n + 11.18033988749895?*s0)/n), density_covariance_matrix=[11.18033988749895?], density_mean_vector=[0.2763932022500211?])
     """
-    from sage.functions.log import exp
-
     n = SR.var("n")
 
     if isinstance(expr, tuple):
@@ -905,7 +904,7 @@ def get_limit_theorem_terms(
         density_sym = exp(-(((s - n * mean_vec) * inv_hess * (s - n * mean_vec).transpose())[0, 0]) / 2 / n)
         base_terms = get_expansion_terms(growth_expr)
 
-        result = None
+        result = []
         for term in base_terms:
             lterm = LimitTheoremTerm(
                 coefficient=term.coefficient,
@@ -916,7 +915,7 @@ def get_limit_theorem_terms(
                 density_covariance_matrix=inv_hess,
                 density_mean_vector=mean_vec,
             )
-            result = lterm
+            result.append(lterm)
 
         return result
 
@@ -967,7 +966,7 @@ def get_limit_theorem_terms(
 
         base_terms = get_expansion_terms(growth_expr)
 
-        result = None
+        result = []
         for term in base_terms:
             lterm = LimitTheoremTerm(
                 coefficient=term.coefficient,
@@ -978,7 +977,7 @@ def get_limit_theorem_terms(
                 density_covariance_matrix=cov_matrix,
                 density_mean_vector=mean_vec,
             )
-            result = lterm
+            result.append(lterm)
 
         return result
     else:

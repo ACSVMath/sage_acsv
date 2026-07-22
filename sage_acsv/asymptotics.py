@@ -284,7 +284,7 @@ def _diagonal_asymptotics_combinatorial_smooth(
             else:
                 raise e
     else:
-        return
+        raise ACSVException(f"Could not find suitable linear form after {ACSVSettings.MAX_MIN_CRIT_RETRIES} attempts.")
 
     timer = Timer()
 
@@ -1195,14 +1195,17 @@ def contributing_points_combinatorial_smooth(G, H, variables, r=None, linear_for
             pos_minimals.append(u)
 
     # Remove non-smooth points and points with zero coordinates (where lambda=0)
-    for i in range(len(pos_minimals)):
-        x = (Qs[-1] / Pd).subs(u_=pos_minimals[i])
+    pos_minimals_new = []
+    for pos_minimal in pos_minimals:
+        x = (Qs[-1] / Pd).subs(u_=pos_minimal)
         if x == 0:
             acsv_logger.warning(
-                f"Removing critical point {pos_minimals[i]} because it either "
+                f"Removing critical point {pos_minimal} because it either "
                 "has a zero coordinate or is not smooth."
             )
-            pos_minimals.pop(i)
+        else:
+            pos_minimals_new.append(pos_minimal)
+    pos_minimals = pos_minimals_new
 
     # Verify necessary assumptions
     if not pos_minimals:
