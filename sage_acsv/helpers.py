@@ -176,7 +176,7 @@ def compute_hessian(H, variables, r, critical_point=None):
 
     * ``H`` -- A polynomial; the denominator of the rational generating function
       `F = G/H`.
-    * ``vs`` -- A list of variables ``z_1, ..., z_d``
+    * ``variables`` -- A list of variables ``z_1, ..., z_d``
     * ``r`` -- The direction. A vector of length `d` with positive algebraic numbers
       (usually integers) as coordinates.
     * ``critical_point`` -- (Optional) A critical point of the map at which to evaluate

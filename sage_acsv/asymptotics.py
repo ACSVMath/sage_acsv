@@ -1259,7 +1259,7 @@ def _find_contributing_points_combinatorial(
     * ``whitney_strat`` -- (Optional) If known / precomputed, a
       Whitney Stratification of `V(H)`. The program will not check if
       this stratification is correct. Should be a list of length ``d``, where
-      the ``k``-th entry is a list of tuples of ideas generators representing
+      the ``k``-th entry is a list of tuples of ideal generators representing
       a component of the ``k``-dimensional stratum.
 
     OUTPUT:
@@ -1462,7 +1462,7 @@ def contributing_points_combinatorial(
     * ``whitney_strat`` -- (Optional) If known / precomputed, a
       Whitney Stratification of `V(H)`. The program will not check if
       this stratification is correct. Should be a list of length `d`, where
-      the `k`-th entry is a list of tuples of ideas generators representing
+      the `k`-th entry is a list of tuples of ideal generators representing
       a component of the `k`-dimensional stratum.
 
     OUTPUT:
@@ -1541,7 +1541,7 @@ def minimal_critical_points_combinatorial(
     * ``whitney_strat`` -- (Optional) If known / precomputed, a
       Whitney Stratification of `V(H)`. The program will not check if
       this stratification is correct. Should be a list of length ``d``, where
-      the ``k``-th entry is a list of tuples of ideas generators representing
+      the ``k``-th entry is a list of tuples of ideal generators representing
       a component of the ``k``-dimensional stratum.
 
     OUTPUT:
@@ -1710,7 +1710,7 @@ def critical_points(F, r=None, linear_form=None, whitney_strat=None):
     * ``whitney_strat`` -- (Optional) If known / precomputed, a
       Whitney Stratification of `V(H)`. The program will not check if
       this stratification is correct. Should be a list of length ``d``, where
-      the ``k``-th entry is a list of tuples of ideas generators representing
+      the ``k``-th entry is a list of tuples of ideal generators representing
       a component of the ``k``-dimensional stratum.
 
     OUTPUT:
