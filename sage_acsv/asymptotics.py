@@ -588,10 +588,10 @@ def diagonal_asymptotics_combinatorial(
     is not smooth but is the transverse union of smooth varieties::
 
         sage: diagonal_asymptotics_combinatorial(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)), r = [17/24, 7/24], output_format = 'asymptotic')
-        12 + O(0.9960121882524521?^n*n^(-1))
+        12 + O(0.9960121882524521?^n*n^(-1/2))
 
         sage: diagonal_asymptotics_combinatorial(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)), r = [17/24, 7/24], output_format = 'asymptotic')
-        12 + O(0.9960121882524521?^n*n^(-1))
+        12 + O(0.9960121882524521?^n*n^(-1/2))
         sage: G = (1+x)*(1-x*y^2+x^2)
         sage: H = (1-z*(1+x^2+x*y^2))*(1-y)*(1+x^2)
         sage: strat = [
@@ -1884,7 +1884,7 @@ def diagonal_asymptotics_hyperplane(
     Non-smooth combinatorial example::
 
         sage: diagonal_asymptotics_hyperplane(1/((1-x/3-2*y/3)*(1-2*x/3-y/3)))
-        3 + O((8/9)^n*n^(-1))
+        3 + O((8/9)^n*n^(-1/2))
         sage: diagonal_asymptotics_hyperplane(1/((1-x/3-2*y/3)*(1-2*x/3-y/3)), r=[3,1])
         6.531972647421808?/sqrt(pi)*(2048/2187)^n*n^(-1/2) + O((2048/2187)^n*n^(-3/2))
         sage: diagonal_asymptotics_hyperplane(SR(1/((3-2*x-y)*(3-x-2*y)*(1-x/4-y/4))))
