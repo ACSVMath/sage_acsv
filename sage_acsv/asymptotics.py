@@ -284,7 +284,7 @@ def _diagonal_asymptotics_combinatorial_smooth(
             else:
                 raise e
     else:
-        return
+        raise ACSVException(f"Could not find suitable linear form after {ACSVSettings.MAX_MIN_CRIT_RETRIES} attempts.")
 
     timer = Timer()
 
@@ -588,10 +588,10 @@ def diagonal_asymptotics_combinatorial(
     is not smooth but is the transverse union of smooth varieties::
 
         sage: diagonal_asymptotics_combinatorial(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)), r = [17/24, 7/24], output_format = 'asymptotic')
-        12 + O(0.9960121882524521?^n*n^(-1))
+        12 + O(0.9960121882524521?^n*n^(-1/2))
 
         sage: diagonal_asymptotics_combinatorial(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)), r = [17/24, 7/24], output_format = 'asymptotic')
-        12 + O(0.9960121882524521?^n*n^(-1))
+        12 + O(0.9960121882524521?^n*n^(-1/2))
         sage: G = (1+x)*(1-x*y^2+x^2)
         sage: H = (1-z*(1+x^2+x*y^2))*(1-y)*(1+x^2)
         sage: strat = [
@@ -832,7 +832,7 @@ def _general_term_asymptotics_smooth(G, H, r, vs, cp, expansion_precision):
 
     # Function to compute constants appearing in asymptotic expansion
     def constants_clj(ell, j):
-        extra_contrib = (-1) ** j / (
+        extra_contrib = (-ZZ.one()) ** j / (
             2 ** (ell + j) * factorial(ell) * factorial(ell + j)
         )
         return extra_contrib * eval_op(EE[ell + j], PP[ell])
@@ -978,7 +978,7 @@ def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
 
     # Function to compute constants appearing in asymptotic expansion
     def constants_clj(ell, j):
-        extra_contrib = (-1) ** j / (
+        extra_contrib = (-ZZ.one()) ** j / (
             2 ** (ell + j) * factorial(ell) * factorial(ell + j)
         )
         return extra_contrib * eval_op(EE[ell + j], PP[ell])
@@ -1030,12 +1030,12 @@ def _general_term_asymptotics_complete_intersection_hyplerplane(G, Hs, exps, r, 
         sage: from sage_acsv.asymptotics import _general_term_asymptotics_complete_intersection_hyplerplane
         sage: R.<x, y> = QQ[]
         sage: _general_term_asymptotics_complete_intersection_hyplerplane(1, [3-2*x-y, 3-x-2*y], [2, 3], [1, 1], [x, y], [1, 1], 2)
-        [-1/162, 0]
+        [1/162, 0]
 
         sage: from sage_acsv.asymptotics import _general_term_asymptotics_complete_intersection_hyplerplane
         sage: R.<x, y> = QQ[]
         sage: _general_term_asymptotics_complete_intersection_hyplerplane(1, [3-2*x-y, 3-x-2*y], [2, 3], [1, 1], [x, y], [1, 1], 5)
-        [-1/162, 0, 7/162, 1/27]
+        [1/162, 0, -7/162, -1/27]
     """
     M = matrix(
         [
@@ -1081,7 +1081,7 @@ def _general_term_asymptotics_complete_intersection_hyplerplane(G, Hs, exps, r, 
         return P.coefficient(n**deg)
 
     # Return the coefficients of the resulting power series in n
-    return [get_coefficient(Pseries, n, k)/M.determinant() for k in range(sum(exps)-len(vs)+1)][::-1][:expansion_precision]
+    return [(-1)**(sum(exps) + len(vs))*get_coefficient(Pseries, n, k)/M.determinant().abs() for k in range(sum(exps)-len(vs)+1)][::-1][:expansion_precision]
 
 
 def contributing_points_combinatorial_smooth(G, H, variables, r=None, linear_form=None):
@@ -1195,14 +1195,17 @@ def contributing_points_combinatorial_smooth(G, H, variables, r=None, linear_for
             pos_minimals.append(u)
 
     # Remove non-smooth points and points with zero coordinates (where lambda=0)
-    for i in range(len(pos_minimals)):
-        x = (Qs[-1] / Pd).subs(u_=pos_minimals[i])
+    pos_minimals_new = []
+    for pos_minimal in pos_minimals:
+        x = (Qs[-1] / Pd).subs(u_=pos_minimal)
         if x == 0:
             acsv_logger.warning(
-                f"Removing critical point {pos_minimals[i]} because it either "
+                f"Removing critical point {pos_minimal} because it either "
                 "has a zero coordinate or is not smooth."
             )
-            pos_minimals.pop(i)
+        else:
+            pos_minimals_new.append(pos_minimal)
+    pos_minimals = pos_minimals_new
 
     # Verify necessary assumptions
     if not pos_minimals:
@@ -1259,7 +1262,7 @@ def _find_contributing_points_combinatorial(
     * ``whitney_strat`` -- (Optional) If known / precomputed, a
       Whitney Stratification of `V(H)`. The program will not check if
       this stratification is correct. Should be a list of length ``d``, where
-      the ``k``-th entry is a list of tuples of ideas generators representing
+      the ``k``-th entry is a list of tuples of ideal generators representing
       a component of the ``k``-dimensional stratum.
 
     OUTPUT:
@@ -1462,7 +1465,7 @@ def contributing_points_combinatorial(
     * ``whitney_strat`` -- (Optional) If known / precomputed, a
       Whitney Stratification of `V(H)`. The program will not check if
       this stratification is correct. Should be a list of length `d`, where
-      the `k`-th entry is a list of tuples of ideas generators representing
+      the `k`-th entry is a list of tuples of ideal generators representing
       a component of the `k`-dimensional stratum.
 
     OUTPUT:
@@ -1541,7 +1544,7 @@ def minimal_critical_points_combinatorial(
     * ``whitney_strat`` -- (Optional) If known / precomputed, a
       Whitney Stratification of `V(H)`. The program will not check if
       this stratification is correct. Should be a list of length ``d``, where
-      the ``k``-th entry is a list of tuples of ideas generators representing
+      the ``k``-th entry is a list of tuples of ideal generators representing
       a component of the ``k``-dimensional stratum.
 
     OUTPUT:
@@ -1710,7 +1713,7 @@ def critical_points(F, r=None, linear_form=None, whitney_strat=None):
     * ``whitney_strat`` -- (Optional) If known / precomputed, a
       Whitney Stratification of `V(H)`. The program will not check if
       this stratification is correct. Should be a list of length ``d``, where
-      the ``k``-th entry is a list of tuples of ideas generators representing
+      the ``k``-th entry is a list of tuples of ideal generators representing
       a component of the ``k``-dimensional stratum.
 
     OUTPUT:
@@ -1884,9 +1887,11 @@ def diagonal_asymptotics_hyperplane(
     Non-smooth combinatorial example::
 
         sage: diagonal_asymptotics_hyperplane(1/((1-x/3-2*y/3)*(1-2*x/3-y/3)))
-        3 + O((8/9)^n*n^(-1))
+        3 + O((8/9)^n*n^(-1/2))
         sage: diagonal_asymptotics_hyperplane(1/((1-x/3-2*y/3)*(1-2*x/3-y/3)), r=[3,1])
         6.531972647421808?/sqrt(pi)*(2048/2187)^n*n^(-1/2) + O((2048/2187)^n*n^(-3/2))
+        sage: diagonal_asymptotics_hyperplane(SR(1/((3-2*x-y)*(3-x-2*y)*(1-x/4-y/4))))
+        1/3 + O((8/9)^n*n^(-1/2))
 
     Non-combinatorial example::
 
@@ -1906,6 +1911,13 @@ def diagonal_asymptotics_hyperplane(
         Traceback (most recent call last):
         ...
         ValueError: H does not define a hyperplane arrangement.
+
+    Should fail if H is not transverse::
+
+        sage: diagonal_asymptotics_hyperplane(SR(1/((3-2*x-y)*(3-x-2*y)*(2-x-y))))
+        Traceback (most recent call last):
+        ...
+        ACSVException: Not a transverse intersection. Cannot deal with this case.
 
     """
     if isinstance(r, dict):
@@ -1957,8 +1969,7 @@ def diagonal_asymptotics_hyperplane(
         raise ValueError("H does not define a hyperplane arrangement.")
 
     minimal_contributing_points = []
-    next_cps = []
-    next_heights = []
+    next_contrib_vals = []
 
     # Sort all critical points by height
     cps_by_height = [(cp, prod([abs(vi)**ri for (vi, ri) in zip(cp, r)])) for cp in cps]
@@ -1970,15 +1981,23 @@ def diagonal_asymptotics_hyperplane(
         subs_dict = {vs[i]: cp[i] for i in range(d)}
 
         factors = [f for f in Hs if f.subs(subs_dict) == 0]
+        s = len(factors)
+        normals = matrix(
+            [[f.derivative(v).subs(subs_dict) for v in vs] for f in factors]
+        )
+        if normals.rank() < s:
+            raise ACSVException(
+                "Not a transverse intersection. Cannot deal with this case."
+            )
+
         # If contributing_height != None, then a contributing point has been found. Any other contributing points
         # of larger height are just for the error bound, so they don't need to be generic.
-        if is_contributing(vs, cp, r, factors, len(factors), contributing_height is not None and h > contributing_height):
+        if is_contributing(vs, cp, r, factors, s, contributing_height is not None and h > contributing_height):
             if contributing_height is None or h == contributing_height:
                 contributing_height = h
                 minimal_contributing_points.append(cp)
             else:
-                next_cps.append(cp)
-                next_heights.append(h)
+                next_contrib_vals.append((cp, h, s))
 
     if not minimal_contributing_points:
         raise ACSVException("No contributing points found.")
@@ -1990,10 +2009,10 @@ def diagonal_asymptotics_hyperplane(
     output_format = ACSVSettings.get_default_output_format() if output_format is None else ACSVSettings.Output(output_format)
     if output_format == OutputFormat.ASYMPTOTIC:
         n = result.parent().gen()
-        for next_cp, next_height in zip(next_cps, next_heights):
+        for next_cp, next_height, s in next_contrib_vals:
             subs_dict = {vs[i]: next_cp[i] for i in range(d)}
             multiplicities = [p for f, p in H.factor() if f.subs(subs_dict) == 0]
-            result = result + (((1 / abs(next_height)) ** n) * (n ** (QQ((-len(Hs) - d) / 2 + sum(multiplicities))))).O()
+            result = result + (((1 / abs(next_height)) ** n) * (n ** (QQ((-s - d) / 2 + sum(multiplicities))))).O()
 
     if return_points:
         return result, minimal_contributing_points
@@ -2242,7 +2261,7 @@ def _compute_asymptotics_at_points(
                     _general_term_asymptotics_complete_intersection_hyplerplane(G, factors, multiplicities, r, vs, cp, expansion_precision)
                 )
             ) / unit.subs(subs_dict)
-            B = 1
+            B = ZZ.one()
         # Higher order expansions not currently supported for higher-order poles
         # In complete intersection case, error bound is actually exponentially lower, but we don't currently have
         # a way to represent it using the asymptotic ring.
@@ -2271,7 +2290,7 @@ def _compute_asymptotics_at_points(
                     / unit / abs(Gamma.determinant())
                     / R(prod(extra_factors)).subs(subs_dict)
                 )
-                B = 1
+                B = ZZ.one()
 
             # Some constants appearing for higher order singularities
             mult_fac = prod([factorial(m - 1) for m in multiplicities])
@@ -2336,7 +2355,7 @@ def _compute_asymptotics_at_points(
             )
         except ValueError:
             # Issue with Sage algebraic numbers equality checking
-            for a, _, c, _ in asm_vals:
+            for a, _, c, _, _ in asm_vals:
                 a.simplify()
                 c.simplify()
             result = sum(
@@ -2354,7 +2373,7 @@ def _compute_asymptotics_at_points(
 
         # For complete intersections, the error bound is actually exponentially smaller after a certain precision
         # But we can currently only represent this for hyplerplane intersections
-        if s == d and all(f.degree() == 1 for f in factors) and expansion_precision > sum(multiplicities) - d:
+        if all(asm_val[-1] == d for asm_val in asm_vals) and all(f.degree() == 1 for f in factors) and expansion_precision > sum(multiplicities) - d:
             result = result.exact_part()
     else:
         raise NotImplementedError(f"Missing implementation for {output_format}")
@@ -2483,7 +2502,7 @@ def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False, r=None):
     """
 
     if isinstance(r, dict):
-        r = _prepare_direction_variable_order(F, r)
+        r = _dict_to_variable_order(F, r)
 
     G, H, variable_map = _prepare_symbolic_fraction(F)
 

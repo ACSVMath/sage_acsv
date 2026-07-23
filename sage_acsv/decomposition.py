@@ -1,6 +1,7 @@
 from sage.all import Ideal, SR, PolynomialRing, Set
 from sage.all import prod, xgcd, jacobian
 from sage.arith.functions import lcm
+from sage.symbolic.operators import add_vararg
 
 from copy import copy
 
@@ -218,9 +219,19 @@ def compute_leinartas_decomposition(R, G, H):
         sage: R.<x,y,z> = PolynomialRing(QQ, 3)
         sage: compute_leinartas_decomposition(R, 1, (x*y*z*(x*y+z)))
         [(1, x*y*z^2), (-1, x*y*z^2 + z^3)]
+        sage: R.<x> = PolynomialRing(QQ, 1)
+        sage: compute_leinartas_decomposition(R, 1, (x-1)*(x+1))
+        [(-1, 2*x + 2), (1, 2*x - 2)]
     """
     if len(R.gens()) == 1:
-        return  # just do partial fraction here
+        def iterate_sum(ex):
+            # Check if the primary operator at this node is addition
+            if ex.operator() == add_vararg:
+                for term in ex.operands():
+                    yield from iterate_sum(term)
+            else:
+                yield ex
+        return [(R(term.numerator()), R(term.denominator())) for term in iterate_sum(SR(G/H).partial_fraction())]
 
     null_decomp = compute_nullstellensatz_decomposition(R, G, H)
     decomp = []
