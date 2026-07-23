@@ -832,7 +832,7 @@ def _general_term_asymptotics_smooth(G, H, r, vs, cp, expansion_precision):
 
     # Function to compute constants appearing in asymptotic expansion
     def constants_clj(ell, j):
-        extra_contrib = (-1) ** j / (
+        extra_contrib = (-ZZ.one()) ** j / (
             2 ** (ell + j) * factorial(ell) * factorial(ell + j)
         )
         return extra_contrib * eval_op(EE[ell + j], PP[ell])
@@ -978,7 +978,7 @@ def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
 
     # Function to compute constants appearing in asymptotic expansion
     def constants_clj(ell, j):
-        extra_contrib = (-1) ** j / (
+        extra_contrib = (-ZZ.one()) ** j / (
             2 ** (ell + j) * factorial(ell) * factorial(ell + j)
         )
         return extra_contrib * eval_op(EE[ell + j], PP[ell])
@@ -2261,7 +2261,7 @@ def _compute_asymptotics_at_points(
                     _general_term_asymptotics_complete_intersection_hyplerplane(G, factors, multiplicities, r, vs, cp, expansion_precision)
                 )
             ) / unit.subs(subs_dict)
-            B = 1
+            B = ZZ.one()
         # Higher order expansions not currently supported for higher-order poles
         # In complete intersection case, error bound is actually exponentially lower, but we don't currently have
         # a way to represent it using the asymptotic ring.
@@ -2290,7 +2290,7 @@ def _compute_asymptotics_at_points(
                     / unit / abs(Gamma.determinant())
                     / R(prod(extra_factors)).subs(subs_dict)
                 )
-                B = 1
+                B = ZZ.one()
 
             # Some constants appearing for higher order singularities
             mult_fac = prod([factorial(m - 1) for m in multiplicities])
