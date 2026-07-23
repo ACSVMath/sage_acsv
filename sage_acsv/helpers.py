@@ -677,7 +677,7 @@ def is_transverse_at_point(H, vs, pt):
         False
 
     """
-    R = PolynomialRing(QQbar, vs)
+    R = PolynomialRing(QQbar, len(vs), vs)
     H = R(H)
     vs = [R(v) for v in vs]
 
@@ -687,6 +687,7 @@ def is_transverse_at_point(H, vs, pt):
     def hom(f):
         if f == 0:
             return 0
+        f = R(f)
         return f.homogeneous_components().get(min(f.homogeneous_components().keys()))
 
     # Step 1: Check that the leading homogeneous part of H factors nicely
