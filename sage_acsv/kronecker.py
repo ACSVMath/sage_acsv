@@ -154,7 +154,13 @@ def _kronecker_representation_msolve(system, u_, vs, return_linear_form=False):
         Qs.append(Q)
 
     if return_linear_form:
-        linear_form = sum([form[pidx[i]]*vs[i] for i in range(len(vs))])
+        linear_form = sum(form[pidx[i]] * vs[i] for i in range(len(vs)))
+        if nvars != len(vs):
+            # msolve introduces an auxiliary variable when no input variable
+            # separates the solutions. Its form defines a homogeneous equation,
+            # so solve that equation for the auxiliary parameter.
+            auxiliary_indices = [i for i in range(nvars) if i not in pidx]
+            linear_form = -linear_form / form[auxiliary_indices[0]]
         return P, Qs, linear_form
     return P, Qs
 
