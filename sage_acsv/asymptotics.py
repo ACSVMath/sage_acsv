@@ -1057,13 +1057,10 @@ def _general_term_asymptotics_complete_intersection_hyplerplane(G, Hs, exps, r, 
     # Take exp(log) for efficiency
     tsubs = {v: subs_dict[v] - (M.inverse() * vector(tvars))[i] for i, v in enumerate(vs)}
     GSeries = G.subs(tsubs)/prod([tsubs[v] for v in vs]).add_bigoh(N)
-    unit = GSeries.coefficients().get(QQbar.one(), 0)
-    log_series = log(
-        GSeries/unit
-    ).add_bigoh(N) - sum([
+    log_series = sum([
         r[i]*n*log(tsubs[v]/cp[i]) for i, v in enumerate(vs)
     ]).add_bigoh(N)
-    Pseries = unit * exp(log_series).truncate(N)
+    Pseries = GSeries / exp(log_series).truncate(N)
 
     # Differentiate given power series to the necessary order
     # Then, substitute t=0 to get polynomial part
