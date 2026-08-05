@@ -202,7 +202,7 @@ class ACSVSettings:
             cls._default_groebner_backend = GroebnerBackend(backend)
 
     @classmethod
-    def get_default_groebner_backend(cls) -> KroneckerBackend:
+    def get_default_groebner_backend(cls) -> GroebnerBackend:
         """Get the default groebner basis backend."""
         return cls._default_groebner_backend
 
@@ -217,6 +217,6 @@ class ACSVSettings:
         cls._m2 = Macaulay2(command=path)
 
     @classmethod
-    def get_macaulay2(cls) -> KroneckerBackend:
+    def get_macaulay2(cls) -> Macaulay2:
         """Get the Macaulay2 installation path."""
         return cls._m2
