@@ -756,6 +756,10 @@ def _general_term_asymptotics_smooth(G, H, r, vs, cp, expansion_precision):
         [2, -1/4, 1/64, 5/512, -21/16384]
         sage: _general_term_asymptotics_smooth(1, 1 - x - y - z, [1, 1, 1], [x, y, z], [1/3, 1/3, 1/3], 4)
         [3, -2/3, 2/27, 14/729]
+
+        sage: R.<x, y> = QQ[]
+        sage: _general_term_asymptotics_smooth(1, 1 - x - y, [1, 1], [x, y], [1/2, 1/2], 11)
+        [2, -1/4, 1/64, 5/512, -21/16384, -399/131072, 869/2097152, 39325/16777216, -334477/1073741824, -28717403/8589934592, 59697183/137438953472]
     """
 
     if expansion_precision == 1:
@@ -773,8 +777,11 @@ def _general_term_asymptotics_smooth(G, H, r, vs, cp, expansion_precision):
 
     cp = {v: V for (v, V) in zip(vs, cp)}
 
+    # P and PsiTilde only need to be computed to order 2M
+    N = 2 * expansion_precision + 1
+
     W = DifferentialWeylAlgebra(PolynomialRing(QQbar, tvars))
-    TR = PowerSeriesRing(QQbar, tvars)
+    TR = PowerSeriesRing(QQbar, tvars, default_prec=N)
     T = TR.gens()
     tvars = T
     D = list(W.differentials())
@@ -795,9 +802,6 @@ def _general_term_asymptotics_smooth(G, H, r, vs, cp, expansion_precision):
     Hessinv = Hess.inverse()
     v = matrix(W, [D[: d - 1]])
     Epsilon = -(v * Hessinv.change_ring(W) * v.transpose())[0, 0]
-
-    # P and PsiTilde only need to be computed to order 2M
-    N = 2 * expansion_precision + 1
 
     # Find series expansion of function g given implicitly by
     # H(w_1, ..., w_{d-1}, g(w_1, ..., w_{d-1})) = 0 up to needed order
@@ -919,8 +923,11 @@ def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
     if expansion_precision == 1:
         return [leading_term]
 
+    # P and PsiTilde only need to be computed to order 2M
+    N = 2 * expansion_precision + 1
+
     W = DifferentialWeylAlgebra(PolynomialRing(QQbar, tvars))
-    TR = QQbar[[tvars]]
+    TR = PowerSeriesRing(QQbar, tvars, default_prec=N)
     T = TR.gens()
     tvars = T
     D = list(W.differentials())
@@ -941,9 +948,6 @@ def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
     Hessinv = Hess.inverse()
     v = matrix(W, [D[: d - s]])
     Epsilon = -(v * Hessinv.change_ring(W) * v.transpose())[0, 0]
-
-    # P and PsiTilde only need to be computed to order 2M
-    N = 2 * expansion_precision + 1
 
     # Find series expansion of function g given implicitly by
     # H(w_1, ..., w_{d-s}, g_{d-s+1}, ..., g_{d}) = 0 up to needed order
@@ -1045,18 +1049,19 @@ def _general_term_asymptotics_complete_intersection_hyplerplane(G, Hs, exps, r, 
         ]
     )
 
+    N = sum(exps) + expansion_precision + 1
+
     # Perform the change of variables z = cp + M^(-1)*t
     subs_dict = {vs[i]: cp[i] for i in range(len(vs))}
     tvars = SR.var("t", len(vs))
-    Rt = PowerSeriesRing(QQbar, list(tvars) + [SR.var("n")])
+    Rt = PowerSeriesRing(QQbar, list(tvars) + [SR.var("n")], default_prec=N)
     tvars = Rt.gens()[:-1]
     n = Rt.gens()[-1]
-    N = sum(exps) + expansion_precision + 1
 
     # Compute a power series expansion for G(z)/z^{nr} up to needed order
     # Take exp(log) for efficiency
     tsubs = {v: subs_dict[v] - (M.inverse() * vector(tvars))[i] for i, v in enumerate(vs)}
-    GSeries = G.subs(tsubs)/prod([tsubs[v] for v in vs]).add_bigoh(N)
+    GSeries = G.subs(tsubs) / prod([tsubs[v] for v in vs]).add_bigoh(N)
     log_series = sum([
         r[i]*n*log(tsubs[v]/cp[i]) for i, v in enumerate(vs)
     ]).add_bigoh(N)
