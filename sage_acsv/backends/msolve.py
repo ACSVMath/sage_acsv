@@ -72,7 +72,6 @@ def get_parametrization(vs, system):
     msolve_out.check_returncode()
 
     result = _parse_parametrization_output(msolve_out.stdout)
-    result = sage_eval(result[:-2])
 
     if result[0] != 0:
         raise ACSVException(
