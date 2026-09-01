@@ -467,12 +467,21 @@ def compute_square_root_determinant_of_hessian(hessian):
         True
     """
 
+    sqrt_det = hessian.determinant().sqrt()
+    if sqrt_det == 0:
+        raise ACSVException("Hessian is not full rank. We cannot handle this case.")
+
     eigenvalues_with_multiplicity = matrix(QQbar, hessian).charpoly().roots(QQbar)
 
     # The sqrt function in Sage comptues the principle branch by default
     sqrt_prod = prod(ev.sqrt() ** m for (ev, m) in eigenvalues_with_multiplicity)
-    return sqrt_prod
 
+    if sqrt_det == sqrt_prod:
+        return sqrt_det
+    elif sqrt_det == -sqrt_prod:
+        return -sqrt_det
+    else:
+        raise ACSVException("Determinant of Hessian does not match product of eigenvalues. This should never happen")
 
 def transverse_leading_normalization(Hs, vs, r, cp):
     r"""Phase-correct normalization of the leading amplitude at a transverse point.
