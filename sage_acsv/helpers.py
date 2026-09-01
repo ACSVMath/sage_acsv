@@ -435,6 +435,108 @@ def compute_implicit_hessian(Hs, vs, r, subs):
 
     return Hess
 
+def compute_square_root_determinant_of_hessian(hessian):
+    r"""Square root of the determinant of a complex Hessian defined as the product of
+    the principle branch square root of all its eigenvalues.
+
+    INPUT:
+
+    * ``hessian`` -- a matrix `M` of elements in ``QQbar``
+
+    OUTPUT:
+
+    The square root of ``hessian`` on the branch described above.
+
+    EXAMPLES:
+
+    For real positive definite Hessians (and any matrix of dimension at most
+    two) the principal square root is returned::
+
+        sage: from sage_acsv.helpers import branch_corrected_sqrt
+        sage: branch_corrected_sqrt(QQbar(1/12), matrix(QQbar, [[2, 1], [1, 2]]))
+        0.2886751345948129?
+
+    In dimension three and higher the principal square root of the assembled
+    scalar can lie on the wrong branch. For `M = i I_3` (a purely oscillatory
+    phase, real part positive semidefinite) we have `1/\det(M) = i`, whose
+    principal square root `e^{i\pi/4}` differs by a sign from the
+    continuation value `(i^{-1/2})^3 = e^{-3i\pi/4}`::
+
+        sage: M = matrix(QQbar, 3, 3, [QQbar(I), 0, 0, 0, QQbar(I), 0, 0, 0, QQbar(I)])
+        sage: branch_corrected_sqrt(M) == -QQbar(M.determinant()).sqrt()
+        True
+    """
+
+    eigenvalues_with_multiplicity = matrix(QQbar, hessian).charpoly().roots(QQbar)
+
+    # The sqrt function in Sage comptues the principle branch by default
+    sqrt_prod = prod(ev.sqrt() ** m for (ev, m) in eigenvalues_with_multiplicity)
+    return sqrt_prod
+
+
+def transverse_leading_normalization(Hs, vs, r, cp):
+    r"""Phase-correct normalization of the leading amplitude at a transverse point.
+
+    INPUT:
+
+    * ``Hs`` -- list of the local factors (polynomials in ``vs``) vanishing at ``cp``
+    * ``vs`` -- list of variables, ordered so that the first `d-s` parametrize
+    * ``r`` -- the direction vector
+    * ``cp`` -- the contributing point, in the same order as ``vs``
+
+    OUTPUT:
+
+    An algebraic number, real positive when ``cp`` has positive real coordinates.
+
+    EXAMPLES::
+
+        sage: from sage_acsv.helpers import transverse_leading_normalization
+        sage: R.<x, y, z> = QQ[]
+        sage: transverse_leading_normalization([1-x-2*y-z, 1-2*x-y-z], [x, y, z], [1, 1, 1], (2/9, 2/9, 1/3))
+        2/27
+    """
+    d = len(vs)
+    s = len(Hs)
+    R = PolynomialRing(QQbar, [str(v) for v in vs])
+    vsq = R.gens()
+    Hsq = [R(SR(Hi)) for Hi in Hs]
+    subs_dict = {vsq[i]: cp[i] for i in range(d)}
+    taus = []
+    vrows = []
+    for Hi in Hsq:
+        g = [(vsq[j] * Hi.derivative(vsq[j])).subs(subs_dict) for j in range(d)]
+        j0 = max(range(d), key=lambda j: abs(CDF(g[j])))
+        tau = QQbar(g[j0])
+        row = []
+        for j in range(d):
+            c = QQbar(g[j]) / tau
+            if not c.imag().is_zero():
+                raise ACSVException(
+                    "Log-gradient at contributing point is not a complex "
+                    "multiple of a real vector."
+                )
+            row.append(AA(c.real()))
+        taus.append(tau)
+        vrows.append(row)
+    V = matrix(AA, vrows)
+    rvec = vector([AA(SR(ri)) for ri in r])
+    a = (V * V.transpose()).solve_right(V * rvec)
+    if V.transpose() * a != rvec:
+        raise ACSVException(
+            "Direction r is not in the span of the log-normal directions."
+        )
+    for i in range(s):
+        if a[i] < 0:
+            taus[i] = -taus[i]
+            vrows[i] = [-c for c in vrows[i]]
+        elif a[i] == 0:
+            raise ACSVException("Point is not contributing: some a_i vanishes.")
+    Gtilde = matrix(
+        AA,
+        vrows + [[1 if j == k else 0 for j in range(d)] for k in range(d - s)],
+    )
+    return prod(-tau for tau in taus) * Gtilde.determinant().abs()
+
 
 def algebraic_residues(P, Q, S):
     r"""Compute annihilating polynomial of the residues of a rational function at the zeroes of another polynomial.

@@ -124,6 +124,7 @@ from sage.functions.log import log, exp
 from sage.functions.other import factorial
 from sage.matrix.constructor import matrix
 from sage.misc.misc_c import prod
+from sage.misc.functional import sqrt
 from sage.misc.prandom import shuffle
 from sage.modules.free_module_element import vector
 from sage.rings.asymptotic.asymptotic_ring import AsymptoticRing
@@ -147,6 +148,7 @@ from sage_acsv.helpers import (
     rational_function_reduce,
     compute_hessian,
     compute_implicit_hessian,
+    compute_square_root_determinant_of_hessian,
     collapse_zero_part,
 )
 from sage_acsv.debug import Timer, acsv_logger
@@ -289,13 +291,13 @@ def _diagonal_asymptotics_combinatorial_smooth(
     timer = Timer()
 
     # Find det(zH_z Hess) where Hess is the Hessian of z_1...z_n * log(g(z_1, ..., z_n))
-    Det = compute_hessian(H, vsT[0:-2], r).determinant()
+    Hess = compute_hessian(H, vsT[0:-2], r)
 
     # Find exponential growth
     T = prod([SR(vs[i]) ** r[i] for i in range(d)])
 
     # Find constants appearing in asymptotics in terms of original variables
-    B = SR(1 / Det / rd ** (d - 1) / 2 ** (d - 1))
+    B = SR(1 / compute_square_root_determinant_of_hessian(Hess) / sqrt(rd ** (d - 1) * 2 ** (d - 1)))
     C = SR(1 / T)
 
     # Compute constants at contributing singularities
@@ -321,7 +323,7 @@ def _diagonal_asymptotics_combinatorial_smooth(
         asm_quantities.append([expansion, B_sub, C_sub])
 
     n = SR.var("n")
-    asm_vals = [(c, QQ(1 - d) / 2, b.sqrt(), a) for (a, b, c) in asm_quantities]
+    asm_vals = [(c, QQ(1 - d) / 2, b, a) for (a, b, c) in asm_quantities]
     timer.checkpoint("Final Asymptotics")
 
     if as_symbolic:
@@ -2237,8 +2239,8 @@ def _compute_asymptotics_at_points(
                     _general_term_asymptotics_smooth(G, H, r, vs, cp, expansion_precision)
                 )
             )
-            Det = compute_hessian(H, vs, r, subs_dict).determinant()
-            B = SR(1 / Det / r[-1] ** (d - 1) / 2 ** (d - 1))
+            Hess = compute_hessian(H, vs, r, subs_dict)
+            B = SR(1 / compute_square_root_determinant_of_hessian(Hess) / sqrt(r[-1] ** (d - 1) * 2 ** (d - 1)))
         # We now support higher order expansions for non-smooth non-complete intersections
         elif all(p == 1 for p in multiplicities) and s != d:
             Qw = compute_implicit_hessian(factors, vs, r, subs=subs_dict)
@@ -2251,8 +2253,8 @@ def _compute_asymptotics_at_points(
             ) / unit
             B = SR(
                 1
-                / Qw.determinant()
-                / 2 ** (d - s)
+                / compute_square_root_determinant_of_hessian(Qw)
+                / sqrt(2 ** (d - s))
             )
         # When we have a complete intersection of hyperplanes, we know the degree of the polynomial expansion.
         elif s == d and all(f.degree() == 1 for f in factors):
@@ -2283,8 +2285,8 @@ def _compute_asymptotics_at_points(
                 )
                 B = SR(
                     1
-                    / Qw.determinant()
-                    / 2 ** (d - s)
+                    / compute_square_root_determinant_of_hessian(Qw)
+                    / sqrt(2 ** (d - s))
                 )
             else:
                 expansion = SR(
@@ -2316,7 +2318,7 @@ def _compute_asymptotics_at_points(
 
         asm_quantities.append([expansion, B, C, D, s])
 
-    asm_vals = [(c, d, b.sqrt(), a, s) for a, b, c, d, s in asm_quantities]
+    asm_vals = [(c, d, b, a, s) for a, b, c, d, s in asm_quantities]
 
     if output_format is None:
         output_format = ACSVSettings.get_default_output_format()
@@ -2583,14 +2585,13 @@ def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False, r=None):
     sbs = {v: 1 for v in vsT[0:-3]} | {vsT[-3]: rho}
     Hess = compute_hessian(H, vsT[0:-2], r)
     Hess = Hess.subs({v: 1 for v in Hess.base_ring().gens()[0:-4]} | {Hess.base_ring().gens()[-4]: rho})
-    Det = Hess.determinant()
 
-    if Det == 0:
+    if Hess.determinant() == 0:
         raise ValueError("Hessian determinant is 0.")
 
     # Values appearing in asymptotics
     base = 1 / rho
-    constant = - AA(G.subs(sbs) / rho / H.derivative(vs[-1]).subs(sbs) / (2**(d - 1) * Det).sqrt())
+    constant = - AA(G.subs(sbs) / rho / H.derivative(vs[-1]).subs(sbs) / sqrt(2**(d - 1)) / compute_square_root_determinant_of_hessian(Hess))
     exponent = (1 - d) / 2
 
     s = matrix((SR.var('s', n=d - 1)))
