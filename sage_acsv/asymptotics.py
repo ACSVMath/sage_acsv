@@ -115,6 +115,7 @@ very close moduli:
 """
 
 from copy import copy
+from itertools import combinations
 
 from sage.algebras.weyl_algebra import DifferentialWeylAlgebra
 from sage.arith.misc import gcd
@@ -2205,14 +2206,23 @@ def _compute_asymptotics_at_points(
         # parametrizing coordinates
         # We will try to parametrize with the first d-s coordinates, shuffling
         # the vs and r if it doesn't work
-        for _ in range(s**2):
+        last_block = tuple(range(d-s, d))
+        subsets = [last_block] + [
+            c for c in combinations(range(d), s) if c != last_block
+        ]
+        for Rset in subsets:
             Jac = matrix(
                 [
-                    [(v * Q.derivative(v)).subs(subs_dict) for v in vs[d - s:]]
+                    [(vs[j] * Q.derivative(vs[j])).subs(subs_dict) for j in Rset]
                     for Q in factors
                 ]
             )
             if Jac.determinant() != 0:
+                if Rset != last_block:
+                    perm = [j for j in range(d) if j not in Rset] + list(Rset)
+                    vs = tuple(vs[j] for j in perm)
+                    r = tuple(r[j] for j in perm)
+                    cp = tuple(cp[j] for j in perm)
                 break
 
             acsv_logger.info("Variables do not parametrize, shuffling")
