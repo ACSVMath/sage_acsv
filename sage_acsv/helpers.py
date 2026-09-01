@@ -497,19 +497,18 @@ def transverse_leading_normalization(Hs, vs, r, cp):
     """
     d = len(vs)
     s = len(Hs)
-    R = PolynomialRing(QQbar, [str(v) for v in vs])
-    vsq = R.gens()
-    Hsq = [R(SR(Hi)) for Hi in Hs]
-    subs_dict = {vsq[i]: cp[i] for i in range(d)}
+    R, vs = PolynomialRing(QQbar, vs).objgens()
+    Hs = [R(SR(Hi)) for Hi in Hs]
+    subs_dict = {v:p for v, p in zip(vs, cp)}
     taus = []
     vrows = []
-    for Hi in Hsq:
-        g = [(vsq[j] * Hi.derivative(vsq[j])).subs(subs_dict) for j in range(d)]
-        j0 = max(range(d), key=lambda j: abs(CDF(g[j])))
+    for Hi in Hs:
+        g = [(v * Hi.derivative(v)).subs(subs_dict) for v in vs]
+        j0 = max(range(d), key=lambda j: abs(g[j]))
         tau = QQbar(g[j0])
         row = []
-        for j in range(d):
-            c = QQbar(g[j]) / tau
+        for gi in g:
+            c = QQbar(gi) / tau
             if not c.imag().is_zero():
                 raise ACSVException(
                     "Log-gradient at contributing point is not a complex "
@@ -531,11 +530,11 @@ def transverse_leading_normalization(Hs, vs, r, cp):
             vrows[i] = [-c for c in vrows[i]]
         elif a[i] == 0:
             raise ACSVException("Point is not contributing: some a_i vanishes.")
-    Gtilde = matrix(
+    Gamma = matrix(
         AA,
         vrows + [[1 if j == k else 0 for j in range(d)] for k in range(d - s)],
     )
-    return prod(-tau for tau in taus) * Gtilde.determinant().abs()
+    return prod(-tau for tau in taus) * Gamma.determinant().abs()
 
 
 def algebraic_residues(P, Q, S):

@@ -150,6 +150,7 @@ from sage_acsv.helpers import (
     compute_implicit_hessian,
     compute_square_root_determinant_of_hessian,
     collapse_zero_part,
+    transverse_leading_normalization,
 )
 from sage_acsv.debug import Timer, acsv_logger
 from sage_acsv.settings import ACSVSettings, OutputFormat
@@ -916,8 +917,8 @@ def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
     leading_term = (
         _general_term_asymptotics_smooth(G, prod(Hs + Hs_ext), r, vs, cp, 1)[0]
         if s == 1 else
-        SR(G.subs(subs_dict) * abs(prod([v for v in vs[: d - s]]).subs(subs_dict))
-           / abs(Gamma.determinant().subs(subs_dict)))
+        SR(G.subs(subs_dict)
+           / transverse_leading_normalization(Hs, vs, r, cp))
         / prod(Hs_ext).subs(subs_dict)
     )
 
@@ -2169,6 +2170,7 @@ def _compute_asymptotics_at_points(
         # Save extra H factors that the contrib point does not lie on
         # They can keep their multiplicities.
         extra_factors = []
+
         # Step 1: Determine if pt is a transverse multiple point of H,
         # and compute the factorization
         R = PolynomialRing(QQbar, len(vs), vs)
@@ -2279,8 +2281,8 @@ def _compute_asymptotics_at_points(
             if s != d:
                 Qw = compute_implicit_hessian(factors, vs, r, subs=subs_dict)
                 expansion = SR(
-                    abs(prod([v for v in vs[: d - s]]).subs(subs_dict)) * G.subs(subs_dict)
-                    / abs(Gamma.determinant())
+                   G.subs(subs_dict)
+                    / transverse_leading_normalization(factors, vs, r, cp)
                     / unit / R(prod(extra_factors)).subs(subs_dict)
                 )
                 B = SR(
