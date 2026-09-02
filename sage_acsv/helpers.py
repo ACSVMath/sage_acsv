@@ -452,8 +452,8 @@ def compute_square_root_determinant_of_hessian(hessian):
     For real positive definite Hessians (and any matrix of dimension at most
     two) the principal square root is returned::
 
-        sage: from sage_acsv.helpers import branch_corrected_sqrt
-        sage: branch_corrected_sqrt(QQbar(1/12), matrix(QQbar, [[2, 1], [1, 2]]))
+        sage: from sage_acsv.helpers import compute_square_root_determinant_of_hessian
+        sage: compute_square_root_determinant_of_hessian(matrix(QQbar, [[2, 1], [1, 2]]))
         0.2886751345948129?
 
     In dimension three and higher the principal square root of the assembled
@@ -463,7 +463,7 @@ def compute_square_root_determinant_of_hessian(hessian):
     continuation value `(i^{-1/2})^3 = e^{-3i\pi/4}`::
 
         sage: M = matrix(QQbar, 3, 3, [QQbar(I), 0, 0, 0, QQbar(I), 0, 0, 0, QQbar(I)])
-        sage: branch_corrected_sqrt(M) == -QQbar(M.determinant()).sqrt()
+        sage: compute_square_root_determinant_of_hessian(M) == -QQbar(M.determinant()).sqrt()
         True
     """
 
