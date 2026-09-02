@@ -131,6 +131,7 @@ from sage.rings.asymptotic.asymptotic_ring import AsymptoticRing
 from sage.rings.complex_interval_field import ComplexIntervalField
 from sage.rings.ideal import Ideal
 from sage.rings.imaginary_unit import I
+from sage.rings.integer_ring import ZZ
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 from sage.rings.power_series_ring import PowerSeriesRing
 from sage.rings.qqbar import AA, QQbar
@@ -164,19 +165,17 @@ from sage_acsv.groebner import compute_primary_decomposition, compute_saturation
 
 import sage.rings.asymptotic.misc as asy_misc
 
-from sage.rings.integer_ring import ZZ
-
 strip_symbolic_original = asy_misc.strip_symbolic
+if strip_symbolic_original("acsv_test_defined") != "defined":
+    def strip_symbolic(expression):
+        if expression == "acsv_test_defined":
+            return "defined"
+        expression = strip_symbolic_original(expression)
+        if expression in ZZ:
+            expression = ZZ(expression)
+        return expression
 
-
-def strip_symbolic(expression):
-    expression = strip_symbolic_original(expression)
-    if expression in ZZ:
-        expression = ZZ(expression)
-    return expression
-
-
-asy_misc.strip_symbolic = strip_symbolic
+    asy_misc.strip_symbolic = strip_symbolic
 
 
 def _diagonal_asymptotics_combinatorial_smooth(
@@ -2080,6 +2079,24 @@ def compute_asymptotics_at_points(
 
         sage: compute_asymptotics_at_points(1/(1-x-y), [(2/3, 1/3)])
         3/2/sqrt(pi)*(9/2)^n*n^(-1/2) + O((9/2)^n*n^(-3/2))
+
+    An example with complex coordinates for the contributing point.
+    
+        sage: R.<x1, y1, x2, y2, x3, y3> = QQ[]
+        sage: blk = lambda u, v: (1 - u - v + 3*u*v)^2 + (u*v)^2
+        sage: F = 1/(blk(x1, y1)*blk(x2, y2)*blk(x3, y3))
+        sage: T.<t> = QQ[]
+        sage: rts = (10*t^4 - 12*t^3 + 10*t^2 - 4*t + 1).roots(QQbar, multiplicities=False)
+        sage: p = sorted(sorted(rts, key=lambda rt: abs(rt))[:2], key=lambda rt: CDF(rt).imag())[0]
+        sage: res1 = compute_asymptotics_at_points(1/blk(x1, y1), [(p, p)],  # long time
+        ....:                                      r=[1, 1], output_format="tuple")
+        sage: res3 = compute_asymptotics_at_points(F, [(p, p, p, p, p, p)],  # long time
+        ....:                                      r=[1]*6, output_format="tuple")
+        sage: c1, c3 = QQbar(res1[0][3]), QQbar(res3[0][3])  # long time
+        sage: c3  # long time
+        3.048436400357616? + 2.604341598696821?*I
+        sage: c3 == c1^3  # long time
+        True
 
     """
     if isinstance(r, dict):
