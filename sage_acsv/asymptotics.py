@@ -115,6 +115,7 @@ very close moduli:
 """
 
 from copy import copy
+from itertools import combinations
 
 from sage.algebras.weyl_algebra import DifferentialWeylAlgebra
 from sage.arith.misc import gcd
@@ -130,6 +131,7 @@ from sage.rings.asymptotic.asymptotic_ring import AsymptoticRing
 from sage.rings.complex_interval_field import ComplexIntervalField
 from sage.rings.ideal import Ideal
 from sage.rings.imaginary_unit import I
+from sage.rings.integer_ring import ZZ
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 from sage.rings.power_series_ring import PowerSeriesRing
 from sage.rings.qqbar import AA, QQbar
@@ -147,7 +149,9 @@ from sage_acsv.helpers import (
     rational_function_reduce,
     compute_hessian,
     compute_implicit_hessian,
+    compute_square_root_determinant_of_hessian,
     collapse_zero_part,
+    transverse_leading_normalization,
 )
 from sage_acsv.debug import Timer, acsv_logger
 from sage_acsv.settings import ACSVSettings, OutputFormat
@@ -161,19 +165,17 @@ from sage_acsv.groebner import compute_primary_decomposition, compute_saturation
 
 import sage.rings.asymptotic.misc as asy_misc
 
-from sage.rings.integer_ring import ZZ
-
 strip_symbolic_original = asy_misc.strip_symbolic
+if strip_symbolic_original("acsv_test_defined") != "defined":
+    def strip_symbolic(expression):
+        if expression == "acsv_test_defined":
+            return "defined"
+        expression = strip_symbolic_original(expression)
+        if expression in ZZ:
+            expression = ZZ(expression)
+        return expression
 
-
-def strip_symbolic(expression):
-    expression = strip_symbolic_original(expression)
-    if expression in ZZ:
-        expression = ZZ(expression)
-    return expression
-
-
-asy_misc.strip_symbolic = strip_symbolic
+    asy_misc.strip_symbolic = strip_symbolic
 
 
 def _diagonal_asymptotics_combinatorial_smooth(
@@ -288,14 +290,11 @@ def _diagonal_asymptotics_combinatorial_smooth(
 
     timer = Timer()
 
-    # Find det(zH_z Hess) where Hess is the Hessian of z_1...z_n * log(g(z_1, ..., z_n))
-    Det = compute_hessian(H, vsT[0:-2], r).determinant()
-
     # Find exponential growth
     T = prod([SR(vs[i]) ** r[i] for i in range(d)])
 
     # Find constants appearing in asymptotics in terms of original variables
-    B = SR(1 / Det / rd ** (d - 1) / 2 ** (d - 1))
+    B = SR(1 / (rd ** (d - 1) * ZZ(2) ** (d - 1)).sqrt())
     C = SR(1 / T)
 
     # Compute constants at contributing singularities
@@ -311,17 +310,21 @@ def _diagonal_asymptotics_combinatorial_smooth(
                 )
             ]
         )
-        B_sub = B.subs(subs_dict)
+        # Find det(zH_z Hess) where Hess is the Hessian of z_1...z_n * log(g(z_1, ..., z_n))
+        Hess = compute_hessian(H, vsT[0:-2], r, {v: V for (v, V) in zip(vs, cp)})
+        B_sub = B.subs(subs_dict)/compute_square_root_determinant_of_hessian(Hess)
         C_sub = C.subs(subs_dict)
         try:
             B_sub = QQbar(B_sub)
+            B_sub.simplify()
             C_sub = QQbar(C_sub)
         except (ValueError, TypeError):
             pass
+
         asm_quantities.append([expansion, B_sub, C_sub])
 
     n = SR.var("n")
-    asm_vals = [(c, QQ(1 - d) / 2, b.sqrt(), a) for (a, b, c) in asm_quantities]
+    asm_vals = [(c, QQ(1 - d) / 2, b, a) for (a, b, c) in asm_quantities]
     timer.checkpoint("Final Asymptotics")
 
     if as_symbolic:
@@ -603,6 +606,17 @@ def diagonal_asymptotics_combinatorial(
         0.866025403784439?/sqrt(pi)*3^n*n^(-1/2) + O(3^n*n^(-3/2))
         sage: diagonal_asymptotics_combinatorial(G/H, r = [1,1,1], output_format = 'asymptotic', whitney_strat = strat, expansion_precision = 2)
         0.866025403784439?/sqrt(pi)*3^n*n^(-1/2) - 1.136658342467076?/sqrt(pi)*3^n*n^(-3/2) + O(3^n*n^(-5/2))
+
+    An example containing a complex contributing point carrying a phase.
+    
+        sage: from sage_acsv import get_expansion_terms
+        sage: P = 2 - 2*x - 2*y + 6*x*y + x^2 + y^2
+        sage: F = (1/(1 - x - y) + 1/(2*P))/(1 - z)
+        sage: terms = get_expansion_terms(diagonal_asymptotics_combinatorial(F))
+        sage: c = [t.coefficient for t in terms if t.base == 4*QQbar.zeta(3)^2][0]; c
+        0.1834862281267339? + 0.04916498664879108?*I
+        sage: c == QQbar.zeta(24)/(4*QQbar(3)^(1/4))
+        True
 
     TESTS:
 
@@ -914,8 +928,8 @@ def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
     leading_term = (
         _general_term_asymptotics_smooth(G, prod(Hs + Hs_ext), r, vs, cp, 1)[0]
         if s == 1 else
-        SR(G.subs(subs_dict) * abs(prod([v for v in vs[: d - s]]).subs(subs_dict))
-           / abs(Gamma.determinant().subs(subs_dict)))
+        SR(G.subs(subs_dict)
+           / transverse_leading_normalization(Hs, vs, r, cp))
         / prod(Hs_ext).subs(subs_dict)
     )
 
@@ -2077,6 +2091,24 @@ def compute_asymptotics_at_points(
         sage: compute_asymptotics_at_points(1/(1-x-y), [(2/3, 1/3)])
         3/2/sqrt(pi)*(9/2)^n*n^(-1/2) + O((9/2)^n*n^(-3/2))
 
+    An example with complex coordinates for the contributing point.
+    
+        sage: R.<x1, y1, x2, y2, x3, y3> = QQ[]
+        sage: blk = lambda u, v: (1 - u - v + 3*u*v)^2 + (u*v)^2
+        sage: F = 1/(blk(x1, y1)*blk(x2, y2)*blk(x3, y3))
+        sage: T.<t> = QQ[]
+        sage: rts = (10*t^4 - 12*t^3 + 10*t^2 - 4*t + 1).roots(QQbar, multiplicities=False)
+        sage: p = sorted(sorted(rts, key=lambda rt: abs(rt))[:2], key=lambda rt: CDF(rt).imag())[0]
+        sage: res1 = compute_asymptotics_at_points(1/blk(x1, y1), [(p, p)],  # long time
+        ....:                                      r=[1, 1], output_format="tuple")
+        sage: res3 = compute_asymptotics_at_points(F, [(p, p, p, p, p, p)],  # long time
+        ....:                                      r=[1]*6, output_format="tuple")
+        sage: c1, c3 = QQbar(res1[0][3]), QQbar(res3[0][3])  # long time
+        sage: c3  # long time
+        3.048436400357616? + 2.604341598696821?*I
+        sage: c3 == c1^3  # long time
+        True
+
     """
     if isinstance(r, dict):
         r = _dict_to_variable_order(F, r)
@@ -2167,6 +2199,7 @@ def _compute_asymptotics_at_points(
         # Save extra H factors that the contrib point does not lie on
         # They can keep their multiplicities.
         extra_factors = []
+
         # Step 1: Determine if pt is a transverse multiple point of H,
         # and compute the factorization
         R = PolynomialRing(QQbar, len(vs), vs)
@@ -2201,14 +2234,23 @@ def _compute_asymptotics_at_points(
         # parametrizing coordinates
         # We will try to parametrize with the first d-s coordinates, shuffling
         # the vs and r if it doesn't work
-        for _ in range(s**2):
+        last_block = tuple(range(d-s, d))
+        subsets = [last_block] + [
+            c for c in combinations(range(d), s) if c != last_block
+        ]
+        for Rset in subsets:
             Jac = matrix(
                 [
-                    [(v * Q.derivative(v)).subs(subs_dict) for v in vs[d - s:]]
+                    [(vs[j] * Q.derivative(vs[j])).subs(subs_dict) for j in Rset]
                     for Q in factors
                 ]
             )
             if Jac.determinant() != 0:
+                if Rset != last_block:
+                    perm = [j for j in range(d) if j not in Rset] + list(Rset)
+                    vs = tuple(vs[j] for j in perm)
+                    r = tuple(r[j] for j in perm)
+                    cp = tuple(cp[j] for j in perm)
                 break
 
             acsv_logger.info("Variables do not parametrize, shuffling")
@@ -2237,8 +2279,8 @@ def _compute_asymptotics_at_points(
                     _general_term_asymptotics_smooth(G, H, r, vs, cp, expansion_precision)
                 )
             )
-            Det = compute_hessian(H, vs, r, subs_dict).determinant()
-            B = SR(1 / Det / r[-1] ** (d - 1) / 2 ** (d - 1))
+            Hess = compute_hessian(H, vs, r, subs_dict)
+            B = SR(1 / compute_square_root_determinant_of_hessian(Hess) / (r[-1] ** (d - 1) * ZZ(2) ** (d - 1)).sqrt())
         # We now support higher order expansions for non-smooth non-complete intersections
         elif all(p == 1 for p in multiplicities) and s != d:
             Qw = compute_implicit_hessian(factors, vs, r, subs=subs_dict)
@@ -2251,8 +2293,8 @@ def _compute_asymptotics_at_points(
             ) / unit
             B = SR(
                 1
-                / Qw.determinant()
-                / 2 ** (d - s)
+                / compute_square_root_determinant_of_hessian(Qw)
+                / (ZZ(2) ** (d - s)).sqrt()
             )
         # When we have a complete intersection of hyperplanes, we know the degree of the polynomial expansion.
         elif s == d and all(f.degree() == 1 for f in factors):
@@ -2277,14 +2319,14 @@ def _compute_asymptotics_at_points(
             if s != d:
                 Qw = compute_implicit_hessian(factors, vs, r, subs=subs_dict)
                 expansion = SR(
-                    abs(prod([v for v in vs[: d - s]]).subs(subs_dict)) * G.subs(subs_dict)
-                    / abs(Gamma.determinant())
+                   G.subs(subs_dict)
+                    / transverse_leading_normalization(factors, vs, r, cp)
                     / unit / R(prod(extra_factors)).subs(subs_dict)
                 )
                 B = SR(
                     1
-                    / Qw.determinant()
-                    / 2 ** (d - s)
+                    / compute_square_root_determinant_of_hessian(Qw)
+                    / (ZZ(2) ** (d - s)).sqrt()
                 )
             else:
                 expansion = SR(
@@ -2310,13 +2352,14 @@ def _compute_asymptotics_at_points(
         D = QQ((s - d) / 2 + sum(multiplicities) - s)
         try:
             B = QQbar(B)
+            B.simplify()
             C = QQbar(C)
         except (ValueError, TypeError):
             pass
 
         asm_quantities.append([expansion, B, C, D, s])
 
-    asm_vals = [(c, d, b.sqrt(), a, s) for a, b, c, d, s in asm_quantities]
+    asm_vals = [(c, d, b, a, s) for a, b, c, d, s in asm_quantities]
 
     if output_format is None:
         output_format = ACSVSettings.get_default_output_format()
@@ -2583,14 +2626,13 @@ def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False, r=None):
     sbs = {v: 1 for v in vsT[0:-3]} | {vsT[-3]: rho}
     Hess = compute_hessian(H, vsT[0:-2], r)
     Hess = Hess.subs({v: 1 for v in Hess.base_ring().gens()[0:-4]} | {Hess.base_ring().gens()[-4]: rho})
-    Det = Hess.determinant()
 
-    if Det == 0:
+    if Hess.determinant() == 0:
         raise ValueError("Hessian determinant is 0.")
 
     # Values appearing in asymptotics
     base = 1 / rho
-    constant = - AA(G.subs(sbs) / rho / H.derivative(vs[-1]).subs(sbs) / (2**(d - 1) * Det).sqrt())
+    constant = - AA(G.subs(sbs) / rho / H.derivative(vs[-1]).subs(sbs) / (ZZ(2)**(d - 1)).sqrt() / compute_square_root_determinant_of_hessian(Hess))
     exponent = (1 - d) / 2
 
     s = matrix((SR.var('s', n=d - 1)))

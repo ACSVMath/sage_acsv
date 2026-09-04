@@ -435,6 +435,158 @@ def compute_implicit_hessian(Hs, vs, r, subs):
 
     return Hess
 
+def compute_square_root_determinant_of_hessian(hessian):
+    r"""Square root of the determinant of a complex Hessian defined as the product of
+    the principle branch square root of all its eigenvalues.
+
+    INPUT:
+
+    * ``hessian`` -- a matrix `M` of elements in ``QQbar``
+
+    OUTPUT:
+
+    The square root of ``hessian`` on the branch described above.
+
+    EXAMPLES:
+
+    For real positive definite Hessians (and any matrix of dimension at most
+    two) the principal square root is returned::
+
+        sage: from sage_acsv.helpers import compute_square_root_determinant_of_hessian
+        sage: compute_square_root_determinant_of_hessian(matrix(QQbar, [[2, 1], [1, 2]]))
+        1.732050807568878?
+
+    In dimension three and higher the principal square root of the assembled
+    scalar can lie on the wrong branch. For `M = i I_3` we have `1/\det(M) = i`, whose
+    principal square root `e^{i\pi/4}` differs by a sign from the
+    continuation value `(i^{-1/2})^3 = e^{-3i\pi/4}`::
+
+        sage: M = QQbar(I)*matrix.identity(QQbar, 3)
+        sage: compute_square_root_determinant_of_hessian(M)
+        -0.7071067811865475? + 0.7071067811865475?*I
+        sage: compute_square_root_determinant_of_hessian(M) == -QQbar(M.determinant()).sqrt()
+        True
+    """
+
+    # Compute naive square root first for simplicity (pretty printing)
+    sqrt_det = hessian.determinant().sqrt()
+    if sqrt_det == 0:
+        raise ACSVException("Hessian is not full rank. We cannot handle this case.")
+
+    eigenvalues_with_multiplicity = matrix(QQbar, hessian).charpoly().roots(QQbar)
+
+    # The sqrt function in Sage comptues the principle branch by default
+    sqrt_prod = prod(ev.sqrt() ** m for (ev, m) in eigenvalues_with_multiplicity)
+
+    if sqrt_det == sqrt_prod:
+        return sqrt_det
+    elif sqrt_det == -sqrt_prod:
+        return -sqrt_det
+    else:
+        raise ACSVException("Determinant of Hessian does not match product of eigenvalues. This should never happen")
+
+def transverse_leading_normalization(Hs, vs, r, cp):
+    r"""Phase-correct normalization of the leading amplitude at a transverse point.
+
+    INPUT:
+
+    * ``Hs`` -- list of the local factors (polynomials in ``vs``) vanishing at ``cp``
+    * ``vs`` -- list of variables, ordered so that the first `d-s` parametrize
+    * ``r`` -- the direction vector
+    * ``cp`` -- the contributing point, in the same order as ``vs``
+
+    OUTPUT:
+
+    An algebraic number, real positive when ``cp`` has positive real coordinates.
+
+    EXAMPLES:
+
+    At a positive real point the normalization is a positive rational::
+
+        sage: from sage_acsv.helpers import transverse_leading_normalization
+        sage: R.<x, y, z> = QQ[]
+        sage: transverse_leading_normalization([1-x-2*y-z, 1-2*x-y-z], [x, y, z], [1, 1, 1], (2/9, 2/9, 1/3))
+        2/27
+
+    Here we have the two smooth critical points `(\pm 1/\sqrt{3}, 3/2, 3/2)` of
+    `1/((1 - y(1+x^2)/2)(1 - z(1+x^2)/2))`. Their contributions double at even 
+    `n` and cancel at odd `n` matching the exact diagonal `2^{-2n}\binom{2n}{n/2}`::
+
+        sage: from sage_acsv.helpers import transverse_leading_normalization
+        sage: R.<x, y, z> = QQ[]
+        sage: Hs = [1 - y*(1 + x^2)/2, 1 - z*(1 + x^2)/2]
+        sage: x0 = QQbar(sqrt(1/3))
+        sage: transverse_leading_normalization(Hs, [x, y, z], [1, 1, 1], (x0, 3/2, 3/2))
+        1
+        sage: transverse_leading_normalization(Hs, [x, y, z], [1, 1, 1], (-x0, 3/2, 3/2))
+        1
+
+    At contributing points with complex coordinates the normalization
+    carries a phase::
+
+        sage: from sage_acsv.helpers import transverse_leading_normalization
+        sage: R.<x, y> = QQ[]
+        sage: H = (1 - x - y + 3*x*y)^2 + (x*y)^2
+        sage: T.<t> = QQ[]
+        sage: rts = (10*t^4 - 12*t^3 + 10*t^2 - 4*t + 1).roots(QQbar, multiplicities=False)
+        sage: p = sorted(sorted(rts, key=lambda rt: abs(rt))[:2], key=lambda rt: CDF(rt).imag())[0]
+        sage: transverse_leading_normalization([H], [x, y], [1, 1], (p, p))
+        0.3492177218735412? + 0.1617762850074898?*I
+
+    Here two smooth sheets in disjoint variable pairs cross
+    transversely along a two-dimensional stratum::
+
+        sage: from sage_acsv.helpers import transverse_leading_normalization
+        sage: R.<x1, x2, y1, y2> = QQ[]
+        sage: blk1 = (1 - x1 - y1 + 3*x1*y1)^2 + (x1*y1)^2
+        sage: blk2 = (1 - x2 - y2 + 3*x2*y2)^2 + (x2*y2)^2
+        sage: T.<t> = QQ[]
+        sage: rts = (10*t^4 - 12*t^3 + 10*t^2 - 4*t + 1).roots(QQbar, multiplicities=False)
+        sage: p = sorted(sorted(rts, key=lambda rt: abs(rt))[:2], key=lambda rt: CDF(rt).imag())[0]
+        sage: transverse_leading_normalization([blk1, blk2], [x1, x2, y1, y2], [1, 1, 1, 1], (p, p, p, p))
+        0.09578145087972136? + 0.11299029140696055?*I
+    """
+    d = len(vs)
+    s = len(Hs)
+    R, vs = PolynomialRing(QQbar, vs).objgens()
+    Hs = [R(SR(Hi)) for Hi in Hs]
+    subs_dict = {v:p for v, p in zip(vs, cp)}
+    taus = []
+    vrows = []
+    for Hi in Hs:
+        g = [(v * Hi.derivative(v)).subs(subs_dict) for v in vs]
+        j0 = max(range(d), key=lambda j: abs(g[j]))
+        tau = QQbar(g[j0])
+        row = []
+        for gi in g:
+            c = QQbar(gi) / tau
+            if not c.imag().is_zero():
+                raise ACSVException(
+                    "Log-gradient at contributing point is not a complex "
+                    "multiple of a real vector."
+                )
+            row.append(AA(c.real()))
+        taus.append(tau)
+        vrows.append(row)
+    V = matrix(AA, vrows)
+    rvec = vector([AA(SR(ri)) for ri in r])
+    a = (V * V.transpose()).solve_right(V * rvec)
+    if V.transpose() * a != rvec:
+        raise ACSVException(
+            "Direction r is not in the span of the log-normal directions."
+        )
+    for i in range(s):
+        if a[i] < 0:
+            taus[i] = -taus[i]
+            vrows[i] = [-c for c in vrows[i]]
+        elif a[i] == 0:
+            raise ACSVException("Point is not contributing: some a_i vanishes.")
+    Gamma = matrix(
+        AA,
+        vrows + [[1 if j == k else 0 for j in range(d)] for k in range(d - s)],
+    )
+    return prod(-tau for tau in taus) * Gamma.determinant().abs()
+
 
 def algebraic_residues(P, Q, S):
     r"""Compute annihilating polynomial of the residues of a rational function at the zeroes of another polynomial.
