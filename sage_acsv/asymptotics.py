@@ -607,6 +607,17 @@ def diagonal_asymptotics_combinatorial(
         sage: diagonal_asymptotics_combinatorial(G/H, r = [1,1,1], output_format = 'asymptotic', whitney_strat = strat, expansion_precision = 2)
         0.866025403784439?/sqrt(pi)*3^n*n^(-1/2) - 1.136658342467076?/sqrt(pi)*3^n*n^(-3/2) + O(3^n*n^(-5/2))
 
+    An example containing a complex contributing point carrying a phase.
+    
+        sage: from sage_acsv import get_expansion_terms
+        sage: P = 2 - 2*x - 2*y + 6*x*y + x^2 + y^2
+        sage: F = (1/(1 - x - y) + 1/(2*P))/(1 - z)
+        sage: terms = get_expansion_terms(diagonal_asymptotics_combinatorial(F))
+        sage: c = [t.coefficient for t in terms if t.base == 4*QQbar.zeta(3)^2][0]; c
+        0.1834862281267339? + 0.04916498664879108?*I
+        sage: c == QQbar.zeta(24)/(4*QQbar(3)^(1/4))
+        True
+
     TESTS:
 
     Check that the workaround for the AsymptoticRing swallowing

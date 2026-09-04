@@ -468,6 +468,7 @@ def compute_square_root_determinant_of_hessian(hessian):
         True
     """
 
+    # Compute naive square root first for simplicity (pretty printing)
     sqrt_det = hessian.determinant().sqrt()
     if sqrt_det == 0:
         raise ACSVException("Hessian is not full rank. We cannot handle this case.")
