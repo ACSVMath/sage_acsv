@@ -165,18 +165,17 @@ from sage_acsv.groebner import compute_primary_decomposition, compute_saturation
 
 import sage.rings.asymptotic.misc as asy_misc
 
-strip_symbolic_original = asy_misc.strip_symbolic
-if strip_symbolic_original("acsv_test_defined") != "defined":
+if asy_misc.strip_symbolic("acsv_test_defined") != "defined":
+    asy_misc.strip_symbolic_original = asy_misc.strip_symbolic
     def strip_symbolic(expression):
         if expression == "acsv_test_defined":
             return "defined"
-        expression = strip_symbolic_original(expression)
+        expression = asy_misc.strip_symbolic_original(expression)
         if expression in ZZ:
             expression = ZZ(expression)
         return expression
 
     asy_misc.strip_symbolic = strip_symbolic
-
 
 def _diagonal_asymptotics_combinatorial_smooth(
     G,
