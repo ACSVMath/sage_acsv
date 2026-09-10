@@ -1,45 +1,12 @@
+from copy import copy
 
-
-from sage.algebras.weyl_algebra import DifferentialWeylAlgebra
 from sage.arith.misc import gcd
-from sage.arith.functions import lcm
-from sage.arith.srange import srange
-from sage.functions.log import log, exp
-from sage.functions.other import factorial
-from sage.matrix.constructor import matrix
-from sage.misc.misc_c import prod
-from sage.misc.prandom import shuffle
-from sage.modules.free_module_element import vector
-from sage.rings.asymptotic.asymptotic_ring import AsymptoticRing
 from sage.rings.complex_interval_field import ComplexIntervalField
-from sage.rings.ideal import Ideal
-from sage.rings.imaginary_unit import I
-from sage.rings.integer_ring import ZZ
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
-from sage.rings.power_series_ring import PowerSeriesRing
-from sage.rings.qqbar import AA, QQbar
+from sage.rings.qqbar import AA
 from sage.rings.rational_field import QQ
-from sage.symbolic.constants import pi
 from sage.symbolic.ring import SR
 
-from sage_acsv.kronecker import _kronecker_representation
-from sage_acsv.helpers import (
-    ACSVException,
-    Term,
-    is_contributing,
-    compute_newton_series,
-    compute_newton_series_general,
-    rational_function_reduce,
-    compute_hessian,
-    compute_implicit_hessian,
-    compute_square_root_determinant_of_hessian,
-    collapse_zero_part,
-    transverse_leading_normalization,
-)
-from sage_acsv.debug import Timer, acsv_logger
-from sage_acsv.settings import ACSVSettings, OutputFormat
-from sage_acsv.whitney import whitney_stratification
-from sage_acsv.groebner import compute_primary_decomposition, compute_saturation
 
 def _subs(F, u, k):
     """

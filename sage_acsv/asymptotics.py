@@ -117,33 +117,29 @@ very close moduli:
 
 from sage.matrix.constructor import matrix
 from sage.misc.misc_c import prod
-from sage.rings.asymptotic.asymptotic_ring import AsymptoticRing
 from sage.rings.ideal import Ideal
 from sage.rings.integer_ring import ZZ
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
-from sage.rings.qqbar import AA, QQbar
+from sage.rings.qqbar import AA
 from sage.rings.rational_field import QQ
-from sage.symbolic.constants import pi
 from sage.symbolic.ring import SR
 
 from sage_acsv.asymptotic_terms import (
     _compute_asymptotics_at_points,
-    _general_term_asymptotics_smooth
+    _compute_asymptotics_at_points_hyperplane,
+    _compute_asymptotics_at_points_smooth
 )
 from sage_acsv.critical_points import (
     critical_points,
     contributing_points_combinatorial_smooth,
-    _find_contributing_points_combinatorial
+    _find_contributing_points_combinatorial,
+    contributing_points_hyperplane
 )
-from sage_acsv.debug import Timer, acsv_logger
+from sage_acsv.debug import acsv_logger
 from sage_acsv.helpers import (
     ACSVException,
-    Term,
     is_contributing,
     rational_function_reduce,
-    compute_hessian,
-    compute_square_root_determinant_of_hessian,
-    collapse_zero_part,
 )
 from sage_acsv.settings import ACSVSettings, OutputFormat
 from sage_acsv.utils import (
@@ -249,10 +245,6 @@ def _diagonal_asymptotics_combinatorial_smooth(
 
     vs = [expanded_R(v) for v in vs]
     t, lambda_, u_ = expanded_R(t), expanded_R(lambda_), expanded_R(u_)
-    vsT = vs + [t, lambda_]
-
-    d = len(vs)
-    rd = r[-1]
 
     # Make sure G and H are coprime, and that H does not vanish at 0
     G, H = expanded_R(G), expanded_R(H)
@@ -279,108 +271,9 @@ def _diagonal_asymptotics_combinatorial_smooth(
     else:
         raise ACSVException(f"Could not find suitable linear form after {ACSVSettings.MAX_MIN_CRIT_RETRIES} attempts.")
 
-    timer = Timer()
-
-    # Find exponential growth
-    T = prod([SR(vs[i]) ** r[i] for i in range(d)])
-
-    # Find constants appearing in asymptotics in terms of original variables
-    B = SR(1 / (rd ** (d - 1) * ZZ(2) ** (d - 1)).sqrt())
-    C = SR(1 / T)
-
-    # Compute constants at contributing singularities
-    n = SR.var("n")
-    asm_quantities = []
-    for cp in min_crit_pts:
-        subs_dict = {SR(v): V for (v, V) in zip(vs, cp)}
-        expansion = sum(
-            [
-                term / (rd * n) ** (term_order)
-                for term_order, term in enumerate(
-                    _general_term_asymptotics_smooth(G, H, r, vs, cp, expansion_precision)
-                )
-            ]
-        )
-        # Find det(zH_z Hess) where Hess is the Hessian of z_1...z_n * log(g(z_1, ..., z_n))
-        Hess = compute_hessian(H, vsT[0:-2], r, {v: V for (v, V) in zip(vs, cp)})
-        B_sub = B.subs(subs_dict)/compute_square_root_determinant_of_hessian(Hess)
-        C_sub = C.subs(subs_dict)
-        try:
-            B_sub = QQbar(B_sub)
-            B_sub.simplify()
-            C_sub = QQbar(C_sub)
-        except (ValueError, TypeError):
-            pass
-
-        asm_quantities.append([expansion, B_sub, C_sub])
-
-    n = SR.var("n")
-    asm_vals = [(c, QQ(1 - d) / 2, b, a) for (a, b, c) in asm_quantities]
-    timer.checkpoint("Final Asymptotics")
-
-    if as_symbolic:
-        acsv_logger.warning(
-            "The as_symbolic argument has been deprecated in favor of output_format='symbolic' "
-        )
-        output_format = ACSVSettings.Output.SYMBOLIC
-
-    if output_format is None:
-        output_format = ACSVSettings.get_default_output_format()
-    else:
-        output_format = ACSVSettings.Output(output_format)
-
-    if output_format in (ACSVSettings.Output.TUPLE, ACSVSettings.Output.SYMBOLIC):
-        n = SR.var("n")
-        result = [
-            (base, n**exponent, pi**exponent, constant * expansion)
-            for (base, exponent, constant, expansion) in asm_vals
-        ]
-        if output_format == ACSVSettings.Output.SYMBOLIC:
-            result = sum([a**n * b * c * d for (a, b, c, d) in result])
-
-    elif output_format == ACSVSettings.Output.TERMS:
-        result = [
-            Term(constant*expansion, pi ** exponent, base, exponent) 
-            for (base, exponent, constant, expansion) in asm_vals
-            if constant*expansion != 0
-        ]
-
-    elif output_format == ACSVSettings.Output.ASYMPTOTIC:
-        AR = AsymptoticRing("QQbar^n * n^QQ", QQbar)
-        n = AR.gen()
-        try:
-            result = sum(
-                [  # bug in AsymptoticRing requires splitting out modulus manually
-                    constant
-                    * pi**exponent
-                    * abs(base) ** n
-                    * collapse_zero_part(base / abs(base)) ** n
-                    * n**exponent
-                    * AR(expansion)
-                    + (abs(base) ** n * n ** (exponent - expansion_precision)).O()
-                    for (base, exponent, constant, expansion) in asm_vals
-                ]
-            )
-        except ValueError:
-            # Issue with Sage algebraic numbers equality checking
-            for a, _, c, _ in asm_vals:
-                a.simplify()
-                c.simplify()
-            result = sum(
-                [  # bug in AsymptoticRing requires splitting out modulus manually
-                    constant
-                    * pi**exponent
-                    * abs(base) ** n
-                    * collapse_zero_part(base / abs(base)) ** n
-                    * n**exponent
-                    * AR(expansion)
-                    + (abs(base) ** n * n ** (exponent - expansion_precision)).O()
-                    for (base, exponent, constant, expansion) in asm_vals
-                ]
-            )
-
-    else:
-        raise NotImplementedError(f"Missing implementation for {output_format}")
+    result = _compute_asymptotics_at_points_smooth(
+        G, H, vs, r, min_crit_pts, expansion_precision, output_format
+    )
 
     if return_points:
         return result, min_crit_pts
@@ -840,12 +733,25 @@ def diagonal_asymptotics_hyperplane(
     except (ValueError, TypeError):
         r = [AA(ri) for ri in r]
 
-    # In case form doesn't separate, we want to try again
+    G, H, variable_map = _prepare_symbolic_fraction(F)
+    vs = list(variable_map.values())
+    R = PolynomialRing(QQ, vs)
+    vs = [R(v) for v in vs]
+
+
+    # Make sure G and H are coprime, and that H does not vanish at 0
+    G, H = rational_function_reduce(G, H)
+    G, H = R(G), R(H)
+    Hs = [f for f, _ in H.factor()]
+    if H.subs({v: 0 for v in H.variables()}) == 0:
+        raise ValueError("Denominator vanishes at 0.")
+    if any(f.degree() > 1 for f in Hs):
+        raise ValueError("H does not define a hyperplane arrangement.")
+
     for _ in range(ACSVSettings.MAX_MIN_CRIT_RETRIES):
         try:
-            # Find minimal critical points in Kronecker Representation
-            cps = critical_points(
-                F, r, linear_form
+            minimal_contributing_points, next_contrib_vals = contributing_points_hyperplane(
+                G, H, vs, r, linear_form=linear_form
             )
             break
         except Exception as e:
@@ -860,67 +766,9 @@ def diagonal_asymptotics_hyperplane(
     else:
         return
 
-    G, H, variable_map = _prepare_symbolic_fraction(F)
-    vs = list(variable_map.values())
-    R = PolynomialRing(QQ, vs)
-    vs = [R(v) for v in vs]
-
-    d = len(vs)
-
-    # Make sure G and H are coprime, and that H does not vanish at 0
-    G, H = rational_function_reduce(G, H)
-    G, H = R(G), R(H)
-    Hs = [f for f, _ in H.factor()]
-    if H.subs({v: 0 for v in H.variables()}) == 0:
-        raise ValueError("Denominator vanishes at 0.")
-    if any(f.degree() > 1 for f in Hs):
-        raise ValueError("H does not define a hyperplane arrangement.")
-
-    minimal_contributing_points = []
-    next_contrib_vals = []
-
-    # Sort all critical points by height
-    cps_by_height = [(cp, prod([abs(vi)**ri for (vi, ri) in zip(cp, r)])) for cp in cps]
-    cps_by_height.sort(key=lambda x: x[1])
-
-    # Determine which critical points are contributing
-    contributing_height = None
-    for cp, h in cps_by_height:
-        subs_dict = {vs[i]: cp[i] for i in range(d)}
-
-        factors = [f for f in Hs if f.subs(subs_dict) == 0]
-        s = len(factors)
-        normals = matrix(
-            [[f.derivative(v).subs(subs_dict) for v in vs] for f in factors]
-        )
-        if normals.rank() < s:
-            raise ACSVException(
-                "Not a transverse intersection. Cannot deal with this case."
-            )
-
-        # If contributing_height != None, then a contributing point has been found. Any other contributing points
-        # of larger height are just for the error bound, so they don't need to be generic.
-        if is_contributing(vs, cp, r, factors, s, contributing_height is not None and h > contributing_height):
-            if contributing_height is None or h == contributing_height:
-                contributing_height = h
-                minimal_contributing_points.append(cp)
-            else:
-                next_contrib_vals.append((cp, h, s))
-
-    if not minimal_contributing_points:
-        raise ACSVException("No contributing points found.")
-
-    result = _compute_asymptotics_at_points(
-        G, H, vs, r, minimal_contributing_points, expansion_precision, output_format
+    result = _compute_asymptotics_at_points_hyperplane(
+        G, H, vs, r, minimal_contributing_points, next_contrib_vals, expansion_precision, output_format
     )
-
-    output_format = ACSVSettings.get_default_output_format() if output_format is None else ACSVSettings.Output(output_format)
-    if output_format == OutputFormat.ASYMPTOTIC:
-        n = result.parent().gen()
-        for next_cp, next_height, s in next_contrib_vals:
-            subs_dict = {vs[i]: next_cp[i] for i in range(d)}
-            multiplicities = [p for f, p in H.factor() if f.subs(subs_dict) == 0]
-            result = result + (((1 / abs(next_height)) ** n) * (n ** (QQ((-s - d) / 2 + sum(multiplicities))))).O()
 
     if return_points:
         return result, minimal_contributing_points

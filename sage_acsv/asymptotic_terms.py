@@ -30,6 +30,7 @@ from sage_acsv.helpers import (
     compute_implicit_hessian,
     compute_square_root_determinant_of_hessian,
     collapse_zero_part,
+    is_contributing,
     transverse_leading_normalization,
 )
 from sage_acsv.debug import Timer, acsv_logger
@@ -428,136 +429,210 @@ def _compute_asymptotics_at_points(
 
     return result
 
+def _compute_asymptotics_at_points_hyperplane(
+    G, H,
+    vs,
+    r,
+    contributing_points,
+    next_contributing_vals,
+    expansion_precision,
+    output_format,
+):
+    r"""Compute contributing points of a combinatorial multivariate
+    rational function `F=G/H` admitting a finite number of critical points where the singular variety is a smooth.
 
-def _general_term_asymptotics_smooth(G, H, r, vs, cp, expansion_precision):
-    r"""
-    Compute coefficients of general (not necessarily leading) terms of
-    the asymptotic expansion for a given critical
-    point of a rational combinatorial multivariate rational function lying on a smooth point of `V(H)`.
-
-    Typically, this function is called as a subroutine of :func:`._compute_asymptotics_at_points`.
+    Typically, this function is called as a subroutine of :func:`.diagonal_asymptotics_hyperplane`.
 
     INPUT:
 
-    * ``G, H`` -- Coprime polynomials with `F = G/H`.
-    * ``r`` -- The direction. A length `d` vector of positive algebraic numbers (usually
-      integers).
-    * ``vs`` -- Tuple of variables occurring in `G` and `H`.
-    * ``cp`` -- A minimal critical point of `F` with coordinates specified in the
-      same order as in ``vs``.
-    * ``expansion_precision`` -- A positive integer value. This is the number of terms
-      for which to compute coefficients in the asymptotic expansion.
+    * ``G, H`` -- Coprime polynomials with ``F = G/H``
+    * ``vs`` -- List of variables of ``G`` and ``H``
+    * ``r`` -- (Optional) Length ``d`` vector of positive integers
+    * ``contributing_points`` -- A list of ``d``-tuples of algebraic numbers
+    * ``expansion_precision`` -- (Optional) A positive integer value. This is the number
+        of terms to compute in the asymptotic expansion. Defaults to 1, which
+        only computes the leading term.
+    * ``output_format`` -- (Optional) A string or :class:`.ACSVSettings.Output`
+        specifying the way the asymptotic growth is returned. Allowed values
+        currently are:
+        - ``"tuple"``: the growth is returned as a list of
+        tuples of the form ``(a, n^b, pi^c, d)`` such that the `r`-diagonal of `F`
+        is the sum of ``a^n n^b pi^c d + O(a^n n^{b-1})`` over these tuples.
+        - ``"symbolic"``: the growth is returned as an expression from the symbolic
+        ring ``SR`` in the variable ``n``.
+        - ``"asymptotic"``: the growth is returned as an expression from an appropriate
+        ``AsymptoticRing`` in the variable ``n``.
+        - ``None``: the default, which uses the default set for
+        :class:`.ACSVSettings.Output` itself via
+        :meth:`.ACSVSettings.set_default_output_format`. The default behavior
+        is asymptotic output.
+    * ``as_symbolic`` -- (Optional) deprecated in favor of the equivalent
+        ``output_format="symbolic"``. Will be removed in a future release.
 
     OUTPUT:
 
-    List of coefficients of the asymptotic expansion.
+    A representation of the asymptotic contributions from the ``contributing_points``
+    of the coefficient array of `F` along the specified direction.
+    """
+    d = len(vs)
+    
+    result = _compute_asymptotics_at_points(
+        G, H, vs, r, contributing_points, expansion_precision, output_format
+    )
 
-    EXAMPLES::
+    output_format = ACSVSettings.get_default_output_format() if output_format is None else ACSVSettings.Output(output_format)
+    if output_format == OutputFormat.ASYMPTOTIC:
+        n = result.parent().gen()
+        for next_cp, next_height, s in next_contributing_vals:
+            subs_dict = {vs[i]: next_cp[i] for i in range(d)}
+            multiplicities = [p for f, p in H.factor() if f.subs(subs_dict) == 0]
+            result = result + (((1 / abs(next_height)) ** n) * (n ** (QQ((-s - d) / 2 + sum(multiplicities))))).O()
 
-        sage: from sage_acsv.asymptotic_terms import _general_term_asymptotics_smooth
-        sage: R.<x, y, z> = QQ[]
-        sage: _general_term_asymptotics_smooth(1, 1 - x - y, [1, 1], [x, y], [1/2, 1/2], 5)
-        [2, -1/4, 1/64, 5/512, -21/16384]
-        sage: _general_term_asymptotics_smooth(1, 1 - x - y - z, [1, 1, 1], [x, y, z], [1/3, 1/3, 1/3], 4)
-        [3, -2/3, 2/27, 14/729]
+    return result
 
-        sage: R.<x, y> = QQ[]
-        sage: _general_term_asymptotics_smooth(1, 1 - x - y, [1, 1], [x, y], [1/2, 1/2], 11)
-        [2, -1/4, 1/64, 5/512, -21/16384, -399/131072, 869/2097152, 39325/16777216, -334477/1073741824, -28717403/8589934592, 59697183/137438953472]
+def _compute_asymptotics_at_points_smooth(
+    G, H,
+    vs,
+    r,
+    contributing_points,
+    expansion_precision,
+    output_format,
+):
+    r"""Compute contributing points of a combinatorial multivariate
+    rational function `F=G/H` admitting a finite number of critical points where the singular variety is a smooth.
+
+    Typically, this function is called as a subroutine of :func:`.diagonal_asymptotics_combinatorial_smooth`.
+
+    INPUT:
+
+    * ``G, H`` -- Coprime polynomials with ``F = G/H``
+    * ``vs`` -- List of variables of ``G`` and ``H``
+    * ``r`` -- (Optional) Length ``d`` vector of positive integers
+    * ``contributing_points`` -- A list of ``d``-tuples of algebraic numbers
+    * ``expansion_precision`` -- (Optional) A positive integer value. This is the number
+      of terms to compute in the asymptotic expansion. Defaults to 1, which
+      only computes the leading term.
+    * ``output_format`` -- (Optional) A string or :class:`.ACSVSettings.Output`
+      specifying the way the asymptotic growth is returned. Allowed values
+      currently are:
+      - ``"tuple"``: the growth is returned as a list of
+        tuples of the form ``(a, n^b, pi^c, d)`` such that the `r`-diagonal of `F`
+        is the sum of ``a^n n^b pi^c d + O(a^n n^{b-1})`` over these tuples.
+      - ``"symbolic"``: the growth is returned as an expression from the symbolic
+        ring ``SR`` in the variable ``n``.
+      - ``"asymptotic"``: the growth is returned as an expression from an appropriate
+        ``AsymptoticRing`` in the variable ``n``.
+      - ``None``: the default, which uses the default set for
+        :class:`.ACSVSettings.Output` itself via
+        :meth:`.ACSVSettings.set_default_output_format`. The default behavior
+        is asymptotic output.
+    * ``as_symbolic`` -- (Optional) deprecated in favor of the equivalent
+      ``output_format="symbolic"``. Will be removed in a future release.
+
+    OUTPUT:
+
+    A representation of the asymptotic contributions from the ``contributing_points``
+    of the coefficient array of `F` along the specified direction.
     """
 
-    if expansion_precision == 1:
-        A = SR(-G / vs[-1] / H.derivative(vs[-1]))
-        subs_dict = {SR(v): V for (v, V) in zip(vs, cp)}
-        return [A.subs(subs_dict)]
-
-    # Convert everything to field of algebraic numbers
+    rd = r[-1]
     d = len(vs)
-    R = PolynomialRing(QQbar, vs)
-    vs = R.gens()
-    vd = vs[-1]
-    tvars = SR.var("t", d - 1)
-    G, H = R(SR(G)), R(SR(H))
 
-    cp = {v: V for (v, V) in zip(vs, cp)}
+     # Find exponential growth
+    T = prod([SR(vs[i]) ** r[i] for i in range(d)])
 
-    # P and PsiTilde only need to be computed to order 2M
-    N = 2 * expansion_precision + 1
+    # Find constants appearing in asymptotics in terms of original variables
+    B = SR(1 / (rd ** (d - 1) * ZZ(2) ** (d - 1)).sqrt())
+    C = SR(1 / T)
 
-    W = DifferentialWeylAlgebra(PolynomialRing(QQbar, tvars))
-    TR = PowerSeriesRing(QQbar, tvars, default_prec=N)
-    T = TR.gens()
-    tvars = T
-    D = list(W.differentials())
-
-    # Function to apply differential operator dop on function f
-    def eval_op(dop, f):
-        if len(f.parent().gens()) == 1:
-            return sum(
-                prod([factorial(k) for k in E[0][1]]) * E[1] * f[E[0][1][0]]
-                for E in dop
-            )
-        else:
-            return sum(
-                [prod([factorial(k) for k in E[0][1]]) * E[1] * f[E[0][1]] for E in dop]
-            )
-
-    Hess = compute_hessian(H, vs, r, cp)
-    Hessinv = Hess.inverse()
-    v = matrix(W, [D[: d - 1]])
-    Epsilon = -(v * Hessinv.change_ring(W) * v.transpose())[0, 0]
-
-    # Find series expansion of function g given implicitly by
-    # H(w_1, ..., w_{d-1}, g(w_1, ..., w_{d-1})) = 0 up to needed order
-    g = compute_newton_series(H.subs({v: v + cp[v]for v in vs}), vs, N)
-    g = g.subs({v: v - cp[v] for v in vs}) + cp[vd]
-
-    # Polar change of coordinates
-    tsubs = {v: cp[v] * exp(I * t).add_bigoh(N) for v, t in zip(vs, tvars)}
-    tsubs[vd] = g.subs(tsubs)
-
-    # Compute PsiTilde up to needed order
-    psi = log(g.subs(tsubs) / g.subs(cp)).add_bigoh(N)
-    psi += I * sum([r[k] * tvars[k] for k in range(d - 1)]) / r[-1]
-    v = matrix(TR, [tvars[k] for k in range(d - 1)])
-    psiTilde = psi - (v * Hess * v.transpose())[0, 0] / 2
-    PsiSeries = psiTilde.truncate(N)
-
-    # Compute series expansion of P = -G/(g*H_{z_d}) up to needed order
-    P_num = -G.subs(tsubs).add_bigoh(N)
-    P_denom = (g * H.derivative(vd)).subs(tsubs).add_bigoh(N)
-    PSeries = (P_num / P_denom).truncate(N)
-
-    if len(tvars) > 1:
-        PsiSeries = PsiSeries.polynomial()
-        PSeries = PSeries.polynomial()
-
-    # Precompute products used for asymptotics
-    EE = [Epsilon**k for k in range(3 * expansion_precision - 2)]
-    PP = [PSeries]
-    for k in range(1, 2 * expansion_precision - 1):
-        PP.append(PP[k - 1] * PsiSeries)
-
-    # Function to compute constants appearing in asymptotic expansion
-    def constants_clj(ell, j):
-        extra_contrib = (-ZZ.one()) ** j / (
-            2 ** (ell + j) * factorial(ell) * factorial(ell + j)
+    # Compute constants at contributing singularities
+    n = SR.var("n")
+    asm_quantities = []
+    for cp in contributing_points:
+        subs_dict = {SR(v): V for (v, V) in zip(vs, cp)}
+        expansion = sum(
+            [
+                term / (rd * n) ** (term_order)
+                for term_order, term in enumerate(
+                    _general_term_asymptotics_smooth(G, H, r, vs, cp, expansion_precision)
+                )
+            ]
         )
-        return extra_contrib * eval_op(EE[ell + j], PP[ell])
+        # Find det(zH_z Hess) where Hess is the Hessian of z_1...z_n * log(g(z_1, ..., z_n))
+        Hess = compute_hessian(H, vs, r, {v: V for (v, V) in zip(vs, cp)})
+        B_sub = B.subs(subs_dict)/compute_square_root_determinant_of_hessian(Hess)
+        C_sub = C.subs(subs_dict)
+        try:
+            B_sub = QQbar(B_sub)
+            B_sub.simplify()
+            C_sub = QQbar(C_sub)
+        except (ValueError, TypeError):
+            pass
 
-    res = [
-        sum([constants_clj(ell, j) for ell in srange(2 * j + 1)])
-        for j in srange(expansion_precision)
-    ]
-    try:
-        for i in range(len(res)):
-            if res[i].imag() == 0:
-                res[i] = AA(res[i])
-    except (TypeError, ValueError, NotImplementedError):
-        pass
+        asm_quantities.append([expansion, B_sub, C_sub])
 
-    return res
+    n = SR.var("n")
+    asm_vals = [(c, QQ(1 - d) / 2, b, a) for (a, b, c) in asm_quantities]
 
+    if output_format is None:
+            output_format = ACSVSettings.get_default_output_format()
+    else:
+        output_format = ACSVSettings.Output(output_format)
+
+    if output_format in (ACSVSettings.Output.TUPLE, ACSVSettings.Output.SYMBOLIC):
+        n = SR.var("n")
+        result = [
+            (base, n**exponent, pi**exponent, constant * expansion)
+            for (base, exponent, constant, expansion) in asm_vals
+        ]
+        if output_format == ACSVSettings.Output.SYMBOLIC:
+            result = sum([a**n * b * c * d for (a, b, c, d) in result])
+
+    elif output_format == ACSVSettings.Output.TERMS:
+        result = [
+            Term(constant*expansion, pi ** exponent, base, exponent) 
+            for (base, exponent, constant, expansion) in asm_vals
+            if constant*expansion != 0
+        ]
+
+    elif output_format == ACSVSettings.Output.ASYMPTOTIC:
+        AR = AsymptoticRing("QQbar^n * n^QQ", QQbar)
+        n = AR.gen()
+        try:
+            result = sum(
+                [  # bug in AsymptoticRing requires splitting out modulus manually
+                    constant
+                    * pi**exponent
+                    * abs(base) ** n
+                    * collapse_zero_part(base / abs(base)) ** n
+                    * n**exponent
+                    * AR(expansion)
+                    + (abs(base) ** n * n ** (exponent - expansion_precision)).O()
+                    for (base, exponent, constant, expansion) in asm_vals
+                ]
+            )
+        except ValueError:
+            # Issue with Sage algebraic numbers equality checking
+            for a, _, c, _ in asm_vals:
+                a.simplify()
+                c.simplify()
+            result = sum(
+                [  # bug in AsymptoticRing requires splitting out modulus manually
+                    constant
+                    * pi**exponent
+                    * abs(base) ** n
+                    * collapse_zero_part(base / abs(base)) ** n
+                    * n**exponent
+                    * AR(expansion)
+                    + (abs(base) ** n * n ** (exponent - expansion_precision)).O()
+                    for (base, exponent, constant, expansion) in asm_vals
+                ]
+            )
+
+    else:
+        raise NotImplementedError(f"Missing implementation for {output_format}")
+
+    return result
 
 def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
     r"""
@@ -785,3 +860,135 @@ def _general_term_asymptotics_complete_intersection_hyplerplane(G, Hs, exps, r, 
 
     # Return the coefficients of the resulting power series in n
     return [(-1)**(sum(exps) + len(vs))*get_coefficient(Pseries, n, k)/M.determinant().abs() for k in range(sum(exps)-len(vs)+1)][::-1][:expansion_precision]
+
+
+def _general_term_asymptotics_smooth(G, H, r, vs, cp, expansion_precision):
+    r"""
+    Compute coefficients of general (not necessarily leading) terms of
+    the asymptotic expansion for a given critical
+    point of a rational combinatorial multivariate rational function lying on a smooth point of `V(H)`.
+
+    Typically, this function is called as a subroutine of :func:`._compute_asymptotics_at_points`.
+
+    INPUT:
+
+    * ``G, H`` -- Coprime polynomials with `F = G/H`.
+    * ``r`` -- The direction. A length `d` vector of positive algebraic numbers (usually
+      integers).
+    * ``vs`` -- Tuple of variables occurring in `G` and `H`.
+    * ``cp`` -- A minimal critical point of `F` with coordinates specified in the
+      same order as in ``vs``.
+    * ``expansion_precision`` -- A positive integer value. This is the number of terms
+      for which to compute coefficients in the asymptotic expansion.
+
+    OUTPUT:
+
+    List of coefficients of the asymptotic expansion.
+
+    EXAMPLES::
+
+        sage: from sage_acsv.asymptotic_terms import _general_term_asymptotics_smooth
+        sage: R.<x, y, z> = QQ[]
+        sage: _general_term_asymptotics_smooth(1, 1 - x - y, [1, 1], [x, y], [1/2, 1/2], 5)
+        [2, -1/4, 1/64, 5/512, -21/16384]
+        sage: _general_term_asymptotics_smooth(1, 1 - x - y - z, [1, 1, 1], [x, y, z], [1/3, 1/3, 1/3], 4)
+        [3, -2/3, 2/27, 14/729]
+
+        sage: R.<x, y> = QQ[]
+        sage: _general_term_asymptotics_smooth(1, 1 - x - y, [1, 1], [x, y], [1/2, 1/2], 11)
+        [2, -1/4, 1/64, 5/512, -21/16384, -399/131072, 869/2097152, 39325/16777216, -334477/1073741824, -28717403/8589934592, 59697183/137438953472]
+    """
+
+    if expansion_precision == 1:
+        A = SR(-G / vs[-1] / H.derivative(vs[-1]))
+        subs_dict = {SR(v): V for (v, V) in zip(vs, cp)}
+        return [A.subs(subs_dict)]
+
+    # Convert everything to field of algebraic numbers
+    d = len(vs)
+    R = PolynomialRing(QQbar, vs)
+    vs = R.gens()
+    vd = vs[-1]
+    tvars = SR.var("t", d - 1)
+    G, H = R(SR(G)), R(SR(H))
+
+    cp = {v: V for (v, V) in zip(vs, cp)}
+
+    # P and PsiTilde only need to be computed to order 2M
+    N = 2 * expansion_precision + 1
+
+    W = DifferentialWeylAlgebra(PolynomialRing(QQbar, tvars))
+    TR = PowerSeriesRing(QQbar, tvars, default_prec=N)
+    T = TR.gens()
+    tvars = T
+    D = list(W.differentials())
+
+    # Function to apply differential operator dop on function f
+    def eval_op(dop, f):
+        if len(f.parent().gens()) == 1:
+            return sum(
+                prod([factorial(k) for k in E[0][1]]) * E[1] * f[E[0][1][0]]
+                for E in dop
+            )
+        else:
+            return sum(
+                [prod([factorial(k) for k in E[0][1]]) * E[1] * f[E[0][1]] for E in dop]
+            )
+
+    Hess = compute_hessian(H, vs, r, cp)
+    Hessinv = Hess.inverse()
+    v = matrix(W, [D[: d - 1]])
+    Epsilon = -(v * Hessinv.change_ring(W) * v.transpose())[0, 0]
+
+    # Find series expansion of function g given implicitly by
+    # H(w_1, ..., w_{d-1}, g(w_1, ..., w_{d-1})) = 0 up to needed order
+    g = compute_newton_series(H.subs({v: v + cp[v]for v in vs}), vs, N)
+    g = g.subs({v: v - cp[v] for v in vs}) + cp[vd]
+
+    # Polar change of coordinates
+    tsubs = {v: cp[v] * exp(I * t).add_bigoh(N) for v, t in zip(vs, tvars)}
+    tsubs[vd] = g.subs(tsubs)
+
+    # Compute PsiTilde up to needed order
+    psi = log(g.subs(tsubs) / g.subs(cp)).add_bigoh(N)
+    psi += I * sum([r[k] * tvars[k] for k in range(d - 1)]) / r[-1]
+    v = matrix(TR, [tvars[k] for k in range(d - 1)])
+    psiTilde = psi - (v * Hess * v.transpose())[0, 0] / 2
+    PsiSeries = psiTilde.truncate(N)
+
+    # Compute series expansion of P = -G/(g*H_{z_d}) up to needed order
+    P_num = -G.subs(tsubs).add_bigoh(N)
+    P_denom = (g * H.derivative(vd)).subs(tsubs).add_bigoh(N)
+    PSeries = (P_num / P_denom).truncate(N)
+
+    if len(tvars) > 1:
+        PsiSeries = PsiSeries.polynomial()
+        PSeries = PSeries.polynomial()
+
+    # Precompute products used for asymptotics
+    EE = [Epsilon**k for k in range(3 * expansion_precision - 2)]
+    PP = [PSeries]
+    for k in range(1, 2 * expansion_precision - 1):
+        PP.append(PP[k - 1] * PsiSeries)
+
+    # Function to compute constants appearing in asymptotic expansion
+    def constants_clj(ell, j):
+        extra_contrib = (-ZZ.one()) ** j / (
+            2 ** (ell + j) * factorial(ell) * factorial(ell + j)
+        )
+        return extra_contrib * eval_op(EE[ell + j], PP[ell])
+
+    res = [
+        sum([constants_clj(ell, j) for ell in srange(2 * j + 1)])
+        for j in srange(expansion_precision)
+    ]
+    try:
+        for i in range(len(res)):
+            if res[i].imag() == 0:
+                res[i] = AA(res[i])
+    except (TypeError, ValueError, NotImplementedError):
+        pass
+
+    return res
+
+
