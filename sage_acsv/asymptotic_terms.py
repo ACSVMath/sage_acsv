@@ -354,7 +354,8 @@ def _compute_asymptotics_at_points(
         D = QQ((s - d) / 2 + sum(multiplicities) - s)
         try:
             B = QQbar(B)
-            B.simplify()
+            if B in QQ:
+                B = QQ(B)
             C = QQbar(C)
         except (ValueError, TypeError):
             pass
@@ -562,7 +563,8 @@ def _compute_asymptotics_at_points_smooth(
         C_sub = C.subs(subs_dict)
         try:
             B_sub = QQbar(B_sub)
-            B_sub.simplify()
+            if B_sub in QQ:
+                B_sub = QQ(B_sub)
             C_sub = QQbar(C_sub)
         except (ValueError, TypeError):
             pass

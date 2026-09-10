@@ -237,14 +237,6 @@ def _diagonal_asymptotics_combinatorial_smooth(
     # Initialize variables
     vs = list(H.variables())
 
-    t, lambda_, u_ = PolynomialRing(QQ, "t, lambda_, u_").gens()
-    expanded_R = PolynomialRing(QQ, len(vs) + 3, vs + [t, lambda_, u_])
-
-    vs = [expanded_R(v) for v in vs]
-    t, lambda_, u_ = expanded_R(t), expanded_R(lambda_), expanded_R(u_)
-
-    # Make sure G and H are coprime, and that H does not vanish at 0
-    G, H = expanded_R(G), expanded_R(H)
     if H.subs({v: 0 for v in H.variables()}) == 0:
         raise ValueError("Denominator vanishes at 0.")
 
@@ -555,6 +547,14 @@ def diagonal_asymptotics_combinatorial(
         r = [AA(ri) for ri in r]
 
     R = PolynomialRing(QQ, vs, len(vs))
+    vs = [R(v) for v in vs]
+
+    # Make sure G and H are coprime, and that H does not vanish at 0
+    G, H = rational_function_reduce(G, H)
+    G, H = R(G), R(H)
+    if H.subs({v: 0 for v in H.variables()}) == 0:
+        raise ValueError("Denominator vanishes at 0.")
+
     H_sing = Ideal([R(H)] + [R(H.derivative(v)) for v in vs])
     if H_sing.dimension() < 0:
         return _diagonal_asymptotics_combinatorial_smooth(
@@ -576,18 +576,6 @@ def diagonal_asymptotics_combinatorial(
             return_points=return_points,
             output_format=output_format,
         )
-
-    t, lambda_, u_ = PolynomialRing(QQ, "t, lambda_, u_").gens()
-    expanded_R = PolynomialRing(QQ, len(vs) + 3, vs + [t, lambda_, u_])
-
-    vs = [expanded_R(v) for v in vs]
-    t, lambda_, u_ = expanded_R(t), expanded_R(lambda_), expanded_R(u_)
-
-    # Make sure G and H are coprime, and that H does not vanish at 0
-    G, H = rational_function_reduce(G, H)
-    G, H = expanded_R(G), expanded_R(H)
-    if H.subs({v: 0 for v in H.variables()}) == 0:
-        raise ValueError("Denominator vanishes at 0.")
 
     H_sf = prod([f for f, _ in H.factor()])
     # In case form doesn't separate, we want to try again
