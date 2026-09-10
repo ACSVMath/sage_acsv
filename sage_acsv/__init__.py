@@ -15,7 +15,8 @@ from sage_acsv.critical_points import (
     contributing_points_combinatorial_smooth,
     minimal_critical_points_combinatorial,
     MinimalCriticalCombinatorial,
-    critical_points
+    critical_points,
+    contributing_points_hyperplane
 )
 from sage_acsv.kronecker import kronecker_representation
 from sage_acsv.helpers import get_expansion_terms, get_limit_theorem_terms, LimitTheoremTerm

@@ -2,6 +2,7 @@ from sage.arith.misc import gcd
 from sage.matrix.constructor import matrix
 from sage.misc.misc_c import prod
 from sage.rings.ideal import Ideal
+from sage.rings.integer_ring import ZZ
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 from sage.rings.qqbar import AA, QQbar
 from sage.rings.rational_field import QQ
@@ -300,7 +301,52 @@ def _find_contributing_points_combinatorial(
 
 
 def contributing_points_hyperplane(G, H, vs, r=None, linear_form=None):
+    r"""Compute contributing points of a multivariate
+    rational function `F=G/H` admitting a finite number of critical points.
+    Assumes that the singular variety of `F` is a union of transversely intersecting hyperplanes.
+
+    Typically, this function is called as a subroutine of :func:`._diagonal_asymptotics_combinatorial_smooth`.
+
+    INPUT:
+
+    * ``G, H`` -- Coprime polynomials with `F = G/H`.
+    * ``vs`` -- List of variables of ``G`` and ``H``.
+    * ``r`` -- (Optional) the direction, a vector or dictionary of positive algebraic numbers (usually integers).
+        If a vector is given, assumes the variable order is given by ``(G/H).variables()``.
+    * ``linear_form`` -- (Optional) A linear combination of the input
+        variables that separates the critical point solutions.
+
+    OUTPUT:
+
+    List of minimal critical points of `F` in the direction `r`, as a list of tuples of algebraic numbers.
+    List of tuples of non-minimal contributing points of `F` in the direction `r`, laong with their height
+    contribution and multiplicity.
+
+    NOTE:
+
+    The code randomly generates a linear form, which for generic rational functions
+    separates the solutions of an intermediate polynomial system with high probability.
+    This separation step can fail, but (assuming F has a finite number of critical points)
+    the code can be rerun until a separating form is found.
+
+    EXAMPLES::
+
+        sage: from sage_acsv import contributing_points_hyperplane
+        sage: R.<x, y> = QQ[]
+        sage: min_pts, other = contributing_points_hyperplane(
+        ....:     1,
+        ....:     (3-2*x-y)*(1-x-2*y),
+        ....:     [x, y],
+        ....: )
+        sage: sorted(min_pts)
+        [[1, 1]]
+        sage: sorted(other)
+        [([3/4, 3/2], 9/8, 1), ([3/2, 3/4], 9/8, 1)]
+    """
     d = len(vs)
+    if r is None:
+        r = [ZZ.one() for _ in range(d)]
+
     Hs = [f for f, _ in H.factor()]
     if H.subs({v: 0 for v in H.variables()}) == 0:
         raise ValueError("Denominator vanishes at 0.")
@@ -381,12 +427,12 @@ def contributing_points_combinatorial_smooth(G, H, variables, r=None, linear_for
 
         sage: from sage_acsv import contributing_points_combinatorial_smooth
         sage: R.<x, y, w, lambda_, t, u_> = QQ[]
-        sage: pts = contributing_points_combinatorial_smooth(
+        sage: min_pts, other_pts = contributing_points_combinatorial_smooth(
         ....:     1,
         ....:     1 - w*(y + x + x^2*y + x*y^2),
         ....:     [w, x, y],
         ....: )
-        sage: sorted(pts)
+        sage: sorted(min_pts)
         [[-1/4, -1, -1], [1/4, 1, 1]]
     """
 

@@ -10,7 +10,6 @@ from sage.misc.misc_c import prod
 from sage.misc.prandom import shuffle
 from sage.modules.free_module_element import vector
 from sage.rings.asymptotic.asymptotic_ring import AsymptoticRing
-from sage.rings.ideal import Ideal
 from sage.rings.imaginary_unit import I
 from sage.rings.integer_ring import ZZ
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
@@ -30,10 +29,9 @@ from sage_acsv.helpers import (
     compute_implicit_hessian,
     compute_square_root_determinant_of_hessian,
     collapse_zero_part,
-    is_contributing,
     transverse_leading_normalization,
 )
-from sage_acsv.debug import Timer, acsv_logger
+from sage_acsv.debug import acsv_logger
 from sage_acsv.settings import ACSVSettings, OutputFormat
 from sage_acsv.utils import ( 
     _prepare_symbolic_fraction, 

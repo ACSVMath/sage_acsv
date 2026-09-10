@@ -115,7 +115,6 @@ very close moduli:
 """
 
 
-from sage.matrix.constructor import matrix
 from sage.misc.misc_c import prod
 from sage.rings.ideal import Ideal
 from sage.rings.integer_ring import ZZ
@@ -130,7 +129,6 @@ from sage_acsv.asymptotic_terms import (
     _compute_asymptotics_at_points_smooth
 )
 from sage_acsv.critical_points import (
-    critical_points,
     contributing_points_combinatorial_smooth,
     _find_contributing_points_combinatorial,
     contributing_points_hyperplane
@@ -138,10 +136,9 @@ from sage_acsv.critical_points import (
 from sage_acsv.debug import acsv_logger
 from sage_acsv.helpers import (
     ACSVException,
-    is_contributing,
     rational_function_reduce,
 )
-from sage_acsv.settings import ACSVSettings, OutputFormat
+from sage_acsv.settings import ACSVSettings
 from sage_acsv.utils import (
     _prepare_symbolic_fraction, 
     _dict_to_variable_order
