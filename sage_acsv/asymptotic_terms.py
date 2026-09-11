@@ -810,7 +810,7 @@ def _general_term_asymptotics_complete_intersection_hyplerplane(G, Hs, exps, r, 
 
     EXAMPLES::
 
-        sage: from sage_acsv.asymptotic_termss import _general_term_asymptotics_complete_intersection_hyplerplane
+        sage: from sage_acsv.asymptotic_terms import _general_term_asymptotics_complete_intersection_hyplerplane
         sage: R.<x, y> = QQ[]
         sage: _general_term_asymptotics_complete_intersection_hyplerplane(1, [3-2*x-y, 3-x-2*y], [2, 3], [1, 1], [x, y], [1, 1], 2)
         [1/162, 0]

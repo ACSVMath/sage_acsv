@@ -319,7 +319,7 @@ def contributing_points_hyperplane(G, H, vs, r=None, linear_form=None):
     OUTPUT:
 
     List of minimal critical points of `F` in the direction `r`, as a list of tuples of algebraic numbers.
-    List of tuples of non-minimal contributing points of `F` in the direction `r`, laong with their height
+    List of tuples of non-minimal contributing points of `F` in the direction `r`, along with their height
     contribution and multiplicity.
 
     NOTE:
@@ -335,7 +335,7 @@ def contributing_points_hyperplane(G, H, vs, r=None, linear_form=None):
         sage: R.<x, y> = QQ[]
         sage: min_pts, other = contributing_points_hyperplane(
         ....:     1,
-        ....:     (3-2*x-y)*(1-x-2*y),
+        ....:     (3-2*x-y)*(3-x-2*y),
         ....:     [x, y],
         ....: )
         sage: sorted(min_pts)
@@ -427,7 +427,7 @@ def contributing_points_combinatorial_smooth(G, H, variables, r=None, linear_for
 
         sage: from sage_acsv import contributing_points_combinatorial_smooth
         sage: R.<x, y, w, lambda_, t, u_> = QQ[]
-        sage: min_pts, other_pts = contributing_points_combinatorial_smooth(
+        sage: min_pts = contributing_points_combinatorial_smooth(
         ....:     1,
         ....:     1 - w*(y + x + x^2*y + x*y^2),
         ....:     [w, x, y],
