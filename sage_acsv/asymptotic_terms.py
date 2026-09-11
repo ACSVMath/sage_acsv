@@ -31,7 +31,7 @@ from sage_acsv.helpers import (
     collapse_zero_part,
     transverse_leading_normalization,
 )
-from sage_acsv.debug import acsv_logger
+from sage_acsv.debug import Timer, acsv_logger
 from sage_acsv.settings import ACSVSettings, OutputFormat
 from sage_acsv.utils import ( 
     _prepare_symbolic_fraction, 
@@ -190,6 +190,8 @@ def _compute_asymptotics_at_points(
     A representation of the asymptotic contributions from the ``contributing_points``
     of the coefficient array of `F` along the specified direction.
     """
+    timer = Timer()
+    timer.checkpoint()
     d = len(vs)
 
     asm_quantities = []
@@ -426,6 +428,7 @@ def _compute_asymptotics_at_points(
     else:
         raise NotImplementedError(f"Missing implementation for {output_format}")
 
+    timer.checkpoint("Final Asymptotics")
     return result
 
 def _compute_asymptotics_at_points_hyperplane(
@@ -473,6 +476,8 @@ def _compute_asymptotics_at_points_hyperplane(
     A representation of the asymptotic contributions from the ``contributing_points``
     of the coefficient array of `F` along the specified direction.
     """
+    timer = Timer()
+    timer.checkpoint()
     d = len(vs)
     
     result = _compute_asymptotics_at_points(
@@ -486,6 +491,8 @@ def _compute_asymptotics_at_points_hyperplane(
             subs_dict = {vs[i]: next_cp[i] for i in range(d)}
             multiplicities = [p for f, p in H.factor() if f.subs(subs_dict) == 0]
             result = result + (((1 / abs(next_height)) ** n) * (n ** (QQ((-s - d) / 2 + sum(multiplicities))))).O()
+
+    timer.checkpoint("Final Asymptotics")
 
     return result
 
@@ -533,6 +540,9 @@ def _compute_asymptotics_at_points_smooth(
     A representation of the asymptotic contributions from the ``contributing_points``
     of the coefficient array of `F` along the specified direction.
     """
+
+    timer = Timer()
+    timer.checkpoint()
 
     rd = r[-1]
     d = len(vs)
@@ -632,6 +642,7 @@ def _compute_asymptotics_at_points_smooth(
     else:
         raise NotImplementedError(f"Missing implementation for {output_format}")
 
+    timer.checkpoint("Final Asymptotics")
     return result
 
 def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):

@@ -133,6 +133,8 @@ def _find_contributing_points_combinatorial(
     This separation step can fail, but (assuming F has a finite number of critical points)
     the code can be rerun until a separating form is found.
     """
+    timer = Timer()
+
     (
         expanded_R,
         vs,
@@ -146,6 +148,7 @@ def _find_contributing_points_combinatorial(
     # Compute the critical point system for each stratum
     pure_H = PolynomialRing(QQ, vs)
 
+    timer.checkpoint()
     if whitney_strat is None:
         whitney_strat = whitney_stratification(Ideal(pure_H(H)), pure_H)
     else:
@@ -154,6 +157,7 @@ def _find_contributing_points_combinatorial(
             prod([Ideal([pure_H(f) for f in comp]) for comp in stratum])
             for stratum in whitney_strat
         ]
+    timer.checkpoint("Whitney Stratification")
 
     critical_point_ideals = []
     for d, stratum in enumerate(whitney_strat):
@@ -181,6 +185,8 @@ def _find_contributing_points_combinatorial(
 
             critical_point_ideals[-1].append((P, cpid))
 
+    timer.checkpoint("Critical Point Ideals")
+
     # Final minimal critical points with positive coordinates on each stratum
     critical_points_by_stratum = {}
     pos_minimals_by_stratum = {}
@@ -192,6 +198,7 @@ def _find_contributing_points_combinatorial(
         for _, ideal in ideals:
             if ideal.dimension() < 0:
                 continue
+            
             P, Qs = _kronecker_representation(ideal.gens(), u_, vsT, linear_form)
 
             Qt = Qs[-2]  # Qs ordering is H.variables() + rvars + [t, lambda_]
@@ -257,6 +264,8 @@ def _find_contributing_points_combinatorial(
                 ]
                 critical_points_by_stratum[d].append(w)
 
+    timer.checkpoint("Critical Points")
+
     # Refine positive minimal critical points to those that are contributing
     contributing_pos_minimals = []
     all_factors = list(factor[0] for factor in H.factor())
@@ -296,6 +305,8 @@ def _find_contributing_points_combinatorial(
                     abs(w_i) == abs(min_i) for w_i, min_i in zip(w, minimal)
             ) and is_contributing(vs, w, r, all_factors, len(vs) - d):
                 contributing_points.append(w)
+
+    timer.checkpoint("Contributing Points")
 
     return contributing_points
 
@@ -343,6 +354,8 @@ def contributing_points_hyperplane(G, H, vs, r=None, linear_form=None):
         sage: sorted(other)
         [([3/4, 3/2], 9/8, 1), ([3/2, 3/4], 9/8, 1)]
     """
+    timer = Timer()
+
     d = len(vs)
     if r is None:
         r = [ZZ.one() for _ in range(d)]
@@ -354,9 +367,11 @@ def contributing_points_hyperplane(G, H, vs, r=None, linear_form=None):
         raise ValueError("H does not define a hyperplane arrangement.")
 
     # Find critical points in Kronecker Representation
+    timer.checkpoint()
     cps = critical_points(
         G/H, r, linear_form
     )
+    timer.checkpoint("Critical Points")
 
     minimal_contributing_points = []
     next_contrib_vals = []
@@ -391,6 +406,8 @@ def contributing_points_hyperplane(G, H, vs, r=None, linear_form=None):
 
     if not minimal_contributing_points:
         raise ACSVException("No contributing points found.")
+
+    timer.checkpoint("Contributing Points")
 
     return minimal_contributing_points, next_contrib_vals
 
@@ -467,7 +484,6 @@ def contributing_points_combinatorial_smooth(G, H, variables, r=None, linear_for
 
     # Compute the Kronecker representation of our system
     timer.checkpoint()
-
     P, Qs = _kronecker_representation(system, u_, vsT, linear_form)
     timer.checkpoint("Kronecker")
 

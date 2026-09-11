@@ -234,6 +234,7 @@ def _diagonal_asymptotics_combinatorial_smooth(
         ValueError: 42 is not a valid OutputFormat
 
     """
+
     # Initialize variables
     vs = list(H.variables())
 
