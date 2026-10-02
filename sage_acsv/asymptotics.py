@@ -139,7 +139,7 @@ from sage_acsv.helpers import (
     rational_function_reduce,
 )
 from sage_acsv.settings import ACSVSettings
-from sage_acsv.utils import (
+from sage_acsv.helpers.utils import (
     _prepare_symbolic_fraction, 
     _dict_to_variable_order
 )

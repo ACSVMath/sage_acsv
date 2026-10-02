@@ -33,7 +33,7 @@ from sage_acsv.helpers import (
 )
 from sage_acsv.debug import Timer, acsv_logger
 from sage_acsv.settings import ACSVSettings, OutputFormat
-from sage_acsv.utils import ( 
+from sage_acsv.helpers.utils import ( 
     _prepare_symbolic_fraction, 
     _dict_to_variable_order, 
 )

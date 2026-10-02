@@ -17,7 +17,7 @@ from sage_acsv.helpers import (
 from sage_acsv.debug import Timer, acsv_logger
 from sage_acsv.whitney import whitney_stratification
 from sage_acsv.groebner import compute_primary_decomposition, compute_saturation
-from sage_acsv.utils import (
+from sage_acsv.helpers.utils import (
     _prepare_expanded_polynomial_ring, 
     _prepare_symbolic_fraction, 
     _dict_to_variable_order, 

@@ -19,7 +19,7 @@ from sage_acsv.helpers import (
     compute_square_root_determinant_of_hessian,
 )
 from sage_acsv.settings import ACSVSettings
-from sage_acsv.utils import (
+from sage_acsv.helpers.utils import (
     _prepare_symbolic_fraction, 
     _dict_to_variable_order
 )
