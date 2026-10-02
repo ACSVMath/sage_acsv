@@ -330,9 +330,7 @@ def contributing_points_hyperplane(G, H, vs, r=None, linear_form=None):
     OUTPUT:
 
     List of minimal critical points of `F` in the direction `r`, as a list of tuples of algebraic numbers.
-    List of tuples of non-minimal contributing points of `F` in the direction `r`, along with their height
-    contribution and multiplicity.
-
+    List of non-minimal contributing points of `F` in the direction `r` as a list of tuples of algebraic numbers.
     NOTE:
 
     The code randomly generates a linear form, which for generic rational functions
@@ -374,7 +372,7 @@ def contributing_points_hyperplane(G, H, vs, r=None, linear_form=None):
     timer.checkpoint("Critical Points")
 
     minimal_contributing_points = []
-    next_contrib_vals = []
+    next_contributing_points = []
 
     # Sort all critical points by height
     cps_by_height = [(cp, prod([abs(vi)**ri for (vi, ri) in zip(cp, r)])) for cp in cps]
@@ -402,14 +400,14 @@ def contributing_points_hyperplane(G, H, vs, r=None, linear_form=None):
                 contributing_height = h
                 minimal_contributing_points.append(cp)
             else:
-                next_contrib_vals.append((cp, h, s))
+                next_contributing_points.append(cp)
 
     if not minimal_contributing_points:
         raise ACSVException("No contributing points found.")
 
     timer.checkpoint("Contributing Points")
 
-    return minimal_contributing_points, next_contrib_vals
+    return minimal_contributing_points, next_contributing_points
 
 
 def contributing_points_combinatorial_smooth(G, H, variables, r=None, linear_form=None):

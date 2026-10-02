@@ -1,4 +1,5 @@
 from copy import copy
+from enum import Enum
 from itertools import combinations
 
 from sage.algebras.weyl_algebra import DifferentialWeylAlgebra
@@ -38,12 +39,24 @@ from sage_acsv.helpers.utils import (
     _dict_to_variable_order, 
 )
 
+class PointsStrategy(Enum):
+    """Options for computing asymptotic contributions of points
+    based on local geometry. 
+
+    """
+
+    TRANSVERSE = "transverse"
+    HYPERPLANE = "hyperplane"
+    SMOOTH = "smooth"
+
 def compute_asymptotics_at_points(
     F,
-    contributing_points,
+    minimal_contributing_points,
     r=None,
     expansion_precision=1,
-    output_format=None
+    strategy=None,
+    output_format=None,
+    next_contributing_points=None,
 ):
     r"""Compute asymptotic contribution of points of a multivariate rational function `F=G/H`
     admitting a finite number of critical points where the singular variety is the transverse union of smooth varieties.
@@ -51,7 +64,7 @@ def compute_asymptotics_at_points(
     INPUT:
 
     * ``F`` -- The rational function `G/H` in `d` variables.
-    * ``contributing_points`` -- A list of ``d``-tuples of algebraic numbers
+    * ``minimal_contributing_points`` -- A list of ``d``-tuples of algebraic numbers
     * ``r`` -- (Optional) Length ``d`` vector of positive integers
     * ``expansion_precision`` -- (Optional) A positive integer value. This is the number
       of terms to compute in the asymptotic expansion. Defaults to 1, which
@@ -74,6 +87,7 @@ def compute_asymptotics_at_points(
 
     * ``as_symbolic`` -- (Optional) deprecated in favor of the equivalent
       ``output_format="symbolic"``. Will be removed in a future release.
+    * ``next_contributing_values`` -- (Optional) A list of ``d``-tuples of algebraic numbers
 
     OUTPUT:
 
@@ -115,8 +129,8 @@ def compute_asymptotics_at_points(
     if isinstance(r, dict):
         r = _dict_to_variable_order(F, r)
 
-    contributing_points = [
-        _dict_to_variable_order(F, cp, None) if isinstance(cp, dict) else cp for cp in contributing_points
+    minimal_contributing_points = [
+        _dict_to_variable_order(F, cp, None) if isinstance(cp, dict) else cp for cp in minimal_contributing_points
     ]
 
     G, H, variable_map = _prepare_symbolic_fraction(F)
@@ -131,22 +145,67 @@ def compute_asymptotics_at_points(
     except (ValueError, TypeError):
         r = [AA(ri) for ri in r]
 
-    R = PolynomialRing(QQ, vs, len(vs))
+    R, vs = PolynomialRing(QQ, vs, len(vs)).objgens()
 
     # Make sure G and H are coprime, and that H does not vanish at 0
     G, H = rational_function_reduce(G, H)
     G, H = R(G), R(H)
+
     return _compute_asymptotics_at_points(
         G, H,
         vs,
         r,
-        contributing_points,
+        minimal_contributing_points,
+        next_contributing_points,
         expansion_precision,
-        output_format
+        output_format,
+        strategy
     )
 
 
 def _compute_asymptotics_at_points(
+    G, H,
+    vs,
+    r,
+    minimal_contributing_points,
+    next_contributing_points,
+    expansion_precision,
+    output_format,
+    strategy=None
+):
+    match strategy:
+        case PointsStrategy.SMOOTH:
+            return _compute_asymptotics_at_points_smooth(
+                G, H,
+                vs,
+                r,
+                minimal_contributing_points,
+                expansion_precision,
+                output_format
+            )
+        case PointsStrategy.HYPERPLANE:
+            return _compute_asymptotics_at_points_hyperplane(
+                G, H,
+                vs,
+                r,
+                minimal_contributing_points,
+                next_contributing_points,
+                expansion_precision,
+                output_format
+            )
+        case _:
+            return _compute_asymptotics_at_points_transverse(
+                G, H,
+                vs,
+                r,
+                minimal_contributing_points,
+                expansion_precision,
+                output_format
+            )
+
+
+
+def _compute_asymptotics_at_points_transverse(
     G, H,
     vs,
     r,
@@ -435,13 +494,14 @@ def _compute_asymptotics_at_points_hyperplane(
     G, H,
     vs,
     r,
-    contributing_points,
-    next_contributing_vals,
+    minimal_contributing_points,
+    next_contributing_points,
     expansion_precision,
     output_format,
 ):
     r"""Compute contributing points of a combinatorial multivariate
-    rational function `F=G/H` admitting a finite number of critical points where the singular variety is a smooth.
+    rational function `F=G/H` admitting a finite number of critical points where the singular variety is a
+    hyperplane arrangement.
 
     Typically, this function is called as a subroutine of :func:`.diagonal_asymptotics_hyperplane`.
 
@@ -451,6 +511,7 @@ def _compute_asymptotics_at_points_hyperplane(
     * ``vs`` -- List of variables of ``G`` and ``H``
     * ``r`` -- (Optional) Length ``d`` vector of positive integers
     * ``contributing_points`` -- A list of ``d``-tuples of algebraic numbers
+    * ``next_contributing_points`` -- A list of ``d``-tuples of algebraic numbers
     * ``expansion_precision`` -- (Optional) A positive integer value. This is the number
         of terms to compute in the asymptotic expansion. Defaults to 1, which
         only computes the leading term.
@@ -480,17 +541,19 @@ def _compute_asymptotics_at_points_hyperplane(
     timer.checkpoint()
     d = len(vs)
     
-    result = _compute_asymptotics_at_points(
-        G, H, vs, r, contributing_points, expansion_precision, output_format
+    result = _compute_asymptotics_at_points_transverse(
+        G, H, vs, r, minimal_contributing_points, expansion_precision, output_format
     )
 
     output_format = ACSVSettings.get_default_output_format() if output_format is None else ACSVSettings.Output(output_format)
     if output_format == OutputFormat.ASYMPTOTIC:
         n = result.parent().gen()
-        for next_cp, next_height, s in next_contributing_vals:
+        for next_cp in next_contributing_points:
             subs_dict = {vs[i]: next_cp[i] for i in range(d)}
+            height = prod([abs(vi)**ri for (vi, ri) in zip(next_cp, r)])
+            s = sum([f.subs(subs_dict) == 0 for f, _ in H.factor()])
             multiplicities = [p for f, p in H.factor() if f.subs(subs_dict) == 0]
-            result = result + (((1 / abs(next_height)) ** n) * (n ** (QQ((-s - d) / 2 + sum(multiplicities))))).O()
+            result = result + (((1 / abs(height)) ** n) * (n ** (QQ((-s - d) / 2 + sum(multiplicities))))).O()
 
     timer.checkpoint("Final Asymptotics")
 

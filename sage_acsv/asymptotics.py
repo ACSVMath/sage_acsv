@@ -125,8 +125,7 @@ from sage.symbolic.ring import SR
 
 from sage_acsv.asymptotic_terms import (
     _compute_asymptotics_at_points,
-    _compute_asymptotics_at_points_hyperplane,
-    _compute_asymptotics_at_points_smooth
+    PointsStrategy
 )
 from sage_acsv.critical_points import (
     contributing_points_combinatorial_smooth,
@@ -261,8 +260,15 @@ def _diagonal_asymptotics_combinatorial_smooth(
     else:
         raise ACSVException(f"Could not find suitable linear form after {ACSVSettings.MAX_MIN_CRIT_RETRIES} attempts.")
 
-    result = _compute_asymptotics_at_points_smooth(
-        G, H, vs, r, min_crit_pts, expansion_precision, output_format
+    result = _compute_asymptotics_at_points(
+        G, H,
+        vs,
+        r,
+        min_crit_pts,
+        None,
+        expansion_precision,
+        output_format,
+        strategy=PointsStrategy.SMOOTH
     )
 
     if return_points:
@@ -600,7 +606,14 @@ def diagonal_asymptotics_combinatorial(
         return
 
     result = _compute_asymptotics_at_points(
-        G, H, vs, r, min_crit_pts, expansion_precision, output_format
+        G, H,
+        vs,
+        r,
+        min_crit_pts,
+        None,
+        expansion_precision,
+        output_format,
+        strategy=PointsStrategy.TRANSVERSE
     )
 
     if return_points:
@@ -736,7 +749,7 @@ def diagonal_asymptotics_hyperplane(
 
     for _ in range(ACSVSettings.MAX_MIN_CRIT_RETRIES):
         try:
-            minimal_contributing_points, next_contrib_vals = contributing_points_hyperplane(
+            minimal_contributing_points, next_contributing_points = contributing_points_hyperplane(
                 G, H, vs, r, linear_form=linear_form
             )
             break
@@ -752,8 +765,15 @@ def diagonal_asymptotics_hyperplane(
     else:
         return
 
-    result = _compute_asymptotics_at_points_hyperplane(
-        G, H, vs, r, minimal_contributing_points, next_contrib_vals, expansion_precision, output_format
+    result = _compute_asymptotics_at_points(
+        G, H,
+        vs,
+        r,
+        minimal_contributing_points,
+        next_contributing_points,
+        expansion_precision,
+        output_format,
+        strategy=PointsStrategy.HYPERPLANE
     )
 
     if return_points:
