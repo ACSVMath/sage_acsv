@@ -11,8 +11,6 @@ from sage_acsv.helpers.asymptotic_geometry import (
     is_contributing,
     is_transverse_at_point,
     transverse_leading_normalization,
-    algebraic_residues,
-    pure_composed_sum,
     compute_hessian
 )
 from sage_acsv.helpers.newton_series import compute_newton_series, compute_newton_series_general
@@ -25,3 +23,4 @@ from sage_acsv.helpers.utils import (
     collapse_zero_part,
     generate_linear_form,
 )
+from sage_acsv.helpers.residue_algebra import algebraic_residues, pure_composed_sum
