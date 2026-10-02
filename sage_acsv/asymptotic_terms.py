@@ -306,7 +306,7 @@ def _compute_asymptotics_at_points(
             expansion = sum(
                 term / n**term_order
                 for term_order, term in enumerate(
-                    _general_term_asymptotics_complete_intersection_hyplerplane(G, factors, multiplicities, r, vs, cp, expansion_precision)
+                    _general_term_asymptotics_complete_intersection_hyperplane(G, factors, multiplicities, r, vs, cp, expansion_precision)
                 )
             ) / unit.subs(subs_dict)
             B = ZZ.one()
@@ -422,7 +422,7 @@ def _compute_asymptotics_at_points(
             )
 
         # For complete intersections, the error bound is actually exponentially smaller after a certain precision
-        # But we can currently only represent this for hyplerplane intersections
+        # But we can currently only represent this for hyperplane intersections
         if all(asm_val[-1] == d for asm_val in asm_vals) and all(f.degree() == 1 for f in factors) and expansion_precision > sum(multiplicities) - d:
             result = result.exact_part()
     else:
@@ -795,7 +795,7 @@ def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
     raise ACSVException("Issue with computing general terms - this should never happen.")
 
 
-def _general_term_asymptotics_complete_intersection_hyplerplane(G, Hs, exps, r, vs, cp, expansion_precision):
+def _general_term_asymptotics_complete_intersection_hyperplane(G, Hs, exps, r, vs, cp, expansion_precision):
     r"""
     Compute coefficients of general (not necessarily leading) terms of the asymptotic expansion for a given critical
     point of a rational combinatorial multivariate rational function lying on a complete intersection of hyperplanes.
@@ -821,11 +821,11 @@ def _general_term_asymptotics_complete_intersection_hyplerplane(G, Hs, exps, r, 
 
     EXAMPLES::
 
-        sage: from sage_acsv.asymptotic_terms import _general_term_asymptotics_complete_intersection_hyplerplane
+        sage: from sage_acsv.asymptotic_terms import _general_term_asymptotics_complete_intersection_hyperplane
         sage: R.<x, y> = QQ[]
-        sage: _general_term_asymptotics_complete_intersection_hyplerplane(1, [3-2*x-y, 3-x-2*y], [2, 3], [1, 1], [x, y], [1, 1], 2)
+        sage: _general_term_asymptotics_complete_intersection_hyperplane(1, [3-2*x-y, 3-x-2*y], [2, 3], [1, 1], [x, y], [1, 1], 2)
         [1/162, 0]
-        sage: _general_term_asymptotics_complete_intersection_hyplerplane(1, [3-2*x-y, 3-x-2*y], [2, 3], [1, 1], [x, y], [1, 1], 5)
+        sage: _general_term_asymptotics_complete_intersection_hyperplane(1, [3-2*x-y, 3-x-2*y], [2, 3], [1, 1], [x, y], [1, 1], 5)
         [1/162, 0, -7/162, -1/27]
     """
     M = matrix(
