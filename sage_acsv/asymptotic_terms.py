@@ -425,70 +425,21 @@ def _compute_asymptotics_at_points_transverse(
 
     asm_vals = [(c, d, b, a, s) for a, b, c, d, s in asm_quantities]
 
-    if output_format is None:
-        output_format = ACSVSettings.get_default_output_format()
-    else:
-        output_format = ACSVSettings.Output(output_format)
-
-    if output_format in (ACSVSettings.Output.TUPLE, ACSVSettings.Output.SYMBOLIC):
-        n = SR.var("n")
-        result = [
-            (base, n**exponent, (pi ** (s - d)).sqrt(), constant * expansion)
-            for (base, exponent, constant, expansion, s) in asm_vals
-        ]
-        if output_format == ACSVSettings.Output.SYMBOLIC:
-            result = sum([a**n * b * c * d for (a, b, c, d) in result])
-
-    elif output_format == ACSVSettings.Output.TERMS:
-        result = [
-            Term(constant*expansion, (pi ** (s - d)).sqrt(), base, exponent) 
-            for (base, exponent, constant, expansion, s) in asm_vals
-            if constant*expansion != 0
-        ]
-
-    elif output_format == ACSVSettings.Output.ASYMPTOTIC:
-        AR = AsymptoticRing("QQbar^n * n^QQ", QQbar)
-        n = AR.gen()
-        try:
-            result = sum(
-                [  # bug in AsymptoticRing requires splitting out modulus manually
-                    constant
-                    * (pi ** (s - d)).sqrt()
-                    * abs(base) ** n
-                    * collapse_zero_part(base / abs(base)) ** n
-                    * n**exponent
-                    * AR(expansion)
-                    + (abs(base) ** n * n ** (exponent - expansion_precision)).O()
-                    for (base, exponent, constant, expansion, s) in asm_vals
-                ]
-            )
-        except ValueError:
-            # Issue with Sage algebraic numbers equality checking
-            for a, _, c, _, _ in asm_vals:
-                a.simplify()
-                c.simplify()
-            result = sum(
-                [  # bug in AsymptoticRing requires splitting out modulus manually
-                    constant
-                    * (pi ** (s - d)).sqrt()
-                    * abs(base) ** n
-                    * collapse_zero_part(base / abs(base)) ** n
-                    * n**exponent
-                    * AR(expansion)
-                    + (abs(base) ** n * n ** (exponent - expansion_precision)).O()
-                    for (base, exponent, constant, expansion, s) in asm_vals
-                ]
-            )
-
-        # For complete intersections, the error bound is actually exponentially smaller after a certain precision
-        # But we can currently only represent this for hyperplane intersections
-        if all(asm_val[-1] == d for asm_val in asm_vals) and all(f.degree() == 1 for f in factors) and expansion_precision > sum(multiplicities) - d:
-            result = result.exact_part()
-    else:
-        raise NotImplementedError(f"Missing implementation for {output_format}")
+    terms = [
+        Term(constant*expansion, (pi ** (s - d)).sqrt(), base, exponent) 
+        for (base, exponent, constant, expansion, s) in asm_vals
+        if constant*expansion != 0
+    ]
 
     timer.checkpoint("Final Asymptotics")
-    return result
+
+    # For complete intersections, the error bound is actually exponentially smaller after a certain precision
+    # But we can currently only represent this for hyperplane intersections
+    if all(asm_val[-1] == d for asm_val in asm_vals) and all(f.degree() == 1 for f in factors) and expansion_precision > sum(multiplicities) - d:
+        return _format_output(terms, output_format, expansion_precision, strip_error=True)
+
+    return _format_output(terms, output_format, expansion_precision, False)
+
 
 def _compute_asymptotics_at_points_hyperplane(
     G, H,
@@ -647,66 +598,16 @@ def _compute_asymptotics_at_points_smooth(
     n = SR.var("n")
     asm_vals = [(c, QQ(1 - d) / 2, b, a) for (a, b, c) in asm_quantities]
 
-    if output_format is None:
-            output_format = ACSVSettings.get_default_output_format()
-    else:
-        output_format = ACSVSettings.Output(output_format)
-
-    if output_format in (ACSVSettings.Output.TUPLE, ACSVSettings.Output.SYMBOLIC):
-        n = SR.var("n")
-        result = [
-            (base, n**exponent, pi**exponent, constant * expansion)
-            for (base, exponent, constant, expansion) in asm_vals
-        ]
-        if output_format == ACSVSettings.Output.SYMBOLIC:
-            result = sum([a**n * b * c * d for (a, b, c, d) in result])
-
-    elif output_format == ACSVSettings.Output.TERMS:
-        result = [
-            Term(constant*expansion, pi ** exponent, base, exponent) 
-            for (base, exponent, constant, expansion) in asm_vals
-            if constant*expansion != 0
-        ]
-
-    elif output_format == ACSVSettings.Output.ASYMPTOTIC:
-        AR = AsymptoticRing("QQbar^n * n^QQ", QQbar)
-        n = AR.gen()
-        try:
-            result = sum(
-                [  # bug in AsymptoticRing requires splitting out modulus manually
-                    constant
-                    * pi**exponent
-                    * abs(base) ** n
-                    * collapse_zero_part(base / abs(base)) ** n
-                    * n**exponent
-                    * AR(expansion)
-                    + (abs(base) ** n * n ** (exponent - expansion_precision)).O()
-                    for (base, exponent, constant, expansion) in asm_vals
-                ]
-            )
-        except ValueError:
-            # Issue with Sage algebraic numbers equality checking
-            for a, _, c, _ in asm_vals:
-                a.simplify()
-                c.simplify()
-            result = sum(
-                [  # bug in AsymptoticRing requires splitting out modulus manually
-                    constant
-                    * pi**exponent
-                    * abs(base) ** n
-                    * collapse_zero_part(base / abs(base)) ** n
-                    * n**exponent
-                    * AR(expansion)
-                    + (abs(base) ** n * n ** (exponent - expansion_precision)).O()
-                    for (base, exponent, constant, expansion) in asm_vals
-                ]
-            )
-
-    else:
-        raise NotImplementedError(f"Missing implementation for {output_format}")
+    terms = [
+        Term(constant*expansion, pi ** exponent, base, exponent) 
+        for (base, exponent, constant, expansion) in asm_vals
+        if constant*expansion != 0
+    ]
 
     timer.checkpoint("Final Asymptotics")
-    return result
+
+    return _format_output(terms, output_format, expansion_precision)
+
 
 def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
     r"""
@@ -1066,3 +967,69 @@ def _general_term_asymptotics_smooth(G, H, r, vs, cp, expansion_precision):
     return res
 
 
+def _format_output(terms, output_format, expansion_precision, strip_error=False):
+    r"""
+    Formats an asymptotic ``Term`` to the specified ``output_format``.
+
+    INPUT:
+    
+        * ``terms`` -- List of ``Term``.
+        * ``outlut_format`` -- A string or :class:`.ACSVSettings.Output`.
+        * ``expansion_precision`` -- A positive integer value.
+        * ``strip_error`` -- A boolean. Indicates if return value should have an error bound, in the case
+        the output is in asymptotic form.
+    """
+    if output_format is None:
+        output_format = ACSVSettings.get_default_output_format()
+    else:
+        output_format = ACSVSettings.Output(output_format)
+
+    if output_format in (ACSVSettings.Output.TUPLE, ACSVSettings.Output.SYMBOLIC):
+        n = SR.var("n")
+        result = [
+            (term.base, n**term.power, term.pi_factor, term.coefficient)
+            for term in terms
+        ]
+        if output_format == ACSVSettings.Output.SYMBOLIC:
+            result = sum([a**n * b * c * d for (a, b, c, d) in result])
+
+    elif output_format == ACSVSettings.Output.TERMS:
+        result = terms
+
+    elif output_format == ACSVSettings.Output.ASYMPTOTIC:
+        AR = AsymptoticRing("QQbar^n * n^QQ", QQbar)
+        n = AR.gen()
+        try:
+            result = sum(
+                [  # bug in AsymptoticRing requires splitting out modulus manually
+                    AR(term.coefficient)
+                    * term.pi_factor
+                    * abs(term.base) ** n
+                    * collapse_zero_part(term.base / abs(term.base)) ** n
+                    * n**term.power
+                    + (abs(term.base) ** n * n ** (term.power - expansion_precision)).O()
+                    for term in terms
+                ], start = SR.zero()
+            )
+        except ValueError:
+            # Issue with Sage algebraic numbers equality checking
+            for term in terms:
+                terms.base.simplify()
+                terms.constant.simplify()
+            result = sum(
+                [  # bug in AsymptoticRing requires splitting out modulus manually
+                    term.coefficient
+                    * term.pi_factor
+                    * abs(term.base) ** n
+                    * collapse_zero_part(term.base / abs(term.base)) ** n
+                    * n**term.power
+                    + (abs(term.base) ** n * n ** (term.power - expansion_precision)).O()
+                    for term in terms
+                ], start = SR.zero()
+            )
+        if strip_error:
+            result = result.exact_part()
+    else:
+        raise NotImplementedError(f"Missing implementation for {output_format}")
+
+    return result

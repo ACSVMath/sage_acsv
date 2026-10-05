@@ -16,7 +16,7 @@ from sage_acsv.helpers import (
 )
 from sage_acsv.debug import Timer, acsv_logger
 from sage_acsv.whitney import whitney_stratification
-from sage_acsv.groebner import compute_primary_decomposition, compute_saturation
+from sage_acsv.groebner.functions import compute_primary_decomposition, compute_saturation
 from sage_acsv.helpers.utils import (
     _prepare_expanded_polynomial_ring, 
     _prepare_symbolic_fraction, 
@@ -350,7 +350,7 @@ def contributing_points_hyperplane(G, H, vs, r=None, linear_form=None):
         sage: sorted(min_pts)
         [[1, 1]]
         sage: sorted(other)
-        [([3/4, 3/2], 9/8, 1), ([3/2, 3/4], 9/8, 1)]
+        [[3/4, 3/2], [3/2, 3/4]]
     """
     timer = Timer()
 

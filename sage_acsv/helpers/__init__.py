@@ -1,4 +1,4 @@
-from sage_acsv.helpers.exceptions import ACSVException
+from sage_acsv.data.exceptions import ACSVException
 from sage_acsv.helpers.results import (
     Term,
     LimitTheoremTerm,
@@ -14,6 +14,10 @@ from sage_acsv.helpers.asymptotic_geometry import (
     compute_hessian
 )
 from sage_acsv.helpers.newton_series import compute_newton_series, compute_newton_series_general
+
+"""
+These are meant to be internal functions. We include them here to not break existing api, but it will need to be changed.
+"""
 from sage_acsv.helpers.utils import (
     _subs,
     _prepare_expanded_polynomial_ring,

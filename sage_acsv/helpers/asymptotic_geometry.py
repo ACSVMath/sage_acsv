@@ -13,7 +13,7 @@ from sage.rings.power_series_ring import PowerSeriesRing
 from sage.rings.qqbar import AA, QQbar
 from sage.rings.rational_field import QQ
 from sage.symbolic.ring import SR
-from sage_acsv.helpers.exceptions import ACSVException
+from sage_acsv.data.exceptions import ACSVException
 
 def compute_implicit_hessian(Hs, vs, r, subs):
     r"""Compute the Hessian of an implicitly defined function.
