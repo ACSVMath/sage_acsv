@@ -1009,7 +1009,7 @@ def _format_output(terms, output_format, expansion_precision, strip_error=False)
                     * n**term.power
                     + (abs(term.base) ** n * n ** (term.power - expansion_precision)).O()
                     for term in terms
-                ], start = SR.zero()
+                ], start = AR.zero()
             )
         except ValueError:
             # Issue with Sage algebraic numbers equality checking
@@ -1025,7 +1025,7 @@ def _format_output(terms, output_format, expansion_precision, strip_error=False)
                     * n**term.power
                     + (abs(term.base) ** n * n ** (term.power - expansion_precision)).O()
                     for term in terms
-                ], start = SR.zero()
+                ], start = AR.zero()
             )
         if strip_error:
             result = result.exact_part()

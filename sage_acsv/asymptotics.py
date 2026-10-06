@@ -240,25 +240,10 @@ def _diagonal_asymptotics_combinatorial_smooth(
     if H.subs({v: 0 for v in H.variables()}) == 0:
         raise ValueError("Denominator vanishes at 0.")
 
-    # In case form doesn't separate, we want to try again
-    for _ in range(ACSVSettings.MAX_MIN_CRIT_RETRIES):
-        try:
-            # Find minimal critical points in Kronecker Representation
-            min_crit_pts = contributing_points_combinatorial_smooth(
-                G, H, vs, r=r, linear_form=linear_form
-            )
-            break
-        except Exception as e:
-            if isinstance(e, ACSVException) and e.retry:
-                acsv_logger.info(
-                    "Randomly generated linear form was not suitable, "
-                    f"encountered error: {e}\nRetrying..."
-                )
-                continue
-            else:
-                raise e
-    else:
-        raise ACSVException(f"Could not find suitable linear form after {ACSVSettings.MAX_MIN_CRIT_RETRIES} attempts.")
+    # Find minimal critical points in Kronecker Representation
+    min_crit_pts = contributing_points_combinatorial_smooth(
+        G, H, vs, r=r, linear_form=linear_form
+    )
 
     result = _compute_asymptotics_at_points(
         G, H,
@@ -585,25 +570,10 @@ def diagonal_asymptotics_combinatorial(
         )
 
     H_sf = prod([f for f, _ in H.factor()])
-    # In case form doesn't separate, we want to try again
-    for _ in range(ACSVSettings.MAX_MIN_CRIT_RETRIES):
-        try:
-            # Find minimal critical points in Kronecker Representation
-            min_crit_pts = _find_contributing_points_combinatorial(
-                G, H_sf, vs, r=r, linear_form=linear_form, whitney_strat=whitney_strat
-            )
-            break
-        except Exception as e:
-            if isinstance(e, ACSVException) and e.retry:
-                acsv_logger.info(
-                    "Randomly generated linear form was not suitable, "
-                    f"encountered error: {e}\nRetrying..."
-                )
-                continue
-            else:
-                raise e
-    else:
-        return
+    # Find minimal critical points in Kronecker Representation
+    min_crit_pts = _find_contributing_points_combinatorial(
+        G, H_sf, vs, r=r, linear_form=linear_form, whitney_strat=whitney_strat
+    )
 
     result = _compute_asymptotics_at_points(
         G, H,
@@ -747,23 +717,9 @@ def diagonal_asymptotics_hyperplane(
     if any(f.degree() > 1 for f in Hs):
         raise ValueError("H does not define a hyperplane arrangement.")
 
-    for _ in range(ACSVSettings.MAX_MIN_CRIT_RETRIES):
-        try:
-            minimal_contributing_points, next_contributing_points = contributing_points_hyperplane(
-                G, H, vs, r, linear_form=linear_form
-            )
-            break
-        except Exception as e:
-            if isinstance(e, ACSVException) and e.retry:
-                acsv_logger.info(
-                    "Randomly generated linear form was not suitable, "
-                    f"encountered error: {e}\nRetrying..."
-                )
-                continue
-            else:
-                raise e
-    else:
-        return
+    minimal_contributing_points, next_contributing_points = contributing_points_hyperplane(
+        G, H, vs, r, linear_form=linear_form
+    )
 
     result = _compute_asymptotics_at_points(
         G, H,

@@ -5,6 +5,7 @@ a system of polynomials.
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 from sage.rings.rational_field import QQ
 
+from sage_acsv.data.exceptions import ACSVException
 from sage_acsv.kronecker.kronecker_msolve import _kronecker_representation_msolve
 from sage_acsv.kronecker.kronecker_sage import _kronecker_representation_sage
 from sage_acsv.debug import acsv_logger
@@ -34,7 +35,24 @@ def _kronecker_representation(system, u_, vs, linear_form=None, return_linear_fo
                 "msolve chooses its own linear form by default. The provided linear form will be dropped."
             )
         return _kronecker_representation_msolve(system, u_, vs, return_linear_form=return_linear_form)
-    return _kronecker_representation_sage(system, u_, vs, linear_form=linear_form, return_linear_form=return_linear_form)
+
+    for _ in range(ACSVSettings.MAX_MIN_CRIT_RETRIES):
+        try:
+            return _kronecker_representation_sage(
+                system, u_, vs, linear_form=linear_form, return_linear_form=return_linear_form
+            )
+        except Exception as e:
+            if isinstance(e, ACSVException) and e.retry:
+                acsv_logger.info(
+                    "Randomly generated linear form was not suitable, "
+                    f"encountered error: {e}\nRetrying..."
+                )
+                continue
+            else:
+                raise e
+    else:
+        raise ACSVException(f"Could not find suitable linear form after {ACSVSettings.MAX_MIN_CRIT_RETRIES} attempts.")
+    
 
 def kronecker(system, vs, linear_form=None):
     acsv_logger.warning(
