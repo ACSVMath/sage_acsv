@@ -1,1 +1,1 @@
-from sage_acsv.kronecker.kronecker import kronecker_representation, _kronecker_representation
+from sage_acsv.kronecker.kronecker_representation import kronecker_representation

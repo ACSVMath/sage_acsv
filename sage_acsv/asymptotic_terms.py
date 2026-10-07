@@ -25,11 +25,9 @@ from sage_acsv.helpers import (
     Term,
     compute_newton_series,
     compute_newton_series_general,
-    rational_function_reduce,
     compute_hessian,
     compute_implicit_hessian,
     compute_square_root_determinant_of_hessian,
-    collapse_zero_part,
     transverse_leading_normalization,
 )
 from sage_acsv.debug import Timer, acsv_logger
@@ -37,6 +35,8 @@ from sage_acsv.settings import ACSVSettings, OutputFormat
 from sage_acsv.helpers.utils import ( 
     _prepare_symbolic_fraction, 
     _dict_to_variable_order, 
+    _rational_function_reduce,
+    _collapse_zero_part
 )
 
 class PointsStrategy(Enum):
@@ -148,7 +148,7 @@ def compute_asymptotics_at_points(
     R, vs = PolynomialRing(QQ, vs, len(vs)).objgens()
 
     # Make sure G and H are coprime, and that H does not vanish at 0
-    G, H = rational_function_reduce(G, H)
+    G, H = _rational_function_reduce(G, H)
     G, H = R(G), R(H)
 
     return _compute_asymptotics_at_points(
@@ -1005,7 +1005,7 @@ def _format_output(terms, output_format, expansion_precision, strip_error=False)
                     AR(term.coefficient)
                     * term.pi_factor
                     * abs(term.base) ** n
-                    * collapse_zero_part(term.base / abs(term.base)) ** n
+                    * _collapse_zero_part(term.base / abs(term.base)) ** n
                     * n**term.power
                     + (abs(term.base) ** n * n ** (term.power - expansion_precision)).O()
                     for term in terms
@@ -1021,7 +1021,7 @@ def _format_output(terms, output_format, expansion_precision, strip_error=False)
                     term.coefficient
                     * term.pi_factor
                     * abs(term.base) ** n
-                    * collapse_zero_part(term.base / abs(term.base)) ** n
+                    * _collapse_zero_part(term.base / abs(term.base)) ** n
                     * n**term.power
                     + (abs(term.base) ** n * n ** (term.power - expansion_precision)).O()
                     for term in terms

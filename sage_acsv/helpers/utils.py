@@ -106,7 +106,7 @@ def _prepare_expanded_polynomial_ring(variables, direction=None, include_t=True)
         direction_variable_values,
     )
 
-def collapse_zero_part(algebraic_number: AlgebraicNumber) -> AlgebraicNumber:
+def _collapse_zero_part(algebraic_number: AlgebraicNumber) -> AlgebraicNumber:
     if algebraic_number.real().is_zero():
         algebraic_number = QQbar(algebraic_number.imag()) * QQbar(-1).sqrt()
     if algebraic_number.imag().is_zero():
@@ -115,7 +115,7 @@ def collapse_zero_part(algebraic_number: AlgebraicNumber) -> AlgebraicNumber:
     return algebraic_number
 
 
-def rational_function_reduce(G, H):
+def _rational_function_reduce(G, H):
     r"""Reduction of the rational function `G/H` by dividing `G` and `H` by their GCD.
 
     INPUT:
@@ -130,7 +130,7 @@ def rational_function_reduce(G, H):
     return G / g, H / g
 
 
-def generate_linear_form(system, vsT, u_, linear_form=None):
+def _generate_linear_form(system, vsT, u_, linear_form=None):
     r"""Generate a linear form for the input system.
 
     This is an integer linear combination of the variables that,

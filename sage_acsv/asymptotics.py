@@ -133,14 +133,11 @@ from sage_acsv.critical_points import (
     contributing_points_hyperplane
 )
 from sage_acsv.debug import acsv_logger
-from sage_acsv.helpers import (
-    ACSVException,
-    rational_function_reduce,
-)
 from sage_acsv.settings import ACSVSettings
 from sage_acsv.helpers.utils import (
     _prepare_symbolic_fraction, 
-    _dict_to_variable_order
+    _dict_to_variable_order,
+    _rational_function_reduce
 )
 
 # we need to monkeypatch a function from the asymptotics module such that creating
@@ -542,7 +539,7 @@ def diagonal_asymptotics_combinatorial(
     vs = [R(v) for v in vs]
 
     # Make sure G and H are coprime, and that H does not vanish at 0
-    G, H = rational_function_reduce(G, H)
+    G, H = _rational_function_reduce(G, H)
     G, H = R(G), R(H)
     if H.subs({v: 0 for v in H.variables()}) == 0:
         raise ValueError("Denominator vanishes at 0.")
@@ -709,7 +706,7 @@ def diagonal_asymptotics_hyperplane(
 
 
     # Make sure G and H are coprime, and that H does not vanish at 0
-    G, H = rational_function_reduce(G, H)
+    G, H = _rational_function_reduce(G, H)
     G, H = R(G), R(H)
     Hs = [f for f, _ in H.factor()]
     if H.subs({v: 0 for v in H.variables()}) == 0:

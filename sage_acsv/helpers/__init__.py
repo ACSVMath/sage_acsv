@@ -23,8 +23,8 @@ from sage_acsv.helpers.utils import (
     _prepare_expanded_polynomial_ring,
     _prepare_symbolic_fraction,
     _dict_to_variable_order,
-    rational_function_reduce,
-    collapse_zero_part,
-    generate_linear_form,
+    _rational_function_reduce,
+    _collapse_zero_part,
+    _generate_linear_form,
 )
 from sage_acsv.helpers.residue_algebra import algebraic_residues, pure_composed_sum

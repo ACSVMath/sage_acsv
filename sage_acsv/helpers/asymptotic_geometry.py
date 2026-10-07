@@ -1,15 +1,10 @@
-from sage.arith.misc import binomial
 from sage.functions.generalized import kronecker_delta
-from sage.functions.other import factorial
 from sage.geometry.polyhedron.constructor import Polyhedron
 from sage.matrix.constructor import matrix
 from sage.misc.misc_c import prod
 from sage.modules.free_module_element import vector
-from sage.rings.big_oh import O
-from sage.rings.fraction_field import FractionField
 from sage.rings.ideal import Ideal
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
-from sage.rings.power_series_ring import PowerSeriesRing
 from sage.rings.qqbar import AA, QQbar
 from sage.rings.rational_field import QQ
 from sage.symbolic.ring import SR

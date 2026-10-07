@@ -8,11 +8,10 @@ from sage.rings.qqbar import AA, QQbar
 from sage.rings.rational_field import QQ
 from sage.symbolic.ring import SR
 
-from sage_acsv.kronecker import _kronecker_representation
+from sage_acsv.kronecker.kronecker_representation import _kronecker_representation
 from sage_acsv.helpers import (
     ACSVException,
     is_contributing,
-    collapse_zero_part,
 )
 from sage_acsv.debug import Timer, acsv_logger
 from sage_acsv.whitney import whitney_stratification
@@ -21,7 +20,8 @@ from sage_acsv.helpers.utils import (
     _prepare_expanded_polynomial_ring, 
     _prepare_symbolic_fraction, 
     _dict_to_variable_order, 
-    _subs
+    _subs,
+    _collapse_zero_part,
 )
 
 def contributing_points_combinatorial(
@@ -240,7 +240,7 @@ def _find_contributing_points_combinatorial(
             pos_minimals_by_stratum[d].extend(
                 [
                     [
-                        collapse_zero_part(QQbar((q / Pd).subs(u_=u)))
+                        _collapse_zero_part(QQbar((q / Pd).subs(u_=u)))
                         for q in Qs[: len(vs)]
                     ]
                     for u in pos_minimals
@@ -259,7 +259,7 @@ def _find_contributing_points_combinatorial(
                     continue
 
                 w = [
-                    collapse_zero_part(QQbar((q / Pd).subs(u_=u)))
+                    _collapse_zero_part(QQbar((q / Pd).subs(u_=u)))
                     for q in Qs[: len(vs)]
                 ]
                 critical_points_by_stratum[d].append(w)
@@ -743,7 +743,7 @@ def minimal_critical_points_combinatorial(
                for minimal in pos_minimals)
     )
 
-    return [[collapse_zero_part(w_i) for w_i in w] for w in minimal_criticals]
+    return [[_collapse_zero_part(w_i) for w_i in w] for w in minimal_criticals]
 
 
 def critical_points(F, r=None, linear_form=None, whitney_strat=None):
@@ -863,7 +863,7 @@ def critical_points(F, r=None, linear_form=None, whitney_strat=None):
                     continue
 
                 w = [
-                    collapse_zero_part(QQbar((q / Pd).subs(u_=u)))
+                    _collapse_zero_part(QQbar((q / Pd).subs(u_=u)))
                     for q in Qs[: len(vs)]
                 ]
                 critical_points.append(w)

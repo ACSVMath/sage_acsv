@@ -11,17 +11,14 @@ from sage.symbolic.constants import pi
 from sage.symbolic.ring import SR
 
 from sage_acsv.critical_points import minimal_critical_points_combinatorial
-from sage_acsv.debug import acsv_logger
 from sage_acsv.helpers import (
-    ACSVException,
-    rational_function_reduce,
     compute_hessian,
     compute_square_root_determinant_of_hessian,
 )
-from sage_acsv.settings import ACSVSettings
 from sage_acsv.helpers.utils import (
     _prepare_symbolic_fraction, 
-    _dict_to_variable_order
+    _dict_to_variable_order,
+    _rational_function_reduce,
 )
 
 
@@ -69,7 +66,7 @@ def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False, r=None):
     vs = R.gens()
 
     # Make sure G and H are coprime, and that H does not vanish at 0
-    G, H = rational_function_reduce(G, H)
+    G, H = _rational_function_reduce(G, H)
     G, H = R(G), R(H)
     if H.subs({v: 0 for v in vs}) == 0:
         raise ValueError("Denominator vanishes at 0.")
@@ -115,24 +112,11 @@ def central_limit_theorem_combinatorial(F, main_var, as_symbolic=False, r=None):
     r_reordered = [r[var_to_r_idx[v]] for v in original_vars]
     expected_point = [rho if v == main_var else 1 for v in original_vars]
 
-    for _ in range(ACSVSettings.MAX_MIN_CRIT_RETRIES):
-        try:
-            # Find minimal critical points
-            min_crit_pts = minimal_critical_points_combinatorial(F, r=r_reordered)
+    # Find minimal critical points
+    min_crit_pts = minimal_critical_points_combinatorial(F, r=r_reordered)
 
-            if len(min_crit_pts) != 1 or min_crit_pts != [expected_point]:
-                raise ValueError("The point (1,rho) is not the only critical point with this coordinate-wise modulus.")
-            break
-        except Exception as e:
-            # In case form doesn't separate, we want to try again
-            if isinstance(e, ACSVException) and e.retry:
-                acsv_logger.warning(
-                    "Randomly generated linear form was not suitable, "
-                    f"encountered error: {e}\nRetrying..."
-                )
-                continue
-            else:
-                raise e
+    if len(min_crit_pts) != 1 or min_crit_pts != [expected_point]:
+        raise ValueError("The point (1,rho) is not the only critical point with this coordinate-wise modulus.")
 
     sbs = {v: 1 for v in vsT[0:-3]} | {vsT[-3]: rho}
     Hess = compute_hessian(H, vsT[0:-2], r)
