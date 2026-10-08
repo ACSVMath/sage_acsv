@@ -315,11 +315,6 @@ def _compute_asymptotics_at_points_transverse(
                     r = tuple(r[j] for j in perm)
                     cp = tuple(cp[j] for j in perm)
                 break
-
-            acsv_logger.info("Variables do not parametrize, shuffling")
-            vs_r_cp = list(zip(vs, r, cp))
-            shuffle(vs_r_cp)  # shuffle mutates the list
-            vs, r, cp = zip(*vs_r_cp)
         else:
             raise ACSVException("Cannot find parametrizing set.")
 
