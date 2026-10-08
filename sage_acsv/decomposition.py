@@ -5,7 +5,7 @@ from sage.symbolic.operators import add_vararg
 
 from copy import copy
 
-from sage_acsv.helpers import _rational_function_reduce
+from sage_acsv.helpers.utils import _rational_function_reduce
 
 
 def get_nullstellensatz_certificate(R, Hs, multiplicities):

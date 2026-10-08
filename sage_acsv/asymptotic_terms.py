@@ -8,7 +8,6 @@ from sage.functions.log import log, exp
 from sage.functions.other import factorial
 from sage.matrix.constructor import matrix
 from sage.misc.misc_c import prod
-from sage.misc.prandom import shuffle
 from sage.modules.free_module_element import vector
 from sage.rings.asymptotic.asymptotic_ring import AsymptoticRing
 from sage.rings.imaginary_unit import I
@@ -30,6 +29,7 @@ from sage_acsv.helpers import (
     compute_square_root_determinant_of_hessian,
     transverse_leading_normalization,
 )
+from sage_acsv.helpers.factorization import _compute_transverse_factorization_at_point, _find_parametrizing_order
 from sage_acsv.debug import Timer, acsv_logger
 from sage_acsv.settings import ACSVSettings, OutputFormat
 from sage_acsv.helpers.utils import ( 
@@ -204,7 +204,6 @@ def _compute_asymptotics_at_points(
             )
 
 
-
 def _compute_asymptotics_at_points_transverse(
     G, H,
     vs,
@@ -270,55 +269,17 @@ def _compute_asymptotics_at_points_transverse(
         H = R(SR(H))
         vs = [R(SR(v)) for v in vs]
         subs_dict = {vs[i]: cp[i] for i in range(d)}
-        poly_factors = H.factor()
-        unit = poly_factors.unit()
-        factors = []
-        multiplicities = []
-        for factor, multiplicity in poly_factors:
-            const = factor.coefficients()[-1]
-            unit *= const**multiplicity
-            factor /= const
-            if factor.subs(subs_dict) != 0:
-                extra_factors.append(factor**multiplicity)
-                continue
-            factors.append(factor)
-            multiplicities.append(multiplicity)
-        s = len(factors)
-        normals = matrix(
-            [[f.derivative(v).subs(subs_dict) for v in vs] for f in factors]
+
+        # Compute factorization around the critical point
+        unit, factors, multiplicities, extra_factors  = _compute_transverse_factorization_at_point(
+            H, vs, subs_dict
         )
-        if normals.rank() < s:
-            raise ACSVException(
-                "Not a transverse intersection. Cannot deal with this case."
-            )
+        s = len(factors)
 
-        # Step 2: Find the locally parametrizing coordinates of the point pt
-        # Since we have d variables and s factors, there should be d-s of these
-        # parametrizing coordinates
-        # We will try to parametrize with the first d-s coordinates, shuffling
-        # the vs and r if it doesn't work
-        last_block = tuple(range(d-s, d))
-        subsets = [last_block] + [
-            c for c in combinations(range(d), s) if c != last_block
-        ]
-        for Rset in subsets:
-            Jac = matrix(
-                [
-                    [(vs[j] * Q.derivative(vs[j])).subs(subs_dict) for j in Rset]
-                    for Q in factors
-                ]
-            )
-            if Jac.determinant() != 0:
-                if Rset != last_block:
-                    perm = [j for j in range(d) if j not in Rset] + list(Rset)
-                    vs = tuple(vs[j] for j in perm)
-                    r = tuple(r[j] for j in perm)
-                    cp = tuple(cp[j] for j in perm)
-                break
-        else:
-            raise ACSVException("Cannot find parametrizing set.")
+        # Reorder so first d-s coordinates parametrize the remaining s
+        vs, r, cp = _find_parametrizing_order(factors, vs, r, cp)
 
-        # Step 3: Compute the gamma matrix as defined in 9.10
+        # Compute the gamma matrix as defined in 9.10
         Gamma = matrix(
             [[(v * Q.derivative(v)).subs(subs_dict) for v in vs] for Q in factors]
             + [
