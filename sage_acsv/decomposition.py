@@ -5,7 +5,7 @@ from sage.symbolic.operators import add_vararg
 
 from copy import copy
 
-from sage_acsv.helpers import rational_function_reduce
+from sage_acsv.helpers.utils import _rational_function_reduce
 
 
 def get_nullstellensatz_certificate(R, Hs, multiplicities):
@@ -61,7 +61,7 @@ def compute_nullstellensatz_decomposition(R, G, H):
         sage: compute_nullstellensatz_decomposition(R, 1, x*y*(x+1))
         [(-1, x*y + y), (1, x*y)]
     """
-    G, H = rational_function_reduce(G, H)
+    G, H = _rational_function_reduce(G, H)
 
     if len(H.factor()) == 0:
         return [(G, H)]
@@ -159,7 +159,7 @@ def compute_algebraic_dependence_decomposition(R, G, H):
         sage: compute_algebraic_dependence_decomposition(R, 1, x^2*(x*y+1)*y)
         [(2, x^2*y), (-x*y - 1, x^2*y), (y, x*y + 1)]
     """
-    G, H = rational_function_reduce(G, H)
+    G, H = _rational_function_reduce(G, H)
 
     if len(H.factor()) == 0:
         return [(G, H)]
