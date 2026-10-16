@@ -147,14 +147,19 @@ def compute_square_root_determinant_of_hessian(hessian):
     """
 
     # Compute naive square root first for simplicity (pretty printing)
-    sqrt_det = hessian.determinant().sqrt()
+    sqrt_det = QQbar(hessian.determinant().sqrt())
     if sqrt_det == 0:
         raise ACSVException("Hessian is not full rank. We cannot handle this case.")
 
     eigenvalues_with_multiplicity = matrix(QQbar, hessian).charpoly().roots(QQbar)
 
     # The sqrt function in Sage comptues the principle branch by default
-    sqrt_prod = prod(ev.sqrt() ** m for (ev, m) in eigenvalues_with_multiplicity)
+    sqrt_prod = QQbar(prod(ev.sqrt() ** m for (ev, m) in eigenvalues_with_multiplicity))
+
+    # For some reason, equality checking is really slow on some examples without exactifying the numbers
+    # beforehand. Also useful to collapse the evaluation tree before the numbers get uglier.
+    sqrt_prod.exactify(); sqrt_prod.minpoly()
+    sqrt_det.exactify(); sqrt_det.minpoly()
 
     if sqrt_det == sqrt_prod:
         return sqrt_det
