@@ -51,20 +51,25 @@ class PointsStrategy(Enum):
 
 def compute_asymptotics_at_points(
     F,
-    minimal_contributing_points,
+    contributing_points,
     r=None,
     expansion_precision=1,
-    strategy=None,
     output_format=None,
     next_contributing_points=None,
+    strategy=None,
 ):
     r"""Compute asymptotic contribution of points of a multivariate rational function `F=G/H`
-    admitting a finite number of critical points where the singular variety is the transverse union of smooth varieties.
+    admitting a finite number of critical points. Currently, this function function only supports
+    the case where the singular variety is the transverse union of smooth varieties, with
+    specialized strategies for hyperplane intersections and smooth varieties.
+
+    This function assumes ``contributing_points`` are minimal contributing points for `F` in
+    the direction `r` provided, and will not verify this for the user.
 
     INPUT:
 
     * ``F`` -- The rational function `G/H` in `d` variables.
-    * ``minimal_contributing_points`` -- A list of ``d``-tuples of algebraic numbers
+    * ``contributing_points`` -- A list of ``d``-tuples of algebraic numbers
     * ``r`` -- (Optional) Length ``d`` vector of positive integers
     * ``expansion_precision`` -- (Optional) A positive integer value. This is the number
       of terms to compute in the asymptotic expansion. Defaults to 1, which
@@ -84,10 +89,15 @@ def compute_asymptotics_at_points(
         :class:`.ACSVSettings.Output` itself via
         :meth:`.ACSVSettings.set_default_output_format`. The default behavior
         is asymptotic output.
+    * ``next_contributing_points`` -- (Optional) A list of ``d``-tuples of algebraic numbers
+    * ``strategy`` -- A string or :class:`.PointsStrategy` value specifying the computation
+      stratgy to use. Allowed values currently are
 
-    * ``as_symbolic`` -- (Optional) deprecated in favor of the equivalent
-      ``output_format="symbolic"``. Will be removed in a future release.
-    * ``next_contributing_values`` -- (Optional) A list of ``d``-tuples of algebraic numbers
+      - ``"transverse"``: The contributing points lie on one or more transversely intersecting
+        hypersurfaces (default)
+      - ``"hyperplane"``: The contributing points lie on one or more transversely intersecting 
+        hyperplanes
+      - ``"smooth"``: The contributing points lie on a smooth surface
 
     OUTPUT:
 
@@ -129,8 +139,8 @@ def compute_asymptotics_at_points(
     if isinstance(r, dict):
         r = _dict_to_variable_order(F, r)
 
-    minimal_contributing_points = [
-        _dict_to_variable_order(F, cp, None) if isinstance(cp, dict) else cp for cp in minimal_contributing_points
+    contributing_points = [
+        _dict_to_variable_order(F, cp, None) if isinstance(cp, dict) else cp for cp in contributing_points
     ]
 
     G, H, variable_map = _prepare_symbolic_fraction(F)
@@ -155,7 +165,7 @@ def compute_asymptotics_at_points(
         G, H,
         vs,
         r,
-        minimal_contributing_points,
+        contributing_points,
         next_contributing_points,
         expansion_precision,
         output_format,
@@ -173,6 +183,50 @@ def _compute_asymptotics_at_points(
     output_format,
     strategy=None
 ):
+    r"""Internal function for computing asymptotic contribution of points of a multivariate rational
+    F = `G/H` admitting a finite number of critical points. Currently, this function function only
+    supports the case where the singular variety is the transverse union of smooth varieties, with
+    specialized strategies for hyperplane intersections and smooth varieties.
+
+    INPUT:
+
+    * ``G, H`` -- Polynomials `d` variables.
+    * ``vs`` -- a list of `d` variables
+    * ``r`` -- (Optional) Length ``d`` vector of positive integers
+    * ``minimal_contributing_points`` -- A list of ``d``-tuples of algebraic numbers
+    * ``next_contributing_points`` -- A list of ``d``-tuples of algebraic numbers
+    * ``expansion_precision`` -- (Optional) A positive integer value. This is the number
+      of terms to compute in the asymptotic expansion. Defaults to 1, which
+      only computes the leading term.
+    * ``output_format`` -- (Optional) A string or :class:`.ACSVSettings.Output`
+      specifying the way the asymptotic growth is returned. Allowed values
+      currently are:
+
+      - ``"tuple"``: the growth is returned as a list of
+        tuples of the form ``(a, n^b, pi^c, d)`` such that the `r`-diagonal of `F`
+        is the sum of ``a^n n^b pi^c d + O(a^n n^{b-1})`` over these tuples.
+      - ``"symbolic"``: the growth is returned as an expression from the symbolic
+        ring ``SR`` in the variable ``n``.
+      - ``"asymptotic"``: the growth is returned as an expression from an appropriate
+        ``AsymptoticRing`` in the variable ``n``.
+      - ``None``: the default, which uses the default set for
+        :class:`.ACSVSettings.Output` itself via
+        :meth:`.ACSVSettings.set_default_output_format`. The default behavior
+        is asymptotic output.
+    * ``strategy`` -- A string or :class:`.PointsStrategy` value specifying the computation
+      stratgy to use. Allowed values currently are
+      - ``"transverse"``: The contributing points lie on one or more transversely intersecting
+        hypersurfaces (default)
+      - ``"hyperplane"``: The contributing points lie on one or more transversely intersecting 
+        hyperplanes
+      - ``"smooth"``: The contributing points lie on a smooth surface
+
+    OUTPUT:
+
+    A representation of the asymptotic contributions from the ``contributing_points``
+    of the coefficient array of `F` along the specified direction.
+    """
+
     match strategy:
         case PointsStrategy.SMOOTH:
             return _compute_asymptotics_at_points_smooth(
@@ -202,6 +256,12 @@ def _compute_asymptotics_at_points(
                 expansion_precision,
                 output_format
             )
+
+class LocalPointStrategy(Enum):
+    SMOOTH = "smooth"
+    TRANSVSERSE_SIMPLE = "transverse_simple"
+    HYPERPLANE_COMPLETE = "hyperplane_complete"
+    TRANSVERSE_HIGHER_ORDER = "transverse_higher_order"
 
 
 def _compute_asymptotics_at_points_transverse(
@@ -252,8 +312,8 @@ def _compute_asymptotics_at_points_transverse(
     timer.checkpoint()
     d = len(vs)
 
-    asm_quantities = []
-    # Store copy of vs and r in case order changes due to parametrization
+    strip_error = False
+    cp_data = []
     vs_copy, r_copy = copy(vs), copy(r)
     for cp in contributing_points:
         vs, r = copy(vs_copy), copy(r_copy)
@@ -262,8 +322,7 @@ def _compute_asymptotics_at_points_transverse(
         # They can keep their multiplicities.
         extra_factors = []
 
-        # Step 1: Determine if pt is a transverse multiple point of H,
-        # and compute the factorization
+        # Determine if pt is a transverse multiple point of H and compute the factorization
         R = PolynomialRing(QQbar, len(vs), vs)
         G = R(SR(G))
         H = R(SR(H))
@@ -279,6 +338,49 @@ def _compute_asymptotics_at_points_transverse(
         # Reorder so first d-s coordinates parametrize the remaining s
         vs, r, cp = _find_parametrizing_order(factors, vs, r, cp)
 
+        local_strategy = None
+        if s == 1 and sum(multiplicities) == 1:
+            local_strategy = LocalPointStrategy.SMOOTH
+        elif all(p == 1 for p in multiplicities) and s != d:
+            local_strategy = LocalPointStrategy.TRANSVSERSE_SIMPLE
+        elif s == d and all(f.degree() == 1 for f in factors):
+            local_strategy = LocalPointStrategy.HYPERPLANE_COMPLETE
+        else:
+            local_strategy = LocalPointStrategy.TRANSVERSE_HIGHER_ORDER
+
+        cp_data.append(
+            (
+                local_strategy,
+                s, r, vs, cp, subs_dict,
+                factors, multiplicities,
+                extra_factors
+            )
+        )
+    
+    if expansion_precision > 1 and any(
+        data[0] == LocalPointStrategy.TRANSVERSE_HIGHER_ORDER for data in cp_data
+    ):
+        acsv_logger.warning(
+            "Higher order expansions are not supported for non-simple poles. Defaulting to expansion_precision 1."
+        )
+        expansion_precision = 1
+
+    if all(
+        strategy == LocalPointStrategy.HYPERPLANE_COMPLETE and
+        expansion_precision > sum(multiplicities) - d
+        for strategy, _, _, _, _, _, _, multiplicities, _ in cp_data
+    ):
+        strip_error = True
+
+    asm_quantities = []
+
+    n = SR.var("n")
+    for (
+        strategy,
+        s, r, vs, cp, subs_dict,
+        factors, multiplicities,
+        extra_factors
+    ) in cp_data:
         # Compute the gamma matrix as defined in 9.10
         Gamma = matrix(
             [[(v * Q.derivative(v)).subs(subs_dict) for v in vs] for Q in factors]
@@ -290,8 +392,7 @@ def _compute_asymptotics_at_points_transverse(
 
         # If critical point lies on a single smooth component, we can compute asymptotics
         # like in the smooth case
-        if s == 1 and sum(multiplicities) == 1:
-            n = SR.var("n")
+        if strategy == LocalPointStrategy.SMOOTH:
             expansion = sum(
                 term / (r[-1] * n) ** (term_order)
                 for term_order, term in enumerate(
@@ -301,9 +402,8 @@ def _compute_asymptotics_at_points_transverse(
             Hess = compute_hessian(H, vs, r, subs_dict)
             B = SR(1 / compute_square_root_determinant_of_hessian(Hess) / (r[-1] ** (d - 1) * ZZ(2) ** (d - 1)).sqrt())
         # We now support higher order expansions for non-smooth non-complete intersections
-        elif all(p == 1 for p in multiplicities) and s != d:
+        elif strategy == LocalPointStrategy.TRANSVSERSE_SIMPLE:
             Qw = compute_implicit_hessian(factors, vs, r, subs=subs_dict)
-            n = SR.var("n")
             expansion = sum(
                 term / n ** term_order
                 for term_order, term in enumerate(
@@ -316,8 +416,7 @@ def _compute_asymptotics_at_points_transverse(
                 / (ZZ(2) ** (d - s)).sqrt()
             )
         # When we have a complete intersection of hyperplanes, we know the degree of the polynomial expansion.
-        elif s == d and all(f.degree() == 1 for f in factors):
-            n = SR.var("n")
+        elif strategy == LocalPointStrategy.HYPERPLANE_COMPLETE:
             expansion = sum(
                 term / n**term_order
                 for term_order, term in enumerate(
@@ -389,12 +488,12 @@ def _compute_asymptotics_at_points_transverse(
 
     timer.checkpoint("Final Asymptotics")
 
-    # For complete intersections, the error bound is actually exponentially smaller after a certain precision
-    # But we can currently only represent this for hyperplane intersections
-    if all(asm_val[-1] == d for asm_val in asm_vals) and all(f.degree() == 1 for f in factors) and expansion_precision > sum(multiplicities) - d:
-        return _format_output(terms, output_format, expansion_precision, strip_error=True)
-
-    return _format_output(terms, output_format, expansion_precision, False)
+    return _format_output(
+        terms, 
+        output_format, 
+        expansion_precision, 
+        strip_error
+    )
 
 
 def _compute_asymptotics_at_points_hyperplane(
@@ -970,8 +1069,8 @@ def _format_output(terms, output_format, expansion_precision, strip_error=False)
         except ValueError:
             # Issue with Sage algebraic numbers equality checking
             for term in terms:
-                terms.base.simplify()
-                terms.constant.simplify()
+                term.base.simplify()
+                term.constant.simplify()
             result = sum(
                 [  # bug in AsymptoticRing requires splitting out modulus manually
                     term.coefficient

@@ -18,7 +18,6 @@ def _subs(F, u, k):
     a = F.subs({u:k}); CIF(a)
     return a
 
-
 def _prepare_symbolic_fraction(F):
     r"""Extract polynomial numerators and denomiators from a symbolic fraction,
     including the replacement of variable names.
@@ -106,6 +105,7 @@ def _prepare_expanded_polynomial_ring(variables, direction=None, include_t=True)
         direction_variable_values,
     )
 
+
 def _collapse_zero_part(algebraic_number: AlgebraicNumber) -> AlgebraicNumber:
     if algebraic_number.real().is_zero():
         algebraic_number = QQbar(algebraic_number.imag()) * QQbar(-1).sqrt()
@@ -113,6 +113,12 @@ def _collapse_zero_part(algebraic_number: AlgebraicNumber) -> AlgebraicNumber:
         algebraic_number = QQbar(algebraic_number.real())
     algebraic_number.simplify()
     return algebraic_number
+
+def collapse_zero_part(algebraic_number: AlgebraicNumber) -> AlgebraicNumber:
+    acsv_logger.warning(
+        "collapse_zero_part is deprecated and will be removed in a future release."
+    )
+    return _collapse_zero_part(algebraic_number)
 
 
 def _rational_function_reduce(G, H):
@@ -128,6 +134,12 @@ def _rational_function_reduce(G, H):
     """
     g = gcd(G, H)
     return G / g, H / g
+
+def rational_function_reduce(G, H):
+    acsv_logger.warning(
+        "rational_function_reduce is deprecated and will be removed in a future release."
+    )
+    return _rational_function_reduce(G, H)
 
 
 def _generate_linear_form(system, vsT, u_, linear_form=None):
@@ -163,3 +175,9 @@ def _generate_linear_form(system, vsT, u_, linear_form=None):
             for z in vsT
         ]
     )
+
+def generate_linear_form(system, vsT, u_, linear_form=None):
+    acsv_logger.warning(
+        "generate_linear_form is deprecated and will be removed in a future release."
+    )
+    return _generate_linear_form(system, vsT, u_, linear_form)
