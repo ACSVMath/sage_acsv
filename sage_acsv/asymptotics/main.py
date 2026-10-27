@@ -123,20 +123,14 @@ from sage.rings.qqbar import AA
 from sage.rings.rational_field import QQ
 from sage.symbolic.ring import SR
 
-from sage_acsv.asymptotic_terms import (
+from .contributions import (
     PointsStrategy,
-    _compute_asymptotics_at_points,
-    compute_asymptotics_at_points,
+    _compute_asymptotic_contributions_at_points,
 )
-from sage_acsv.central_limit_theorem import central_limit_theorem_combinatorial
-from sage_acsv.critical_points import (
-    MinimalCriticalCombinatorial,
+from .critical_points import (
     _find_contributing_points_combinatorial,
-    contributing_points_combinatorial,
     contributing_points_combinatorial_smooth,
     contributing_points_hyperplane,
-    critical_points,
-    minimal_critical_points_combinatorial,
 )
 from sage_acsv.debug import acsv_logger
 from sage_acsv.settings import ACSVSettings
@@ -149,14 +143,7 @@ from sage_acsv.helpers.utils import (
 __all__ = [
     "diagonal_asy",
     "diagonal_asymptotics_combinatorial",
-    "contributing_points_combinatorial_smooth",
-    "contributing_points_combinatorial",
-    "MinimalCriticalCombinatorial",
-    "minimal_critical_points_combinatorial",
-    "critical_points",
     "diagonal_asymptotics_hyperplane",
-    "compute_asymptotics_at_points",
-    "central_limit_theorem_combinatorial",
 ]
 
 # we need to monkeypatch a function from the asymptotics module such that creating
@@ -261,7 +248,7 @@ def _diagonal_asymptotics_combinatorial_smooth(
         G, H, vs, r=r, linear_form=linear_form
     )
 
-    result = _compute_asymptotics_at_points(
+    result = _compute_asymptotic_contributions_at_points(
         G, H,
         vs,
         r,
@@ -591,7 +578,7 @@ def diagonal_asymptotics_combinatorial(
         G, H_sf, vs, r=r, linear_form=linear_form, whitney_strat=whitney_strat
     )
 
-    result = _compute_asymptotics_at_points(
+    result = _compute_asymptotic_contributions_at_points(
         G, H,
         vs,
         r,
@@ -737,7 +724,7 @@ def diagonal_asymptotics_hyperplane(
         G, H, vs, r, linear_form=linear_form
     )
 
-    result = _compute_asymptotics_at_points(
+    result = _compute_asymptotic_contributions_at_points(
         G, H,
         vs,
         r,
