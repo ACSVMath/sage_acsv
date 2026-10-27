@@ -1,4 +1,5 @@
 from copy import copy
+from dataclasses import dataclass
 from enum import Enum
 from itertools import combinations
 
@@ -265,10 +266,22 @@ def _compute_asymptotics_at_points(
 
 class LocalPointStrategy(Enum):
     SMOOTH = "smooth"
-    TRANSVSERSE_SIMPLE = "transverse_simple"
+    TRANSVERSE_SIMPLE = "transverse_simple"
     HYPERPLANE_COMPLETE = "hyperplane_complete"
     TRANSVERSE_HIGHER_ORDER = "transverse_higher_order"
 
+@dataclass(frozen=True)
+class ClassifiedPoint:
+    strategy: LocalPointStrategy
+    codimension: int
+    direction: object
+    variables: object
+    point: object
+    substitutions: object
+    unit: object
+    factors: object
+    multiplicities: object
+    extra_factors: object
 
 def _compute_asymptotics_at_points_transverse(
     G, H,
@@ -319,7 +332,7 @@ def _compute_asymptotics_at_points_transverse(
     d = len(vs)
 
     strip_error = False
-    cp_data = []
+    cps_data = []
     vs_copy, r_copy = copy(vs), copy(r)
     for cp in contributing_points:
         vs, r = copy(vs_copy), copy(r_copy)
@@ -348,23 +361,29 @@ def _compute_asymptotics_at_points_transverse(
         if s == 1 and sum(multiplicities) == 1:
             local_strategy = LocalPointStrategy.SMOOTH
         elif all(p == 1 for p in multiplicities) and s != d:
-            local_strategy = LocalPointStrategy.TRANSVSERSE_SIMPLE
+            local_strategy = LocalPointStrategy.TRANSVERSE_SIMPLE
         elif s == d and all(f.degree() == 1 for f in factors):
             local_strategy = LocalPointStrategy.HYPERPLANE_COMPLETE
         else:
             local_strategy = LocalPointStrategy.TRANSVERSE_HIGHER_ORDER
 
-        cp_data.append(
-            (
-                local_strategy,
-                s, r, vs, cp, subs_dict,
-                unit, factors, multiplicities,
-                extra_factors
+        cps_data.append(
+            ClassifiedPoint(
+                strategy=local_strategy,
+                codimension=s,
+                direction=r,
+                variables=vs,
+                point=cp,
+                substitutions=subs_dict,
+                unit=unit,
+                factors=factors,
+                multiplicities=multiplicities,
+                extra_factors=extra_factors
             )
         )
     
     if expansion_precision > 1 and any(
-        data[0] == LocalPointStrategy.TRANSVERSE_HIGHER_ORDER for data in cp_data
+        data.strategy == LocalPointStrategy.TRANSVERSE_HIGHER_ORDER for data in cps_data
     ):
         acsv_logger.warning(
             "Higher order expansions are not supported for non-simple poles. Defaulting to expansion_precision 1."
@@ -372,21 +391,22 @@ def _compute_asymptotics_at_points_transverse(
         expansion_precision = 1
 
     if all(
-        strategy == LocalPointStrategy.HYPERPLANE_COMPLETE and
-        expansion_precision > sum(multiplicities) - d
-        for strategy, _, _, _, _, _, _, _, multiplicities, _ in cp_data
+        data.strategy == LocalPointStrategy.HYPERPLANE_COMPLETE and
+        expansion_precision > sum(data.multiplicities) - d
+        for data in cps_data
     ):
         strip_error = True
 
-    asm_quantities = []
-
+    terms = []
     n = SR.var("n")
-    for (
-        strategy,
-        s, r, vs, cp, subs_dict,
-        unit, factors, multiplicities,
-        extra_factors
-    ) in cp_data:
+    for data in cps_data:
+        s, r, vs, cp, subs_dict = (
+            data.codimension, data.direction, data.variables, data.point, data.substitutions
+        )
+        unit, factors, multiplicities, extra_factors = (
+            data.unit, data.factors, data.multiplicities, data.extra_factors
+        )
+
         # Compute the gamma matrix as defined in 9.10
         Gamma = matrix(
             [[(v * Q.derivative(v)).subs(subs_dict) for v in vs] for Q in factors]
@@ -398,7 +418,7 @@ def _compute_asymptotics_at_points_transverse(
 
         # If critical point lies on a single smooth component, we can compute asymptotics
         # like in the smooth case
-        if strategy == LocalPointStrategy.SMOOTH:
+        if data.strategy == LocalPointStrategy.SMOOTH:
             expansion = sum(
                 term / (r[-1] * n) ** (term_order)
                 for term_order, term in enumerate(
@@ -406,9 +426,9 @@ def _compute_asymptotics_at_points_transverse(
                 )
             )
             Hess = compute_hessian(H, vs, r, subs_dict)
-            B = SR(1 / compute_square_root_determinant_of_hessian(Hess) / (r[-1] ** (d - 1) * ZZ(2) ** (d - 1)).sqrt())
+            constant = SR(1 / compute_square_root_determinant_of_hessian(Hess) / (r[-1] ** (d - 1) * ZZ(2) ** (d - 1)).sqrt())
         # We now support higher order expansions for non-smooth non-complete intersections
-        elif strategy == LocalPointStrategy.TRANSVSERSE_SIMPLE:
+        elif data.strategy == LocalPointStrategy.TRANSVERSE_SIMPLE:
             Qw = compute_implicit_hessian(factors, vs, r, subs=subs_dict)
             expansion = sum(
                 term / n ** term_order
@@ -416,20 +436,22 @@ def _compute_asymptotics_at_points_transverse(
                     _general_term_asymptotics(G, factors, extra_factors, r, vs, cp, expansion_precision)
                 )
             ) / unit
-            B = SR(
+            constant = SR(
                 1
                 / compute_square_root_determinant_of_hessian(Qw)
                 / (ZZ(2) ** (d - s)).sqrt()
             )
         # When we have a complete intersection of hyperplanes, we know the degree of the polynomial expansion.
-        elif strategy == LocalPointStrategy.HYPERPLANE_COMPLETE:
+        elif data.strategy == LocalPointStrategy.HYPERPLANE_COMPLETE:
             expansion = sum(
                 term / n**term_order
                 for term_order, term in enumerate(
-                    _general_term_asymptotics_complete_intersection_hyperplane(G, factors, multiplicities, r, vs, cp, expansion_precision)
+                    _general_term_asymptotics_complete_intersection_hyperplane(
+                        G, factors, multiplicities, r, vs, cp
+                    )
                 )
             ) / unit.subs(subs_dict)
-            B = ZZ.one()
+            constant = ZZ.one()
         # Higher order expansions not currently supported for higher-order poles
         # In complete intersection case, error bound is actually exponentially lower, but we don't currently have
         # a way to represent it using the asymptotic ring.
@@ -447,7 +469,7 @@ def _compute_asymptotics_at_points_transverse(
                     / transverse_leading_normalization(factors, vs, r, cp)
                     / unit / R(prod(extra_factors)).subs(subs_dict)
                 )
-                B = SR(
+                constant = SR(
                     1
                     / compute_square_root_determinant_of_hessian(Qw)
                     / (ZZ(2) ** (d - s)).sqrt()
@@ -458,7 +480,7 @@ def _compute_asymptotics_at_points_transverse(
                     / unit / abs(Gamma.determinant())
                     / R(prod(extra_factors)).subs(subs_dict)
                 )
-                B = ZZ.one()
+                constant = ZZ.one()
 
             # Some constants appearing for higher order singularities
             mult_fac = prod([factorial(m - 1) for m in multiplicities])
@@ -472,25 +494,20 @@ def _compute_asymptotics_at_points_transverse(
             )
 
         T = prod(SR(vs[i].subs(subs_dict)) ** r[i] for i in range(d))
-        C = SR(1 / T)
-        D = QQ((s - d) / 2 + sum(multiplicities) - s)
+        base = SR(1 / T)
+        exponent = QQ((s - d) / 2 + sum(multiplicities) - s)
         try:
-            B = QQbar(B)
-            if B in QQ:
-                B = QQ(B)
-            C = QQbar(C)
+            constant = QQbar(constant)
+            if constant in QQ:
+                constant = QQ(constant)
+            base = QQbar(base)
         except (ValueError, TypeError):
             pass
 
-        asm_quantities.append([expansion, B, C, D, s])
-
-    asm_vals = [(c, d, b, a, s) for a, b, c, d, s in asm_quantities]
-
-    terms = [
-        Term(constant*expansion, (pi ** (s - d)).sqrt(), base, exponent) 
-        for (base, exponent, constant, expansion, s) in asm_vals
-        if constant*expansion != 0
-    ]
+        if constant * expansion != 0:
+            terms.append(
+                Term(constant*expansion, (pi ** (s - d)).sqrt(), base, exponent) 
+            )
 
     timer.checkpoint("Final Asymptotics")
 
@@ -500,7 +517,6 @@ def _compute_asymptotics_at_points_transverse(
         expansion_precision, 
         strip_error
     )
-
 
 def _compute_asymptotics_at_points_hyperplane(
     G, H,
