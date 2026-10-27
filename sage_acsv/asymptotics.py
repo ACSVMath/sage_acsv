@@ -124,13 +124,19 @@ from sage.rings.rational_field import QQ
 from sage.symbolic.ring import SR
 
 from sage_acsv.asymptotic_terms import (
+    PointsStrategy,
     _compute_asymptotics_at_points,
-    PointsStrategy
+    compute_asymptotics_at_points,
 )
+from sage_acsv.central_limit_theorem import central_limit_theorem_combinatorial
 from sage_acsv.critical_points import (
-    contributing_points_combinatorial_smooth,
+    MinimalCriticalCombinatorial,
     _find_contributing_points_combinatorial,
-    contributing_points_hyperplane
+    contributing_points_combinatorial,
+    contributing_points_combinatorial_smooth,
+    contributing_points_hyperplane,
+    critical_points,
+    minimal_critical_points_combinatorial,
 )
 from sage_acsv.debug import acsv_logger
 from sage_acsv.settings import ACSVSettings
@@ -139,6 +145,19 @@ from sage_acsv.helpers.utils import (
     _dict_to_variable_order,
     _rational_function_reduce
 )
+
+__all__ = [
+    "diagonal_asy",
+    "diagonal_asymptotics_combinatorial",
+    "contributing_points_combinatorial_smooth",
+    "contributing_points_combinatorial",
+    "MinimalCriticalCombinatorial",
+    "minimal_critical_points_combinatorial",
+    "critical_points",
+    "diagonal_asymptotics_hyperplane",
+    "compute_asymptotics_at_points",
+    "central_limit_theorem_combinatorial",
+]
 
 # we need to monkeypatch a function from the asymptotics module such that creating
 # asymptotic expansions over QQbar is possible. this should be removed once the

@@ -55,7 +55,8 @@ def compute_asymptotics_at_points(
     r=None,
     expansion_precision=1,
     output_format=None,
-    next_contributing_points=None,
+    *,
+    next_contributing_points=[],
     strategy=None,
 ):
     r"""Compute asymptotic contribution of points of a multivariate rational function `F=G/H`
@@ -226,6 +227,11 @@ def _compute_asymptotics_at_points(
     A representation of the asymptotic contributions from the ``contributing_points``
     of the coefficient array of `F` along the specified direction.
     """
+    strategy = (
+        PointsStrategy.TRANSVERSE
+        if strategy is None
+        else PointsStrategy(strategy)
+    )
 
     match strategy:
         case PointsStrategy.SMOOTH:
@@ -352,7 +358,7 @@ def _compute_asymptotics_at_points_transverse(
             (
                 local_strategy,
                 s, r, vs, cp, subs_dict,
-                factors, multiplicities,
+                unit, factors, multiplicities,
                 extra_factors
             )
         )
@@ -368,7 +374,7 @@ def _compute_asymptotics_at_points_transverse(
     if all(
         strategy == LocalPointStrategy.HYPERPLANE_COMPLETE and
         expansion_precision > sum(multiplicities) - d
-        for strategy, _, _, _, _, _, _, multiplicities, _ in cp_data
+        for strategy, _, _, _, _, _, _, _, multiplicities, _ in cp_data
     ):
         strip_error = True
 
@@ -378,7 +384,7 @@ def _compute_asymptotics_at_points_transverse(
     for (
         strategy,
         s, r, vs, cp, subs_dict,
-        factors, multiplicities,
+        unit, factors, multiplicities,
         extra_factors
     ) in cp_data:
         # Compute the gamma matrix as defined in 9.10
@@ -1070,7 +1076,7 @@ def _format_output(terms, output_format, expansion_precision, strip_error=False)
             # Issue with Sage algebraic numbers equality checking
             for term in terms:
                 term.base.simplify()
-                term.constant.simplify()
+                term.coefficient.simplify()
             result = sum(
                 [  # bug in AsymptoticRing requires splitting out modulus manually
                     term.coefficient
