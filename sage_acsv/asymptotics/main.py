@@ -66,7 +66,7 @@ explicitly known algebraic numbers. We can use the
 ::
 
     sage: F4 = -1/(1 - (1 - x - y)*(20 - x - 40*y))
-    sage: diagonal_asymptotics_combinatorial(F4, expansion_precision=2)
+    sage: diagonal_asymptotics_combinatorial(F4, expansion_precision=2)  # abs tol 1e-13
     0.09677555757474702?/sqrt(pi)*5.884442204019508?^n*n^(-1/2) + 0.002581950724843528?/sqrt(pi)*5.884442204019508?^n*n^(-3/2) + O(5.884442204019508?^n*n^(-5/2))
 
 The package raises an exception if it detects that some of the
@@ -127,7 +127,7 @@ from .contributions import (
     PointsStrategy,
     _compute_asymptotic_contributions_at_points,
 )
-from .critical_points import (
+from sage_acsv.critical_points.main import (
     _find_contributing_points_combinatorial,
     contributing_points_combinatorial_smooth,
     contributing_points_hyperplane,

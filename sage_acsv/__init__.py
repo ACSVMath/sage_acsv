@@ -4,16 +4,18 @@ import importlib.metadata
 __version__ = importlib.metadata.version(__name__)
 
 from sage_acsv.asymptotics import (
-    MinimalCriticalCombinatorial,
     central_limit_theorem_combinatorial,
     compute_asymptotics_at_points,
+    diagonal_asy,
+    diagonal_asymptotics_combinatorial,
+    diagonal_asymptotics_hyperplane,
+)
+from sage_acsv.critical_points import (
+    MinimalCriticalCombinatorial,
     contributing_points_combinatorial,
     contributing_points_combinatorial_smooth,
     contributing_points_hyperplane,
     critical_points,
-    diagonal_asy,
-    diagonal_asymptotics_combinatorial,
-    diagonal_asymptotics_hyperplane,
     minimal_critical_points_combinatorial,
 )
 from sage_acsv.kronecker import kronecker_representation

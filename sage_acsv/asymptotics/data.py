@@ -11,7 +11,7 @@ class LocalPointStrategy(Enum):
 @dataclass(frozen=True)
 class ClassifiedPoint:
     strategy: LocalPointStrategy
-    codimension: int
+    codimension: object
     direction: object
     variables: object
     point: object

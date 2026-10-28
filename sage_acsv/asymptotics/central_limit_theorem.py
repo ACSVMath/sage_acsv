@@ -10,7 +10,7 @@ from sage.rings.rational_field import QQ
 from sage.symbolic.constants import pi
 from sage.symbolic.ring import SR
 
-from .critical_points import minimal_critical_points_combinatorial
+from sage_acsv.critical_points import minimal_critical_points_combinatorial
 from sage_acsv.helpers import (
     compute_hessian,
     compute_square_root_determinant_of_hessian,
