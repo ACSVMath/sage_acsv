@@ -53,7 +53,7 @@ def build_stratified_critical_point_systems(
             for stratum in whitney_strat
         ]
     timer.checkpoint("Whitney Stratification")
-    
+
     critical_point_ideals = {}
     for d, stratum in enumerate(whitney_strat):
         critical_point_ideals[d] = []
@@ -90,3 +90,21 @@ def build_stratified_critical_point_systems(
     timer.checkpoint("Critical Point Ideals")
 
     return critical_point_ideals
+
+def build_smooth_critical_point_system(
+        problem: CriticalPointProblem
+) -> list[object]:
+    H = problem.H_polynomial
+    vs, r, t, lambda_ = problem.variables, problem.direction, problem.t_variable, problem.lambda_variable
+    r_polys = problem.r_polynomials
+    R = vs[0].parent()
+
+    vsH = H.variables()
+    system = [
+        H_var * H.derivative(H_var) - r_var * lambda_
+        for H_var, r_var in zip(H.variables(), r)
+    ]
+    system.extend([H, H.subs({z: z * t for z in vsH})])
+    system.extend(r_polys)
+
+    return system

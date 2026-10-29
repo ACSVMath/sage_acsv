@@ -11,7 +11,7 @@ from sage.symbolic.ring import SR
 from sage_acsv.critical_points.data import CriticalPointProblem
 from sage_acsv.critical_points.filter import _filter_contributing_points, _filter_minimal_points, _filter_positive_real_minimal_contributing_point
 from sage_acsv.critical_points.solver import solve_and_filter_positive_minimal_solutions, solve_kronecker_system
-from sage_acsv.critical_points.systems import build_stratified_critical_point_systems
+from sage_acsv.critical_points.systems import build_smooth_critical_point_system, build_stratified_critical_point_systems
 from sage_acsv.kronecker.kronecker_representation import _kronecker_representation
 from sage_acsv.helpers import (
     ACSVException,
@@ -376,73 +376,38 @@ def contributing_points_combinatorial_smooth(G, H, variables, r=None, linear_for
     ) = _prepare_expanded_polynomial_ring(variables, direction=r)
 
     G, H = expanded_R(G), expanded_R(H)
-    vsT = vs + list(r_variable_values.keys()) + [t, lambda_]
+    vsT = vs + list(r_variable_values.keys()) + [lambda_, t]
+
+    r_polys = [
+        direction_value.minpoly().subs(direction_var)
+        for direction_var, direction_value in r_variable_values.items()
+    ]
 
     # Create the critical point equations system
-    vsH = H.variables()
-    system = [
-        H_var * H.derivative(H_var) - r_var * lambda_
-        for H_var, r_var in zip(H.variables(), r)
-    ]
-    system.extend([H, H.subs({z: z * t for z in vsH})])
-    system.extend(
-        [
-            direction_value.minpoly().subs(direction_var)
-            for direction_var, direction_value in r_variable_values.items()
-        ]
+    system = build_smooth_critical_point_system(
+        CriticalPointProblem(
+            require_minimal=True,
+            require_contributing=True,
+            H_polynomial=H,
+            variables=vs,
+            lambda_variable=lambda_,
+            direction=r,
+            t_variable=t,
+            r_polynomials=r_polys,
+            r_variable_values=r_variable_values
+        )
     )
 
     # Compute the Kronecker representation of our system
     timer.checkpoint()
     P, Qs = _kronecker_representation(system, u_, vsT, linear_form)
+    Qt = Qs[-1]
+    Qs = Qs[:-1]
     timer.checkpoint("Kronecker")
 
-    Qt = Qs[-2]  # Qs ordering is H.variables() + rvars + [t, lambda_]
-    Pd = P.derivative()
-
-    # Solutions to Pt are solutions to the system where t is not 1
-    one_minus_t = gcd(Pd - Qt, P)
-    Pt, _ = P.quo_rem(one_minus_t)
-    rts_t_zo = list(
-        filter(
-            lambda k: _subs(Qt, u_, k) / _subs(Pd, u_, k) > 0 and _subs(Qt, u_, k) / _subs(Pd, u_, k) < 1,
-            Pt.roots(AA, multiplicities=False),
-        )
+    P, Qs, pos_minimals = solve_and_filter_positive_minimal_solutions(
+        vs, r_variable_values, (P, Qs), Qt
     )
-    non_min = [[(q / Pd).subs(u_=u) for q in Qs[0:-2]] for u in rts_t_zo]
-
-    # Filter the real roots for minimal points with positive coords
-    pos_minimals = []
-    for u in one_minus_t.roots(AA, multiplicities=False):
-        is_min = True
-        v = [(q / Pd).subs(u_=u) for q in Qs[: len(vs)]]
-        rv = {
-            ri: (q / Pd).subs(u_=u)
-            for (ri, q) in zip(r_variable_values, Qs[len(vs):-2])
-        }
-        if any(rv[ri] != ri_value for ri, ri_value in r_variable_values.items()):
-            continue
-        if any(value <= 0 for value in v[: len(vs)]):
-            continue
-        for pt in non_min:
-            if all(a == b for a, b in zip(v, pt)):
-                is_min = False
-                break
-        if is_min:
-            pos_minimals.append(u)
-
-    # Remove non-smooth points and points with zero coordinates (where lambda=0)
-    pos_minimals_new = []
-    for pos_minimal in pos_minimals:
-        x = (Qs[-1] / Pd).subs(u_=pos_minimal)
-        if x == 0:
-            acsv_logger.warning(
-                f"Removing critical point {pos_minimal} because it either "
-                "has a zero coordinate or is not smooth."
-            )
-        else:
-            pos_minimals_new.append(pos_minimal)
-    pos_minimals = pos_minimals_new
 
     # Verify necessary assumptions
     if not pos_minimals:
@@ -452,28 +417,17 @@ def contributing_points_combinatorial_smooth(G, H, variables, r=None, linear_for
             f"More than one minimal point with positive real coordinates found: {pos_minimals}"
         )
 
-    # Find all minimal critical points
-    minCP = [(q / Pd).subs(u_=pos_minimals[0]) for q in Qs[0:-2]]
-    minimals = []
+    critical_points = solve_kronecker_system(
+        vs, r_variable_values, (P, Qs)
+    )
 
-    for u in one_minus_t.roots(QQbar, multiplicities=False):
-        v = [(q / Pd).subs(u_=u) for q in Qs[: len(vs)]]
-        rv = {
-            ri: (q / Pd).subs(u_=u)
-            for (ri, q) in zip(r_variable_values, Qs[len(vs):-2])
-        }
-        if any(rv[r_var] != r_value for r_var, r_value in r_variable_values.items()):
-            continue
-        if all(a.abs() == b.abs() for a, b in zip(minCP, v)):
-            minimals.append(u)
-
-    # Get minimal point coords, and make exact if possible
-    minimal_coords = [[(q / Pd).subs(u_=u) for q in Qs[: len(vs)]] for u in minimals]
-    [[a.exactify() for a in b] for b in minimal_coords]
+    minimal_points = _filter_minimal_points(
+        critical_points, pos_minimals
+    )
 
     timer.checkpoint("Minimal Points")
 
-    return [[(q / Pd).subs(u_=u) for q in Qs[: len(vs)]] for u in minimals]
+    return minimal_points
 
 
 def MinimalCriticalCombinatorial(F, r=None, linear_form=None, whitney_strat=None):
@@ -677,60 +631,40 @@ def critical_points(F, r=None, linear_form=None, whitney_strat=None):
 
     vsT = vs + list(r_variable_values.keys()) + [lambda_]
 
-    # Compute the critical point system for each stratum
-    pure_H = PolynomialRing(QQ, vs)
+    # Add in min polys for the direction variables
+    r_polys = [
+        direction_value.minpoly().subs(direction_var)
+        for direction_var, direction_value in r_variable_values.items()
+    ]
 
-    if whitney_strat is None:
-        whitney_strat = whitney_stratification(Ideal(pure_H(H)), pure_H)
-    else:
-        # Cast symbolic generators for provided stratification into the correct ring
-        whitney_strat = [
-            prod([Ideal([pure_H(f) for f in comp]) for comp in stratum])
-            for stratum in whitney_strat
-        ]
+    problem = CriticalPointProblem(
+        require_contributing=False,
+        require_minimal=False,
+        H_polynomial=H,
+        variables=vs,
+        direction=r,
+        lambda_variable=lambda_,
+        r_polynomials=r_polys,
+        r_variable_values=r_variable_values
+    )
 
+    critical_point_systems = build_stratified_critical_point_systems(
+        problem, whitney_strat
+    )
+
+    # Final minimal critical points with positive coordinates on each stratum
     critical_points = []
-    for d, stratum in enumerate(whitney_strat):
-        for P_comp in compute_primary_decomposition(stratum):
-            c = len(vs) - d
-            P_ext = P_comp.change_ring(expanded_R)
-            M = matrix([[v * f.derivative(v) for v in vs] for f in P_ext.gens()] + [r])
-            # Add in min polys for the direction variables
-            r_polys = [
-                direction_value.minpoly().subs(direction_var)
-                for direction_var, direction_value in r_variable_values.items()
-            ]
-            # Create ideal of expanded_R containing extended critical point equations
-            ideal = P_ext + Ideal(
-                M.minors(c + 1) + [(prod(vs) * lambda_ - 1)] + r_polys
-            )
-            # Saturate cpid by lower dimension stratum, if d > 0
-            if d > 0:
-                ideal = compute_saturation(
-                    ideal, whitney_strat[d - 1].change_ring(expanded_R)
-                )
-
-            if ideal.dimension() < 0:
+    for _, systems in reversed(critical_point_systems.items()):
+        for system in systems:
+            if Ideal(system.generators).dimension() < 0:
                 continue
-            P, Qs = _kronecker_representation(ideal.gens(), u_, vsT, linear_form)
 
-            Pd = P.derivative()
+            P, Qs = _kronecker_representation(system.generators, u_, vsT, linear_form)
 
-            # Characterize all complex critical points in each stratum
-            for u in P.roots(QQbar, multiplicities=False):
-                rv = {
-                    ri: (q / Pd).subs(u_=u)
-                    for (ri, q) in zip(r_variable_values, Qs[len(vs):-1])
-                }
-                if any(
-                    rv[r_var] != r_value for r_var, r_value in r_variable_values.items()
-                ):
-                    continue
-
-                w = [
-                    _collapse_zero_part(QQbar((q / Pd).subs(u_=u)))
-                    for q in Qs[: len(vs)]
-                ]
-                critical_points.append(w)
+            critical_points.extend(
+                solve_kronecker_system(
+                    vs, r_variable_values, (P, Qs)
+                )
+            )
 
     return critical_points

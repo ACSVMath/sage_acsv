@@ -89,10 +89,13 @@ def solve_and_filter_positive_minimal_solutions(
     pos_minimals = _filter_direction_solutions(
         pos_minimals, r_variable_values, len(vs)
     )
+    # Positivity applies only to the original variables. Direction variables
+    # are matched above, and the Lagrange multiplier need only be nonzero.
+    lambda_index = len(vs) + len(r_variable_values)
     pos_minimals = [
         v for v in pos_minimals if all(
-            w > 0 for w in v
-        ) and not any(
+            w > 0 for w in v[: len(vs)]
+        ) and v[lambda_index] != 0 and not any(
             all(a == b for a, b in list(zip(v, pt))[:len(vs)])
             for pt in non_min
         )
