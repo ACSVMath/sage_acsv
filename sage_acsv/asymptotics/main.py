@@ -137,6 +137,8 @@ from sage_acsv.settings import ACSVSettings
 from sage_acsv.helpers.utils import (
     _prepare_symbolic_fraction, 
     _dict_to_variable_order,
+    _process_linear_form_input,
+    _process_whitney_stratification_input,
     _rational_function_reduce
 )
 
@@ -521,16 +523,8 @@ def diagonal_asymptotics_combinatorial(
     G, H, variable_map = _prepare_symbolic_fraction(F)
     vs = list(variable_map.values())
 
-    if whitney_strat is not None:
-        whitney_strat = [
-            [
-                tuple(SR(gen).subs(variable_map) for gen in component)
-                for component in stratum
-            ]
-            for stratum in whitney_strat
-        ]
-    if linear_form is not None:
-        linear_form = SR(linear_form).subs(variable_map)
+    whitney_strat = _process_whitney_stratification_input(whitney_strat, variable_map)
+    linear_form = _process_linear_form_input(linear_form, variable_map)
 
     if r is None:
         n = len(H.variables())

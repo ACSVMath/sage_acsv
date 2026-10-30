@@ -9,7 +9,7 @@ from sage.rings.rational_field import QQ
 from sage.symbolic.ring import SR
 
 from sage_acsv.critical_points.data import CriticalPointProblem
-from sage_acsv.critical_points.filter import _filter_contributing_points, _filter_minimal_points, _filter_positive_real_minimal_contributing_point
+from sage_acsv.critical_points.filter import _filter_contributing_points, _filter_contributing_points_by_height, _filter_minimal_points, _filter_positive_real_minimal_contributing_point
 from sage_acsv.critical_points.solver import solve_and_filter_positive_minimal_solutions, solve_kronecker_system
 from sage_acsv.critical_points.systems import build_smooth_critical_point_system, build_stratified_critical_point_systems
 from sage_acsv.kronecker.kronecker_representation import _kronecker_representation
@@ -23,7 +23,9 @@ from sage_acsv.groebner.functions import compute_primary_decomposition, compute_
 from sage_acsv.helpers.utils import (
     _prepare_expanded_polynomial_ring, 
     _prepare_symbolic_fraction, 
-    _dict_to_variable_order, 
+    _dict_to_variable_order,
+    _process_linear_form_input,
+    _process_whitney_stratification_input, 
     _subs,
     _collapse_zero_part,
 )
@@ -79,16 +81,8 @@ def contributing_points_combinatorial(
 
     G, H, variable_map = _prepare_symbolic_fraction(F)
     variables = list(variable_map.values())
-    if whitney_strat is not None:
-        whitney_strat = [
-            [
-                tuple(SR(gen).subs(variable_map) for gen in component)
-                for component in stratum
-            ]
-            for stratum in whitney_strat
-        ]
-    if linear_form is not None:
-        linear_form = SR(linear_form).subs(variable_map)
+    whitney_strat = _process_whitney_stratification_input(whitney_strat, variable_map)
+    linear_form = _process_linear_form_input(linear_form, variable_map)
 
     return _find_contributing_points_combinatorial(
         G,
@@ -283,36 +277,12 @@ def contributing_points_hyperplane(G, H, vs, r=None, linear_form=None):
     )
     timer.checkpoint("Critical Points")
 
-    minimal_contributing_points = []
-    next_contributing_points = []
-
-    # Sort all critical points by height
-    cps_by_height = [(cp, prod([abs(vi)**ri for (vi, ri) in zip(cp, r)])) for cp in cps]
-    cps_by_height.sort(key=lambda x: x[1])
-
-    # Determine which critical points are contributing
-    contributing_height = None
-    for cp, h in cps_by_height:
-        subs_dict = {vs[i]: cp[i] for i in range(d)}
-
-        factors = [f for f in Hs if f.subs(subs_dict) == 0]
-        s = len(factors)
-        normals = matrix(
-            [[f.derivative(v).subs(subs_dict) for v in vs] for f in factors]
-        )
-        if normals.rank() < s:
-            raise ACSVException(
-                "Not a transverse intersection. Cannot deal with this case."
-            )
-
-        # If contributing_height != None, then a contributing point has been found. Any other contributing points
-        # of larger height are just for the error bound, so they don't need to be generic.
-        if is_contributing(vs, cp, r, factors, s, contributing_height is not None and h > contributing_height):
-            if contributing_height is None or h == contributing_height:
-                contributing_height = h
-                minimal_contributing_points.append(cp)
-            else:
-                next_contributing_points.append(cp)
+    minimal_contributing_points, next_contributing_points = _filter_contributing_points_by_height(
+        cps,
+        H,
+        vs,
+        r
+    )
 
     if not minimal_contributing_points:
         raise ACSVException("No contributing points found.")
@@ -489,16 +459,8 @@ def minimal_critical_points_combinatorial(
 
     _, H, variable_map = _prepare_symbolic_fraction(F)
     variables = list(variable_map.values())
-    if whitney_strat is not None:
-        whitney_strat = [
-            [
-                tuple(SR(gen).subs(variable_map) for gen in component)
-                for component in stratum
-            ]
-            for stratum in whitney_strat
-        ]
-    if linear_form is not None:
-        linear_form = SR(linear_form).subs(variable_map)
+    whitney_strat = _process_whitney_stratification_input(whitney_strat, variable_map)
+    linear_form = _process_linear_form_input(linear_form, variable_map)
     (
         expanded_R,
         vs,
@@ -610,16 +572,8 @@ def critical_points(F, r=None, linear_form=None, whitney_strat=None):
 
     _, H, variable_map = _prepare_symbolic_fraction(F)
     variables = list(variable_map.values())
-    if whitney_strat is not None:
-        whitney_strat = [
-            [
-                tuple(SR(gen).subs(variable_map) for gen in component)
-                for component in stratum
-            ]
-            for stratum in whitney_strat
-        ]
-    if linear_form is not None:
-        linear_form = SR(linear_form).subs(variable_map)
+    whitney_strat = _process_whitney_stratification_input(whitney_strat, variable_map)
+    linear_form = _process_linear_form_input(linear_form, variable_map)
     (
         expanded_R,
         vs,

@@ -11,7 +11,7 @@ from sage.symbolic.constants import pi
 from sage.symbolic.ring import SR
 
 from .data import ClassifiedPoint, LocalPointStrategy
-from .point_contribution import (
+from .point_contributions import (
     _compute_contribution_of_complete_hyperplane_point,
     _compute_contribution_of_high_order_transverse_point,
     _compute_contribution_of_simple_transverse_point,

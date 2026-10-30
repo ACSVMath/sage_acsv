@@ -9,6 +9,8 @@ from sage.rings.qqbar import AA, AlgebraicNumber, QQbar
 from sage.rings.rational_field import QQ
 from sage.symbolic.ring import SR
 
+from sage_acsv.debug import acsv_logger
+
 
 def _subs(F, u, k):
     """
@@ -181,3 +183,43 @@ def generate_linear_form(system, vsT, u_, linear_form=None):
         "generate_linear_form is deprecated and will be removed in a future release."
     )
     return _generate_linear_form(system, vsT, u_, linear_form)
+
+def _process_whitney_stratification_input(whitney_stratification, variable_map):
+    r"""Processes a user-inputted whitney stratification
+
+    INPUT:
+
+    * ``whitney_stratification`` -- User provided Whitney stratification (could be None)
+    * ``variable_map`` -- Mapping of variables
+
+    OUTPUT:
+
+    A processed whitney stratification in system variables or None
+    """
+    if whitney_stratification is not None:
+        whitney_stratification = [
+            [
+                tuple(SR(gen).subs(variable_map) for gen in component)
+                for component in stratum
+            ]
+            for stratum in whitney_stratification
+        ]
+
+    return whitney_stratification
+
+def _process_linear_form_input(linear_form, variable_map):
+    r"""Processes a user-inputted linear form
+
+    INPUT:
+
+    * ``linear_form`` -- User provided linear form (could be None)
+    * ``variable_map`` -- Mapping of variables
+
+    OUTPUT:
+
+    A processed linear form in system variables or None
+    """
+    if linear_form is not None:
+        linear_form = SR(linear_form).subs(variable_map)
+
+    return linear_form
