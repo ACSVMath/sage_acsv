@@ -156,17 +156,10 @@ def compute_square_root_determinant_of_hessian(hessian):
     # The sqrt function in Sage comptues the principle branch by default
     sqrt_prod = QQbar(prod(ev.sqrt() ** m for (ev, m) in eigenvalues_with_multiplicity))
 
-    # For some reason, equality checking is really slow on some examples without exactifying the numbers
-    # beforehand. Also useful to collapse the evaluation tree before the numbers get uglier.
-    sqrt_prod.exactify(); sqrt_prod.minpoly()
-    sqrt_det.exactify(); sqrt_det.minpoly()
-
-    if sqrt_det == sqrt_prod:
+    if sqrt_det.real().sign() == sqrt_prod.real().sign() and sqrt_det.imag().sign() == sqrt_prod.imag().sign():
         return sqrt_det
-    elif sqrt_det == -sqrt_prod:
-        return -sqrt_det
     else:
-        raise ACSVException("Determinant of Hessian does not match product of eigenvalues. This should never happen")
+        return -sqrt_det
 
 
 def transverse_leading_normalization(Hs, vs, r, cp):

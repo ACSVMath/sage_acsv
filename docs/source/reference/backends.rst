@@ -1,14 +1,14 @@
 Backend Interfaces
 ==================
 
-See :class:`.ACSVSettings` for information on how to
-configure the default computational backends. The module
-:mod:`.sage_acsv.groebner` is the entrypoint for Groebner basis
-computations.
+See :class:`.ACSVSettings` for information about configuring computational
+backends. Gröbner basis computations are exposed through
+:mod:`sage_acsv.groebner`.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    backends/default
    backends/macaulay2
    backends/msolve
+   backends/julia

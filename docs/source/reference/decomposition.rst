@@ -1,5 +1,5 @@
-``decomposition``
-===========
+Decomposition
+=============
 
 .. automodule:: sage_acsv.decomposition
    :members:
