@@ -23,8 +23,8 @@ from sage_acsv.helpers import (
 def _compute_contribution_of_simple_transverse_point(
     G, data: ClassifiedPoint, expansion_precision
 ):
-    r"""Compute quantities used to determine the asymptotic contribution of a point of a 
-    multivariate rational function described by the ``ClassifiedPoint`` data. 
+    r"""Compute quantities used to determine the asymptotic contribution of a point of a
+    multivariate rational function described by the ``ClassifiedPoint`` data.
     This is typically called as a subroutine of :func:`._compute_asymptotics_at_points_transverse`.
 
     Assumes the classified point is simple (no higher order pole).
@@ -72,8 +72,8 @@ def _compute_contribution_of_simple_transverse_point(
 def _compute_contribution_of_high_order_transverse_point(
     G, data: ClassifiedPoint, expansion_precision
 ):
-    r"""Compute quantities used to determine the asymptotic contribution of a point of a 
-    multivariate rational function described by the ``ClassifiedPoint`` data. 
+    r"""Compute quantities used to determine the asymptotic contribution of a point of a
+    multivariate rational function described by the ``ClassifiedPoint`` data.
     This is typically called as a subroutine of :func:`._compute_asymptotics_at_points_transverse`.
 
     Assumes the classified point lies on a higher order pole.
@@ -155,8 +155,8 @@ def _compute_contribution_of_high_order_transverse_point(
 def _compute_contribution_of_smooth_point(
     G, H, data: ClassifiedPoint, expansion_precision
 ):
-    r"""Compute quantities used to determine the asymptotic contribution of a point of a 
-    multivariate rational function described by the ``ClassifiedPoint`` data. 
+    r"""Compute quantities used to determine the asymptotic contribution of a point of a
+    multivariate rational function described by the ``ClassifiedPoint`` data.
     This is typically called as a subroutine of :func:`._compute_asymptotics_at_points_transverse`.
 
     Assumes the classified point is smooth.
@@ -201,8 +201,8 @@ def _compute_contribution_of_smooth_point(
 def _compute_contribution_of_complete_hyperplane_point(
     G, data: ClassifiedPoint, expansion_precision
 ):
-    r"""Compute quantities used to determine the asymptotic contribution of a point of a 
-    multivariate rational function described by the ``ClassifiedPoint`` data. 
+    r"""Compute quantities used to determine the asymptotic contribution of a point of a
+    multivariate rational function described by the ``ClassifiedPoint`` data.
     This is typically called as a subroutine of :func:`._compute_asymptotics_at_points_transverse`.
 
     Assumes the classified point lies on a complete intersection hyperplane arrangement.

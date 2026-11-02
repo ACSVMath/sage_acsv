@@ -47,7 +47,7 @@ def is_transverse_at_point(H, vs, pt):
 
     if H.subs({v: w for v, w in zip(vs, pt)}) != 0:
         return False
-    
+
     def hom(f):
         if f == 0:
             return 0

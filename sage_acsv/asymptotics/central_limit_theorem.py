@@ -16,7 +16,7 @@ from sage_acsv.helpers import (
     compute_square_root_determinant_of_hessian,
 )
 from sage_acsv.helpers.utils import (
-    _prepare_symbolic_fraction, 
+    _prepare_symbolic_fraction,
     _dict_to_variable_order,
     _rational_function_reduce,
 )

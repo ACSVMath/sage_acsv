@@ -1,6 +1,6 @@
 [project]
 name = "sage-acsv"
-version = "0.3.0"
+version = "0.4.0"
 description = "A SageMath package with algorithms for analytic combinatorics in several variables."
 authors = [
   {name = "Benjamin Hackl", email = "devel@benjamin-hackl.at"},
@@ -11,7 +11,7 @@ authors = [
 ]
 readme = "README.md"
 license = { file = "LICENSE" }
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = []
 
 [project.urls]

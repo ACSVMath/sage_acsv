@@ -18,8 +18,8 @@ def solve_kronecker_system(
 
     * ``vs`` -- A list of the original variables of the system.
     * ``r_variable_values`` -- A list of numbers representing values of direction variables.
-    * ``kronecker_reprsentation`` -- A tuple ``(P, Qs)`` where ``P`` is univariate polynomial
-      and ``Qs`` is a list of univariate polynomials. 
+    * ``kronecker_representation`` -- A tuple ``(P, Qs)`` where ``P`` is univariate polynomial
+      and ``Qs`` is a list of univariate polynomials.
 
     OUTPUT:
 
@@ -43,7 +43,7 @@ def solve_kronecker_system(
         solutions, r_variable_values, len(vs)
     )
     return [solution[: len(vs)] for solution in solutions]
-    
+
 
 def solve_and_filter_positive_minimal_solutions(
     vs,
@@ -57,7 +57,7 @@ def solve_and_filter_positive_minimal_solutions(
 
     * ``vs`` -- A list of the original variables of the system.
     * ``r_variable_values`` -- A list of numbers representing values of direction variables.
-    * ``kronecker_reprsentation`` -- A tuple ``(P, Qs)`` where ``P`` is univariate polynomial
+    * ``kronecker_representation`` -- A tuple ``(P, Qs)`` where ``P`` is univariate polynomial
         and ``Qs`` is a list of univariate polynomials. \
     * ``Qt`` -- A univariate polynomial corresponding to the auxiliary variable `t`.
 
@@ -83,7 +83,7 @@ def solve_and_filter_positive_minimal_solutions(
 
     # Filter the real roots for minimal points with positive coords
     pos_minimals = list(
-        [(q / Pd).subs(u_=u) for q in Qs] 
+        [(q / Pd).subs(u_=u) for q in Qs]
         for u in one_minus_t.roots(AA, multiplicities=False)
     )
     pos_minimals = _filter_direction_solutions(
@@ -102,8 +102,8 @@ def solve_and_filter_positive_minimal_solutions(
     ]
 
     return (
-        one_minus_t, 
-        [q * one_minus_t.derivative() * xgcd(Pd, one_minus_t)[1] for q in Qs], 
+        one_minus_t,
+        [q * one_minus_t.derivative() * xgcd(Pd, one_minus_t)[1] for q in Qs],
         [
             [
                 _collapse_zero_part(v)

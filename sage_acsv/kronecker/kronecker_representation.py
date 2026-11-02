@@ -52,7 +52,7 @@ def _kronecker_representation(system, u_, vs, linear_form=None, return_linear_fo
                 raise e
     else:
         raise ACSVException(f"Could not find suitable linear form after {ACSVSettings.MAX_MIN_CRIT_RETRIES} attempts.")
-    
+
 
 def kronecker(system, vs, linear_form=None):
     acsv_logger.warning(

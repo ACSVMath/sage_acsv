@@ -8,9 +8,9 @@ from sage.rings.rational_field import QQ
 from sage.schemes.projective.projective_space import ProjectiveSpace
 
 from sage_acsv.groebner.functions import (
-    compute_primary_decomposition, 
-    compute_groebner_basis, 
-    compute_saturation, 
+    compute_primary_decomposition,
+    compute_groebner_basis,
+    compute_saturation,
     compute_radical
 )
 

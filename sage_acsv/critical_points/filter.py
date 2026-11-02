@@ -105,7 +105,7 @@ def _filter_minimal_points(solutions, minimal_points):
             all(
                 abs(w_i) == abs(min_i) for w_i, min_i in zip(w, pt)
             ) for pt in minimal_points
-        ) 
+        )
     ]
 
 def _filter_contributing_points_by_height(points, H, vs, r):

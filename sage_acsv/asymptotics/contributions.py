@@ -33,7 +33,7 @@ from sage_acsv.settings import ACSVSettings, OutputFormat
 
 class PointsStrategy(Enum):
     """Options for computing asymptotic contributions of points
-    based on local geometry. 
+    based on local geometry.
 
     """
 
@@ -48,11 +48,11 @@ def compute_asymptotics_at_points(
     expansion_precision=1,
     output_format=None,
     *,
-    next_contributing_points=[],
+    next_contributing_points=None,
     strategy=None,
 ):
     r"""Compute asymptotic contribution of points of a multivariate rational function `F=G/H`
-    admitting a finite number of critical points. Currently, this function function only supports
+    admitting a finite number of critical points. Currently, this function only supports
     the case where the singular variety is the transverse union of smooth varieties, with
     specialized strategies for hyperplane intersections and smooth varieties.
 
@@ -84,11 +84,11 @@ def compute_asymptotics_at_points(
         is asymptotic output.
     * ``next_contributing_points`` -- (Optional) A list of ``d``-tuples of algebraic numbers
     * ``strategy`` -- A string or :class:`.PointsStrategy` value specifying the computation
-      stratgy to use. Allowed values currently are
+      strategy to use. Allowed values currently are
 
       - ``"transverse"``: The contributing points lie on one or more transversely intersecting
         hypersurfaces (default)
-      - ``"hyperplane"``: The contributing points lie on one or more transversely intersecting 
+      - ``"hyperplane"``: The contributing points lie on one or more transversely intersecting
         hyperplanes
       - ``"smooth"``: The contributing points lie on a smooth surface
 
@@ -111,7 +111,7 @@ def compute_asymptotics_at_points(
         3/2/sqrt(pi)*(9/2)^n*n^(-1/2) + O((9/2)^n*n^(-3/2))
 
     An example with complex coordinates for the contributing point.
-    
+
         sage: R.<x1, y1, x2, y2, x3, y3> = QQ[]
         sage: blk = lambda u, v: (1 - u - v + 3*u*v)^2 + (u*v)^2
         sage: F = 1/(blk(x1, y1)*blk(x2, y2)*blk(x3, y3))
@@ -177,7 +177,7 @@ def _compute_asymptotic_contributions_at_points(
     strategy=None
 ):
     r"""Internal function for computing asymptotic contribution of points of a multivariate rational
-    F = `G/H` admitting a finite number of critical points. Currently, this function function only
+    F = `G/H` admitting a finite number of critical points. Currently, this function only
     supports the case where the singular variety is the transverse union of smooth varieties, with
     specialized strategies for hyperplane intersections and smooth varieties.
 
@@ -207,10 +207,10 @@ def _compute_asymptotic_contributions_at_points(
         :meth:`.ACSVSettings.set_default_output_format`. The default behavior
         is asymptotic output.
     * ``strategy`` -- A string or :class:`.PointsStrategy` value specifying the computation
-      stratgy to use. Allowed values currently are
+      strategy to use. Allowed values currently are
       - ``"transverse"``: The contributing points lie on one or more transversely intersecting
         hypersurfaces (default)
-      - ``"hyperplane"``: The contributing points lie on one or more transversely intersecting 
+      - ``"hyperplane"``: The contributing points lie on one or more transversely intersecting
         hyperplanes
       - ``"smooth"``: The contributing points lie on a smooth surface
 
@@ -236,6 +236,8 @@ def _compute_asymptotic_contributions_at_points(
                 output_format
             )
         case PointsStrategy.HYPERPLANE:
+            if next_contributing_points is None:
+                next_contributing_points = []
             return _compute_asymptotics_at_points_hyperplane(
                 G, H,
                 vs,
@@ -353,7 +355,7 @@ def _compute_asymptotics_at_points_transverse(
                 extra_factors=extra_factors
             )
         )
-    
+
     if expansion_precision > 1 and any(
         data.strategy == LocalPointStrategy.TRANSVERSE_HIGHER_ORDER for data in cps_data
     ):
@@ -413,15 +415,15 @@ def _compute_asymptotics_at_points_transverse(
 
         if constant * expansion != 0:
             terms.append(
-                Term(constant*expansion, (pi ** (s - d)).sqrt(), base, exponent) 
+                Term(constant*expansion, (pi ** (s - d)).sqrt(), base, exponent)
             )
 
     timer.checkpoint("Final Asymptotics")
 
     return _format_output(
-        terms, 
-        output_format, 
-        expansion_precision, 
+        terms,
+        output_format,
+        expansion_precision,
         strip_error
     )
 
@@ -475,7 +477,7 @@ def _compute_asymptotics_at_points_hyperplane(
     timer = Timer()
     timer.checkpoint()
     d = len(vs)
-    
+
     result = _compute_asymptotics_at_points_transverse(
         G, H, vs, r, minimal_contributing_points, expansion_precision, output_format
     )
@@ -551,7 +553,6 @@ def _compute_asymptotics_at_points_smooth(
     C = SR(1 / T)
 
     # Compute constants at contributing singularities
-    n = SR.var("n")
     terms = []
     for cp in contributing_points:
         subs_dict = {v: value for v, value in zip(vs, cp)}
@@ -583,7 +584,7 @@ def _compute_asymptotics_at_points_smooth(
 
         if constant * expansion != 0:
             terms.append(
-                Term(constant*expansion, (pi ** (ZZ.one() - d)).sqrt(), base, QQ(1-d)/2) 
+                Term(constant*expansion, (pi ** (ZZ.one() - d)).sqrt(), base, QQ(1-d)/2)
             )
 
     timer.checkpoint("Final Asymptotics")
@@ -596,9 +597,9 @@ def _format_output(terms, output_format, expansion_precision, strip_error=False)
     Formats an asymptotic ``Term`` to the specified ``output_format``.
 
     INPUT:
-    
+
         * ``terms`` -- List of ``Term``.
-        * ``outlut_format`` -- A string or :class:`.ACSVSettings.Output`.
+        * ``output_format`` -- A string or :class:`.ACSVSettings.Output`.
         * ``expansion_precision`` -- A positive integer value.
         * ``strip_error`` -- A boolean. Indicates if return value should have an error bound, in the case
         the output is in asymptotic form.

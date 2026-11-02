@@ -1,4 +1,4 @@
-r"""Algorithms for asymptotic analysis of multivariate rational functions."""
+r"""Algorithms for computing critical and contributing points."""
 
 from .main import (
     MinimalCriticalCombinatorial,

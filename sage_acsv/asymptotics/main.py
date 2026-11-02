@@ -121,7 +121,6 @@ from sage.rings.integer_ring import ZZ
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 from sage.rings.qqbar import AA
 from sage.rings.rational_field import QQ
-from sage.symbolic.ring import SR
 
 from .contributions import (
     PointsStrategy,
@@ -135,7 +134,7 @@ from sage_acsv.critical_points.main import (
 from sage_acsv.debug import acsv_logger
 from sage_acsv.settings import ACSVSettings
 from sage_acsv.helpers.utils import (
-    _prepare_symbolic_fraction, 
+    _prepare_symbolic_fraction,
     _dict_to_variable_order,
     _process_linear_form_input,
     _process_whitney_stratification_input,
@@ -342,7 +341,7 @@ def diagonal_asymptotics_combinatorial(
     * ``whitney_strat`` -- (Optional) If known / precomputed, a
       Whitney Stratification of `V(H)`. The program will not check if
       this stratification is correct. Should be a list of length ``d``, where
-      the ``k``-th entry is a list of tuples of ideas generators representing
+      the ``k``-th entry is a list of tuples of ideal generators representing
       a component of the ``k``-dimensional stratum.
 
     OUTPUT:
@@ -478,7 +477,7 @@ def diagonal_asymptotics_combinatorial(
         0.866025403784439?/sqrt(pi)*3^n*n^(-1/2) - 1.136658342467076?/sqrt(pi)*3^n*n^(-3/2) + O(3^n*n^(-5/2))
 
     An example containing a complex contributing point carrying a phase.
-    
+
         sage: from sage_acsv import get_expansion_terms
         sage: P = 2 - 2*x - 2*y + 6*x*y + x^2 + y^2
         sage: F = (1/(1 - x - y) + 1/(2*P))/(1 - z)
@@ -733,4 +732,3 @@ def diagonal_asymptotics_hyperplane(
         return result, minimal_contributing_points
 
     return result
-

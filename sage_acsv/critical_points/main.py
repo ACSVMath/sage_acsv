@@ -1,34 +1,33 @@
-from sage.arith.misc import gcd
-from sage.matrix.constructor import matrix
-from sage.misc.misc_c import prod
 from sage.rings.ideal import Ideal
 from sage.rings.integer_ring import ZZ
-from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
-from sage.rings.qqbar import AA, QQbar
-from sage.rings.rational_field import QQ
-from sage.symbolic.ring import SR
+from sage.rings.qqbar import QQbar
 
 from sage_acsv.critical_points.data import CriticalPointProblem
-from sage_acsv.critical_points.filter import _filter_contributing_points, _filter_contributing_points_by_height, _filter_minimal_points, _filter_positive_real_minimal_contributing_point
-from sage_acsv.critical_points.solver import solve_and_filter_positive_minimal_solutions, solve_kronecker_system
-from sage_acsv.critical_points.systems import build_smooth_critical_point_system, build_stratified_critical_point_systems
-from sage_acsv.kronecker.kronecker_representation import _kronecker_representation
-from sage_acsv.helpers import (
-    ACSVException,
-    is_contributing,
+from sage_acsv.critical_points.filter import (
+    _filter_contributing_points,
+    _filter_contributing_points_by_height,
+    _filter_minimal_points,
+    _filter_positive_real_minimal_contributing_point,
+)
+from sage_acsv.critical_points.solver import (
+    solve_and_filter_positive_minimal_solutions,
+    solve_kronecker_system,
+)
+from sage_acsv.critical_points.systems import (
+    build_smooth_critical_point_system,
+    build_stratified_critical_point_systems,
 )
 from sage_acsv.debug import Timer, acsv_logger
-from sage_acsv.whitney import whitney_stratification
-from sage_acsv.groebner.functions import compute_primary_decomposition, compute_saturation
+from sage_acsv.helpers import ACSVException
 from sage_acsv.helpers.utils import (
-    _prepare_expanded_polynomial_ring, 
-    _prepare_symbolic_fraction, 
-    _dict_to_variable_order,
-    _process_linear_form_input,
-    _process_whitney_stratification_input, 
-    _subs,
     _collapse_zero_part,
+    _dict_to_variable_order,
+    _prepare_expanded_polynomial_ring,
+    _prepare_symbolic_fraction,
+    _process_linear_form_input,
+    _process_whitney_stratification_input,
 )
+from sage_acsv.kronecker.kronecker_representation import _kronecker_representation
 
 def contributing_points_combinatorial(
     F,

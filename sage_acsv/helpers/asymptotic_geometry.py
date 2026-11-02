@@ -115,7 +115,7 @@ def compute_implicit_hessian(Hs, vs, r, subs):
 
 def compute_square_root_determinant_of_hessian(hessian):
     r"""Square root of the determinant of a complex Hessian defined as the product of
-    the principle branch square root of all its eigenvalues.
+    the principal branch square root of all its eigenvalues.
 
     INPUT:
 
@@ -153,7 +153,7 @@ def compute_square_root_determinant_of_hessian(hessian):
 
     eigenvalues_with_multiplicity = matrix(QQbar, hessian).charpoly().roots(QQbar)
 
-    # The sqrt function in Sage comptues the principle branch by default
+    # The sqrt function in Sage computes the principal branch by default
     sqrt_prod = QQbar(prod(ev.sqrt() ** m for (ev, m) in eigenvalues_with_multiplicity))
 
     if sqrt_det.real().sign() == sqrt_prod.real().sign() and sqrt_det.imag().sign() == sqrt_prod.imag().sign():
@@ -186,7 +186,7 @@ def transverse_leading_normalization(Hs, vs, r, cp):
         2/27
 
     Here we have the two smooth critical points `(\pm 1/\sqrt{3}, 3/2, 3/2)` of
-    `1/((1 - y(1+x^2)/2)(1 - z(1+x^2)/2))`. Their contributions double at even 
+    `1/((1 - y(1+x^2)/2)(1 - z(1+x^2)/2))`. Their contributions double at even
     `n` and cancel at odd `n` matching the exact diagonal `2^{-2n}\binom{2n}{n/2}`::
 
         sage: from sage_acsv.helpers import transverse_leading_normalization

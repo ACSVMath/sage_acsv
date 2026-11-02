@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from sage.rings.integer import Integer
 from sage.rings.qqbar import AlgebraicNumber
 from sage.symbolic.expression import Expression
 

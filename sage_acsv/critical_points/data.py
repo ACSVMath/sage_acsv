@@ -16,5 +16,5 @@ class CriticalPointProblem:
     lambda_variable: object
     direction: object
     t_variable: object = None
-    r_polynomials: list[object] = field(default_factory=list) 
-    r_variable_values: dict[object, object] = field(default_factory=dict) 
+    r_polynomials: list[object] = field(default_factory=list)
+    r_variable_values: dict[object, object] = field(default_factory=dict)
