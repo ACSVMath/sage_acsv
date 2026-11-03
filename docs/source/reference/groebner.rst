@@ -1,6 +1,9 @@
-``groebner``
-============
+Gröbner Basis Computations
+===========================
 
 .. automodule:: sage_acsv.groebner
-   :members:
-   :undoc-members:
+
+.. toctree::
+   :maxdepth: 1
+
+   groebner/functions
