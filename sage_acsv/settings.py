@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import shutil
 from enum import Enum
 
 from sage.interfaces.macaulay2 import Macaulay2
@@ -42,6 +44,7 @@ class KroneckerBackend(Enum):
 
     SAGE_ACSV = "sage_acsv"
     MSOLVE = "msolve"
+    JULIA = "julia"
 
 
 class GroebnerBackend(Enum):
@@ -103,6 +106,7 @@ class ACSVSettings:
     _default_kronecker_backend = DEFAULT_KRONECKER_BACKEND
     _default_groebner_backend = DEFAULT_GROEBNER_BACKEND
     _m2 = Macaulay2()
+    _julia_path = None
 
     MAX_MIN_CRIT_RETRIES = 5  # Maximum number of retries for critical point detection
 
@@ -220,3 +224,57 @@ class ACSVSettings:
     def get_macaulay2(cls) -> Macaulay2:
         """Get the Macaulay2 installation path."""
         return cls._m2
+
+    @classmethod
+    def set_julia_path(cls, path: str | None) -> None:
+        """Set the path of the Julia executable used by the Julia backend.
+
+        Unlike Macaulay2, which runs as a separate program, Julia runs inside
+        the Sage process (through ``juliacall``) and can only be started once
+        per session. Set the path before the first Julia computation. To switch
+        to a different Julia afterwards, restart Sage or the Jupyter kernel.
+
+        See :mod:`sage_acsv.backends.julia` for how Julia is located when no
+        path is set.
+
+        INPUT:
+
+        * ``path`` -- a filepath string or the name of a command on the
+          ``PATH``, or ``None`` to use an installed Julia found automatically
+        """
+        from sage_acsv.backends.julia import running_julia_executable
+
+        if path is not None:
+            found = shutil.which(os.path.expanduser(path))
+            if found is None:
+                raise ValueError(f"Julia executable not found: {path!r}")
+            path = os.path.abspath(found)
+            running = running_julia_executable()
+            if running is not None and not (
+                os.path.exists(running) and os.path.samefile(path, running)
+            ):
+                raise RuntimeError(
+                    f"Julia is already running from {running!r} in this session; "
+                    "restart Sage (or the Jupyter kernel) and call "
+                    "ACSVSettings.set_julia_path before the first Julia computation."
+                )
+        cls._julia_path = path
+
+    @classmethod
+    def get_julia_path(cls) -> str | None:
+        """Get the configured Julia executable path, or ``None`` if Julia is
+        located automatically. See :meth:`set_julia_path`.
+        """
+        return cls._julia_path
+
+    @classmethod
+    def get_julia(cls):
+        """Get the Julia runtime (``juliacall.Main``), starting Julia on first
+        use with the executable set by :meth:`set_julia_path`.
+
+        Raises a :class:`~sage_acsv.backends.julia.JuliaBackendError` if
+        juliacall or Julia is not installed.
+        """
+        from sage_acsv.backends.julia import get_julia
+
+        return get_julia()
