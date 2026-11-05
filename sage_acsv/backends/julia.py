@@ -20,17 +20,17 @@ fix the problem is raised if it is missing:
   <https://gitlab.inria.fr/NewRUR/RationalUnivariateRepresentation.jl>`_.
   These are installed into juliacall's Julia environment from Sage::
 
-      sage: import juliapkg  # not tested
-      sage: juliapkg.add("RationalUnivariateRepresentation", "17246082-4fa7-4287-87d4-6a5617fca855")  # not tested
-      sage: juliapkg.resolve()  # not tested
+      sage: # import juliapkg
+      sage: # juliapkg.add("RationalUnivariateRepresentation", "17246082-4fa7-4287-87d4-6a5617fca855")
+      sage: # juliapkg.resolve()
 
 Choosing the Julia executable:
 
 * To use a specific Julia, call :meth:`.ACSVSettings.set_julia_path` before
   the first Julia computation::
 
-      sage: from sage_acsv import ACSVSettings
-      sage: ACSVSettings.set_julia_path("/path/to/julia")
+      sage: # from sage_acsv import ACSVSettings
+      sage: # ACSVSettings.set_julia_path("/path/to/julia")
 
 * Otherwise the backend looks for an installed Julia that juliacall supports:
   the ``PYTHON_JULIAPKG_EXE`` environment variable, Julia versions installed
