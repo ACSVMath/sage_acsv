@@ -155,3 +155,6 @@ def _filter_contributing_points_by_height(points, H, vs, r):
                 next_contributing_points.append(cp)
 
     return minimal_contributing_points, next_contributing_points
+
+def _filter_non_combinatorial_kronecker_roots_by_conjugate_pairs(roots, Pd, Qsa, Qsb, Qsx, Qsy):
+    pass

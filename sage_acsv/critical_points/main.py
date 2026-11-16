@@ -10,7 +10,8 @@ from sage_acsv.critical_points.filter import (
     _filter_positive_real_minimal_contributing_point,
 )
 from sage_acsv.critical_points.solver import (
-    solve_and_filter_positive_minimal_solutions,
+    solve_and_filter_positive_minimal_solutions_combinatorial,
+    solve_and_filter_minimal_solutions_general,
     solve_kronecker_system,
 )
 from sage_acsv.critical_points.systems import (
@@ -179,7 +180,7 @@ def _find_contributing_points_combinatorial(
             Qt = Qs[-1]
             Qs = Qs[:-1]
 
-            P, Qs, pos_minimals = solve_and_filter_positive_minimal_solutions(
+            P, Qs, pos_minimals = solve_and_filter_positive_minimal_solutions_combinatorial(
                 vs, r_variable_values, (P, Qs), Qt
             )
 
@@ -374,7 +375,7 @@ def contributing_points_combinatorial_smooth(G, H, variables, r=None, linear_for
     Qs = Qs[:-1]
     timer.checkpoint("Kronecker")
 
-    P, Qs, pos_minimals = solve_and_filter_positive_minimal_solutions(
+    P, Qs, pos_minimals = solve_and_filter_positive_minimal_solutions_combinatorial(
         vs, r_variable_values, (P, Qs), Qt
     )
 
@@ -503,7 +504,7 @@ def minimal_critical_points_combinatorial(
             Qt = Qs[-1]
             Qs = Qs[:-1]
 
-            P, Qs, new_pos_minimals = solve_and_filter_positive_minimal_solutions(
+            P, Qs, new_pos_minimals = solve_and_filter_positive_minimal_solutions_combinatorial(
                 vs, r_variable_values, (P, Qs), Qt
             )
 
@@ -621,3 +622,180 @@ def critical_points(F, r=None, linear_form=None, whitney_strat=None):
             )
 
     return critical_points
+
+
+def contributing_points_general(
+    F,
+    r=None,
+    linear_form=None,
+    whitney_strat=None,
+):
+    r"""Compute contributing points of a multivariate
+    rational function `F=G/H` admitting a finite number of critical points.
+
+    The function is assumed to have a combinatorial expansion.
+
+    INPUT:
+
+    * ``F`` -- Symbolic fraction, the rational function assumed to have
+      a finite number of critical points.
+    * ``r`` -- (Optional) Length `d` vector or dictionary of positive integers.
+      If a vector is given, assumes the variable order is given by ``F.variables()``.
+    * ``linear_form`` -- (Optional) A linear combination of the input
+      variables that separates the critical point solutions.
+    * ``whitney_strat`` -- (Optional) If known / precomputed, a
+      Whitney Stratification of `V(H)`. The program will not check if
+      this stratification is correct. Should be a list of length `d`, where
+      the `k`-th entry is a list of tuples of ideal generators representing
+      a component of the `k`-dimensional stratum.
+
+    OUTPUT:
+
+    A list of minimal contributing points of `F` in the direction `r`.
+
+    NOTE:
+
+    The code randomly generates a linear form, which for generic rational functions
+    separates the solutions of an intermediate polynomial system with high probability.
+    This separation step can fail, but (assuming `F` has a finite number of critical points)
+    the code can be rerun until a separating form is found.
+
+    EXAMPLES::
+
+        sage: from sage_acsv import contributing_points_combinatorial
+        sage: var('x y')
+        (x, y)
+        sage: pts = contributing_points_combinatorial(1/((1-(2*x+y)/3)*(1-(3*x+y)/4)))
+        sage: sorted(pts)
+        [[3/4, 3/2]]
+
+    """
+    if isinstance(r, dict):
+        r = _dict_to_variable_order(F, r)
+
+    G, H, variable_map = _prepare_symbolic_fraction(F)
+    variables = list(variable_map.values())
+    whitney_strat = _process_whitney_stratification_input(whitney_strat, variable_map)
+    linear_form = _process_linear_form_input(linear_form, variable_map)
+
+    return _find_contributing_points_general(
+        G,
+        H,
+        variables,
+        r=r,
+        linear_form=linear_form,
+        whitney_strat=whitney_strat,
+    )
+
+def _find_contributing_points_general(
+    G,
+    H,
+    variables,
+    r=None,
+    linear_form=None,
+    whitney_strat=None,
+):
+    r"""Compute contributing points of a combinatorial multivariate
+    rational function `F=G/H` admitting a finite number of critical points where the singular variety is the transverse union of smooth varieties.
+
+    Typically, this function is called as a subroutine of :func:`.diagonal_asymptotics_combinatorial`.
+
+    INPUT:
+
+    * ``G, H`` -- Coprime polynomials with ``F = G/H``
+    * ``variables`` -- List of variables of ``G`` and ``H``
+    * ``r`` -- (Optional) Length ``d`` vector of positive integers
+    * ``linear_form`` -- (Optional) A linear combination of the input
+      variables that separates the critical point solutions
+    * ``whitney_strat`` -- (Optional) If known / precomputed, a
+      Whitney Stratification of `V(H)`. The program will not check if
+      this stratification is correct. Should be a list of length ``d``, where
+      the ``k``-th entry is a list of tuples of ideal generators representing
+      a component of the ``k``-dimensional stratum.
+
+    OUTPUT:
+
+    A list of minimal contributing points of `F` in the direction `r`.
+
+    NOTE:
+
+    The code randomly generates a linear form, which for generic rational functions
+    separates the solutions of an intermediate polynomial system with high probability.
+    This separation step can fail, but (assuming F has a finite number of critical points)
+    the code can be rerun until a separating form is found.
+    """
+    timer = Timer()
+
+    (
+        expanded_R,
+        vsa,
+        vsb,
+        (t, nu_, lambda_, u_),
+        xys,
+        r,
+        r_variable_values,
+    ) = _prepare_expanded_polynomial_ring(variables, direction=r, include_non_combinatorial_variables=True)
+    H = expanded_R(H)
+    vsT = vsa + vsb + xys + list(r_variable_values.keys()) + [lambda_, t, nu_]
+
+    # Add in min polys for the direction variables
+    r_polys = [
+        direction_value.minpoly().subs(direction_var)
+        for direction_var, direction_value in r_variable_values.items()
+    ]
+
+    problem = CriticalPointProblem(
+        require_contributing=True,
+        require_minimal=True,
+        H_polynomial=H,
+        variables=vsa,
+        direction=r,
+        lambda_variable=lambda_,
+        t_variable=t,
+        r_polynomials=r_polys,
+        r_variable_values=r_variable_values,
+        duplicate_variables=vsb,
+        auxiliary_modulus_variables=xys,
+        nu_variable=nu_
+    )
+
+    critical_point_systems = build_stratified_critical_point_systems(
+        problem, whitney_strat
+    )
+    print(critical_point_systems)
+
+    # Final minimal critical points with positive coordinates on each stratum
+    critical_points_by_stratum = {}
+    pos_minimals_by_stratum = {}
+    for d, systems in reversed(critical_point_systems.items()):
+        critical_points_by_stratum[d] = []
+        pos_minimals_by_stratum[d] = []
+
+        for system in systems:
+            P, Qs = _kronecker_representation(system.generators, u_, vsT, linear_form)
+            Qt = Qs[-1]
+            Qs = Qs[:-1]
+
+            P, Qs, minimal_points = solve_and_filter_minimal_solutions_general(
+                vsa, r_variable_values, (P, Qs), Qt
+            )
+
+            pos_minimals_by_stratum[d].extend(
+                minimal_points
+            )
+
+            critical_points_by_stratum[d].extend(
+                solve_kronecker_system(
+                    vsa, r_variable_values, (P, Qs)
+                )
+            )
+
+    timer.checkpoint("Critical Points")
+
+    minimal_contributing_points = _filter_contributing_points(
+        minimal_points, H, vsa, r
+    )
+
+    timer.checkpoint("Contributing Points")
+
+    return minimal_contributing_points

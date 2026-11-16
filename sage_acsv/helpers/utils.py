@@ -56,7 +56,12 @@ def _dict_to_variable_order(F, d, default=1):
     return [d.get(v, default) for v in vs]
 
 
-def _prepare_expanded_polynomial_ring(variables, direction=None, include_t=True):
+def _prepare_expanded_polynomial_ring(
+        variables, 
+        direction=None, 
+        include_t=True,
+        include_non_combinatorial_variables=False
+):
     r"""Prepare an auxiliary polynomial ring for computing diagonal asymptotics.
 
     INPUT:
@@ -86,27 +91,49 @@ def _prepare_expanded_polynomial_ring(variables, direction=None, include_t=True)
     auxiliary_variables = []
     if include_t:
         auxiliary_variables.append(SR.var("t"))
+    if include_non_combinatorial_variables:
+        auxiliary_variables.append(SR.var("nu_"))
     auxiliary_variables.append(SR.var("lambda_"))
     auxiliary_variables.append(SR.var("u_"))
 
+    variables_dup = []
+    modulus_variables = []
+    if include_non_combinatorial_variables: 
+        variables_dup = [SR.var(str(v)+"_dup")for v in variables]
+    if include_non_combinatorial_variables:
+        modulus_variables = list(SR.var("x", len(variables))) + list(SR.var("y", len(variables)))
+
     # create the expanded polynomial ring
     expanded_ring = PolynomialRing(
-        QQ, list(variables) + list(direction_variable_values) + auxiliary_variables
+        QQ, list(variables) + variables_dup + modulus_variables + list(direction_variable_values) + auxiliary_variables
     )
     variables = [expanded_ring(v) for v in variables]
+    duplicate_variables = [expanded_ring(v) for v in duplicate_variables]
+    modulus_variables = [expanded_ring(v) for v in modulus_variables]
     auxiliary_variables = [expanded_ring(v) for v in auxiliary_variables]
     replaced_direction = [expanded_ring(ri) for ri in replaced_direction]
     direction_variable_values = {
         expanded_ring(ri): val for (ri, val) in direction_variable_values.items()
     }
-    return (
-        expanded_ring,
-        variables,
-        auxiliary_variables,
-        replaced_direction,
-        direction_variable_values,
-    )
 
+    if include_non_combinatorial_variables:
+        return (
+            expanded_ring,
+            variables,
+            duplicate_variables,
+            auxiliary_variables,
+            modulus_variables,
+            replaced_direction,
+            direction_variable_values,
+        )
+    else:
+        return (
+            expanded_ring,
+            variables,
+            auxiliary_variables,
+            replaced_direction,
+            direction_variable_values,
+        )
 
 def _collapse_zero_part(algebraic_number: AlgebraicNumber) -> AlgebraicNumber:
     if algebraic_number.real().is_zero():

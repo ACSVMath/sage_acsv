@@ -7,6 +7,7 @@ from .main import (
     contributing_points_hyperplane,
     critical_points,
     minimal_critical_points_combinatorial,
+    contributing_points_general
 )
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "MinimalCriticalCombinatorial",
     "critical_points",
     "contributing_points_hyperplane",
+    "contributing_points_general"
 ]
