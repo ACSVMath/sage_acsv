@@ -20,7 +20,7 @@ from .point_contributions import (
 from sage_acsv.data.terms import Term
 from sage_acsv.debug import Timer, acsv_logger
 from sage_acsv.helpers.factorization import (
-    _compute_transverse_factorization_at_point,
+    compute_transverse_factorization_at_point,
     _find_parametrizing_order,
 )
 from sage_acsv.helpers.utils import (
@@ -323,8 +323,8 @@ def _compute_asymptotics_at_points_transverse(
         subs_dict = {vs[i]: cp[i] for i in range(d)}
 
         # Compute factorization around the critical point
-        unit, factors, multiplicities, extra_factors  = _compute_transverse_factorization_at_point(
-            H, vs, subs_dict
+        unit, factors, multiplicities = compute_transverse_factorization_at_point(
+            H, vs, cp, 2 if expansion_precision is None else 2 * expansion_precision + 1
         )
         s = len(factors)
 
@@ -351,8 +351,7 @@ def _compute_asymptotics_at_points_transverse(
                 substitutions=subs_dict,
                 unit=unit,
                 factors=factors,
-                multiplicities=multiplicities,
-                extra_factors=extra_factors
+                multiplicities=multiplicities
             )
         )
 
@@ -372,13 +371,12 @@ def _compute_asymptotics_at_points_transverse(
         strip_error = True
 
     terms = []
-    n = SR.var("n")
     for data in cps_data:
         s, r, vs, cp, subs_dict = (
             data.codimension, data.direction, data.variables, data.point, data.substitutions
         )
-        unit, factors, multiplicities, extra_factors = (
-            data.unit, data.factors, data.multiplicities, data.extra_factors
+        unit, factors, multiplicities = (
+            data.unit, data.factors, data.multiplicities
         )
 
         # If critical point lies on a single smooth component, we can compute asymptotics
@@ -569,7 +567,6 @@ def _compute_asymptotics_at_points_smooth(
                 unit=1,
                 factors=[H],
                 multiplicities=[1],
-                extra_factors=[],
             ),
             expansion_precision,
         )

@@ -15,7 +15,7 @@ from sage_acsv.helpers.asymptotic_geometry import (
     transverse_leading_normalization,
     compute_hessian
 )
-from sage_acsv.helpers.factorization import is_transverse_at_point
+from sage_acsv.helpers.factorization import is_transverse_at_point, compute_transverse_factorization_at_point
 from sage_acsv.helpers.newton_series import compute_newton_series, compute_newton_series_general
 from sage_acsv.helpers.residue_algebra import algebraic_residues, pure_composed_sum
 from sage_acsv.helpers.utils import (
@@ -36,6 +36,7 @@ __all__ = [
     "transverse_leading_normalization",
     "compute_hessian",
     "is_transverse_at_point",
+    "compute_transverse_factorization_at_point",
     "compute_newton_series",
     "compute_newton_series_general",
     "algebraic_residues",
