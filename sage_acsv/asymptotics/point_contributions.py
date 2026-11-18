@@ -48,7 +48,7 @@ def _compute_contribution_of_simple_transverse_point(
         data.point,
         data.substitutions,
     )
-    unit, factors, extra_factors = data.unit, data.factors, data.extra_factors
+    unit, factors = data.unit, data.factors
     d = len(vs)
 
     Qw = compute_implicit_hessian(factors, vs, r, subs_dict)
@@ -56,10 +56,10 @@ def _compute_contribution_of_simple_transverse_point(
         term / n**term_order
         for term_order, term in enumerate(
             _general_term_asymptotics(
-                G, factors, extra_factors, r, vs, cp, expansion_precision
+                G, factors, unit, r, vs, cp, expansion_precision
             )
         )
-    ) / unit
+    )
     constant = SR(
         1
         / compute_square_root_determinant_of_hessian(Qw)
@@ -100,11 +100,10 @@ def _compute_contribution_of_high_order_transverse_point(
         data.point,
         data.substitutions,
     )
-    unit, factors, multiplicities, extra_factors = (
+    unit, factors, multiplicities = (
         data.unit,
         data.factors,
         data.multiplicities,
-        data.extra_factors,
     )
     d = len(vs)
     R = vs[0].parent()
@@ -123,8 +122,7 @@ def _compute_contribution_of_high_order_transverse_point(
         expansion = SR(
             G.subs(subs_dict)
             / transverse_leading_normalization(factors, vs, r, cp)
-            / unit
-            / R(prod(extra_factors)).subs(subs_dict)
+            / R(unit).subs(subs_dict)
         )
         constant = SR(
             1
@@ -134,9 +132,8 @@ def _compute_contribution_of_high_order_transverse_point(
     else:
         expansion = SR(
             G.subs(subs_dict)
-            / unit
+            / R(unit).subs(subs_dict)
             / abs(Gamma.determinant())
-            / R(prod(extra_factors)).subs(subs_dict)
         )
         constant = ZZ.one()
 
@@ -229,14 +226,15 @@ def _compute_contribution_of_complete_hyperplane_point(
         data.factors,
         data.multiplicities,
     )
+    R = vs[0].parent()
 
     expansion = sum(
         term / n**term_order
         for term_order, term in enumerate(
             _general_term_asymptotics_complete_intersection_hyperplane(
-                G, factors, multiplicities, r, vs, cp, expansion_precision
+                G, factors, multiplicities, unit, r, vs, cp, expansion_precision
             )
         )
-    ) / unit.subs(subs_dict)
+    )
 
     return ZZ.one(), expansion

@@ -19,4 +19,3 @@ class ClassifiedPoint:
     unit: object
     factors: object
     multiplicities: object
-    extra_factors: object

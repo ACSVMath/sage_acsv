@@ -23,7 +23,7 @@ from sage_acsv.helpers import (
     transverse_leading_normalization,
 )
 
-def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
+def _general_term_asymptotics(G, Hs, unit, r, vs, cp, expansion_precision):
     r"""
     Compute coefficients of general (not necessarily leading) terms of
     the asymptotic expansion for a given critical
@@ -35,7 +35,7 @@ def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
 
     * ``G`` -- A polynomial in `vs`.
     * ``Hs`` -- A list of polynomials in `vs` such that `[G,Hs]` have no pairwise common factors.
-    * ``Hs_ext`` -- A list of polynomials in `vs` such that that do not vanish at `cp`.
+    * ``unit`` -- A polynomial in `vs` that does not vanish at `cp`.
     * ``r`` -- The direction. A length `d` vector of positive algebraic numbers (usually
       integers).
     * ``vs`` -- Tuple of variables occurring in `G` and `Hs`.
@@ -52,13 +52,13 @@ def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
 
         sage: from sage_acsv.asymptotics.general_terms import _general_term_asymptotics
         sage: R.<x, y, z> = QQ[]
-        sage: _general_term_asymptotics(1, [1 - x - y], [], [1, 1], [x, y], [1/2, 1/2], 5)
+        sage: _general_term_asymptotics(1, [1 - x - y], 1, [1, 1], [x, y], [1/2, 1/2], 5)
         [2, -1/4, 1/64, 5/512, -21/16384]
-        sage: _general_term_asymptotics(1, [1 - x - y], [1-y], [1, 1], [x, y], [1/2, 1/2], 5)
+        sage: _general_term_asymptotics(1, [1 - x - y], 1-y, [1, 1], [x, y], [1/2, 1/2], 5)
         [4, -5/2, 73/32, -575/256, 18459/8192]
-        sage: _general_term_asymptotics(1, [1-x-2*y-z, 1-2*x-y-z], [], [1, 1, 1], [x, y, z], [2/9, 2/9, 1/3], 5)
+        sage: _general_term_asymptotics(1, [1-x-2*y-z, 1-2*x-y-z], 1, [1, 1, 1], [x, y, z], [2/9, 2/9, 1/3], 5)
         [27/2, -57/16, 1081/768, -106795/165888, 15808177/47775744]
-        sage: _general_term_asymptotics(1, [1-x-2*y-z, 1-2*x-y-z], [1-x/2-y/2-z/2], [1, 1, 1], [x, y,z], [2/9, 2/9, 1/3], 3)
+        sage: _general_term_asymptotics(1, [1-x-2*y-z, 1-2*x-y-z], 1-x/2-y/2-z/2, [1, 1, 1], [x, y,z], [2/9, 2/9, 1/3], 3)
         [243/11, -70497/10648, 57642411/20614528]
     """
 
@@ -67,7 +67,7 @@ def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
     R = PolynomialRing(QQbar, vs)
     vs = R.gens()
     tvars = SR.var("t", d - s)
-    G, Hs, Hs_ext = R(SR(G)), [R(SR(H)) for H in Hs], [R(SR(H)) for H in Hs_ext]
+    G, Hs, unit = R(SR(G)), [R(SR(H)) for H in Hs], R(SR(unit))
     subs_dict = {vs[i]: cp[i] for i in range(d)}
 
     # Step 3: Compute the gamma matrix as defined in 9.10
@@ -80,11 +80,11 @@ def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
     )
 
     leading_term = (
-        _general_term_asymptotics_smooth(G, prod(Hs + Hs_ext), r, vs, cp, 1)[0]
+        _general_term_asymptotics_smooth(G, prod(Hs + [unit]), r, vs, cp, 1)[0]
         if s == 1 else
         SR(G.subs(subs_dict)
            / transverse_leading_normalization(Hs, vs, r, cp))
-        / prod(Hs_ext).subs(subs_dict)
+        / unit.subs(subs_dict)
     )
 
     # Directly compute leading term
@@ -135,7 +135,7 @@ def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
 
     # Compute series expansion of P = G*z_1*...*z_{d-s}/Gamma up to needed order
     P_num = (G.subs(tsubs)*prod([tsubs[v] for v in vs[:d-s]])).add_bigoh(N)
-    P_denom = (prod(Hs_ext).subs(tsubs)*Gamma.determinant().subs(tsubs)).add_bigoh(N)
+    P_denom = (unit.subs(tsubs)*Gamma.determinant().subs(tsubs)).add_bigoh(N)
     PSeries = (P_num / P_denom).truncate(N)
 
     if len(tvars) > 1:
@@ -173,7 +173,7 @@ def _general_term_asymptotics(G, Hs, Hs_ext, r, vs, cp, expansion_precision):
     raise ACSVException("Issue with computing general terms - this should never happen.")
 
 
-def _general_term_asymptotics_complete_intersection_hyperplane(G, Hs, exps, r, vs, cp, expansion_precision):
+def _general_term_asymptotics_complete_intersection_hyperplane(G, Hs, exps, unit, r, vs, cp, expansion_precision):
     r"""
     Compute coefficients of general (not necessarily leading) terms of the asymptotic expansion for a given critical
     point of a rational combinatorial multivariate rational function lying on a complete intersection of hyperplanes.
@@ -182,13 +182,14 @@ def _general_term_asymptotics_complete_intersection_hyperplane(G, Hs, exps, r, v
 
     INPUT:
 
-    * ``G`` -- A polynomial in `vs`.
+    * ``G`` -- A polynomial in ``vs``.
     * ``Hs`` -- A list of polynomials in `vs` such that `[G,Hs]` have no pairwise common factors.
     * ``exps`` -- A list of integers representing the multiplicity of each of the polynomials in ``Hs``.
+    * ``unit`` -- A polynomial in ``vs`` where ``cp`` does not vanish.
     * ``r`` -- The direction. A length `d` vector of positive algebraic numbers (usually
       integers).
-    * ``vs`` -- Tuple of variables occurring in `G` and `Hs`.
-    * ``cp`` -- A minimal critical point of `F` with coordinates specified in the
+    * ``vs`` -- Tuple of variables occurring in ``G`` and ``Hs``.
+    * ``cp`` -- A minimal critical point of ``F`` with coordinates specified in the
       same order as in ``vs``.
     * ``expansion_precision`` -- A positive integer value. This is the number of terms
       for which to compute coefficients in the asymptotic expansion.
@@ -201,9 +202,9 @@ def _general_term_asymptotics_complete_intersection_hyperplane(G, Hs, exps, r, v
 
         sage: from sage_acsv.asymptotics.general_terms import _general_term_asymptotics_complete_intersection_hyperplane
         sage: R.<x, y> = QQ[]
-        sage: _general_term_asymptotics_complete_intersection_hyperplane(1, [3-2*x-y, 3-x-2*y], [2, 3], [1, 1], [x, y], [1, 1], 2)
+        sage: _general_term_asymptotics_complete_intersection_hyperplane(1, [3-2*x-y, 3-x-2*y], [2, 3], 1, [1, 1], [x, y], [1, 1], 2)
         [1/162, 0]
-        sage: _general_term_asymptotics_complete_intersection_hyperplane(1, [3-2*x-y, 3-x-2*y], [2, 3], [1, 1], [x, y], [1, 1], 5)
+        sage: _general_term_asymptotics_complete_intersection_hyperplane(1, [3-2*x-y, 3-x-2*y], [2, 3], 1, [1, 1], [x, y], [1, 1], 5)
         [1/162, 0, -7/162, -1/27]
     """
     M = matrix(
@@ -226,7 +227,8 @@ def _general_term_asymptotics_complete_intersection_hyperplane(G, Hs, exps, r, v
     # Compute a power series expansion for G(z)/z^{nr} up to needed order
     # Take exp(log) for efficiency
     tsubs = {v: subs_dict[v] - (M.inverse() * vector(tvars))[i] for i, v in enumerate(vs)}
-    GSeries = G.subs(tsubs) / prod([tsubs[v] for v in vs]).add_bigoh(N)
+    unit_t = unit.subs(tsubs)
+    GSeries = G.subs(tsubs) / (unit_t * prod([tsubs[v] for v in vs])).add_bigoh(N)
     log_series = sum([
         r[i]*n*log(tsubs[v]/cp[i]) for i, v in enumerate(vs)
     ]).add_bigoh(N)

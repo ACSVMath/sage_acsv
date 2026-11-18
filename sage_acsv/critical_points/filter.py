@@ -1,11 +1,13 @@
 
 from sage.matrix.constructor import matrix
 from sage.misc.misc_c import prod
+from sage.rings.qqbar import QQbar
 
 from sage_acsv.helpers import (
     ACSVException,
     is_contributing,
 )
+from sage_acsv.helpers.factorization import compute_transverse_factorization_at_point
 
 def _filter_direction_solutions(solutions, r_variable_values, start_index):
     r"""Filters critical point solutions for ones whose `r` values match the original
@@ -46,14 +48,16 @@ def _filter_positive_real_minimal_contributing_point(solutions_by_dimension, H, 
 
     A list of critical points.
     """
-    all_factors = list(factor[0] for factor in H.factor())
+    H = H.change_ring(QQbar)
+    vs = [v.change_ring(QQbar) for v in vs]
     contributing_pos_minimals = []
     for d, pos_minimals in sorted(solutions_by_dimension.items(), reverse=True):
         if len(contributing_pos_minimals) > 0:
             break
 
         for x in pos_minimals:
-            if is_contributing(vs, x, r, all_factors, len(vs) - d):
+            _, factors, _ = compute_transverse_factorization_at_point(H, vs, x, 1)
+            if is_contributing(vs, x, r, factors, len(vs) - d):
                 contributing_pos_minimals.append(x)
 
     if len(contributing_pos_minimals) == 0:
@@ -79,11 +83,13 @@ def _filter_contributing_points(solutions_by_dimension, H, vs, r, allow_boundary
 
     A list of contributing points.
     """
-    all_factors = list(factor[0] for factor in H.factor())
+    H = H.change_ring(QQbar)
+    vs = [v.change_ring(QQbar) for v in vs]
     contributing_points = []
     for d, critical_points in sorted(solutions_by_dimension.items(), reverse=True):
         for w in critical_points:
-            if is_contributing(vs, w, r, all_factors, len(vs) - d, allow_boundary):
+            _, factors, _ = compute_transverse_factorization_at_point(H, vs, w, 1)
+            if is_contributing(vs, w, r, factors, len(vs) - d, allow_boundary):
                 contributing_points.append(w)
 
     return contributing_points

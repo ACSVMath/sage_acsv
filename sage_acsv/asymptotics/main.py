@@ -657,7 +657,7 @@ def diagonal_asymptotics_hyperplane(
         sage: diagonal_asymptotics_hyperplane(1/((1-x/3-2*y/3)*(1-2*x/3-y/3)), r=[3,1])
         6.531972647421808?/sqrt(pi)*(2048/2187)^n*n^(-1/2) + O((2048/2187)^n*n^(-3/2))
         sage: diagonal_asymptotics_hyperplane(SR(1/((3-2*x-y)*(3-x-2*y)*(1-x/4-y/4))))
-        1/3 + O((8/9)^n*n^(-1/2))
+        2/3 + O((8/9)^n*n^(-1/2))
 
     Non-combinatorial example::
 
