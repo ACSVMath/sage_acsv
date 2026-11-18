@@ -6,6 +6,7 @@ from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 from sage.rings.rational_field import QQ
 
 from sage_acsv.data.exceptions import ACSVException
+from sage_acsv.kronecker.kronecker_julia import _kronecker_representation_julia
 from sage_acsv.kronecker.kronecker_msolve import _kronecker_representation_msolve
 from sage_acsv.kronecker.kronecker_sage import _kronecker_representation_sage
 from sage_acsv.debug import acsv_logger
@@ -35,6 +36,12 @@ def _kronecker_representation(system, u_, vs, linear_form=None, return_linear_fo
                 "msolve chooses its own linear form by default. The provided linear form will be dropped."
             )
         return _kronecker_representation_msolve(system, u_, vs, return_linear_form=return_linear_form)
+    elif ACSVSettings.get_default_kronecker_backend() == ACSVSettings.Kronecker.JULIA:
+        if linear_form is not None:
+            acsv_logger.warning(
+                "julia chooses its own linear form by default. The provided linear form will be dropped."
+            )
+        return _kronecker_representation_julia(system, u_, vs, return_linear_form=return_linear_form)
 
     for _ in range(ACSVSettings.MAX_MIN_CRIT_RETRIES):
         try:
