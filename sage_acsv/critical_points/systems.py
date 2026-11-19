@@ -63,8 +63,7 @@ def build_stratified_critical_point_systems(
             M = matrix([[v * f.derivative(v) for v in vs] for f in id.gens()] + [r])
             # Create ideal of R containing extended critical point equations
             cpid = id + Ideal(
-                M.minors(c + 1)
-                + r_polys +  [prod(vs) * lambda_ - 1]
+                R, r_polys + M.minors(c + 1)
             )
 
             # Saturate cpid by lower dimension stratum, if d > 0
@@ -86,6 +85,9 @@ def build_stratified_critical_point_systems(
                         problem.nu_variable,
                         cpid
                     )
+                cpid += Ideal([prod(vs) * prod(problem.duplicate_variables) * lambda_ * problem.t_variable - 1])
+            else:
+                cpid += Ideal([prod(vs) * lambda_ - 1])
 
             critical_point_ideals[d].append(
                 CriticalPointSystem(
@@ -111,6 +113,7 @@ def _extend_auxiliary_equations_for_non_combintorial_system(
     nu_,
     cpid
 ):
+    d = len(variables)
     xs = auxiliary_modulus_variables[:d]
     ys = auxiliary_modulus_variables[d:]
     x_subs = {v:x for v, x in zip(variables, xs)}
@@ -120,6 +123,9 @@ def _extend_auxiliary_equations_for_non_combintorial_system(
         {v: v_dup for v, v_dup in zip(variables, duplicate_variables)}
     )
     cpid += Ideal(
+        [H.subs(x_subs), H.subs(y_subs)]
+    )
+    cpid += Ideal(
         x*y - t_*a*b for x, y, a, b in zip(
             xs, 
             ys,
@@ -127,13 +133,14 @@ def _extend_auxiliary_equations_for_non_combintorial_system(
             duplicate_variables
         )
     )
-    cpid += Ideal(
+
+    cpid1 = cpid + Ideal(
         x*H.subs(x_subs).derivative(x)-nu_*y*H.subs(y_subs).derivative(y) for x, y in zip(xs, ys)
     )
-    cpid = cpid.intersection(
-        Ideal(y*H.subs(y_subs).derivative(y) for y in ys)
+    cpid2 = cpid + Ideal(
+       y*H.subs(y_subs).derivative(y) for y in ys
     )
-    return cpid
+    return cpid1.intersection(cpid2)
 
 def build_smooth_critical_point_system(
         problem: CriticalPointProblem

@@ -96,16 +96,16 @@ def _prepare_expanded_polynomial_ring(
     auxiliary_variables.append(SR.var("lambda_"))
     auxiliary_variables.append(SR.var("u_"))
 
-    variables_dup = []
+    duplicate_variables = []
     modulus_variables = []
     if include_non_combinatorial_variables: 
-        variables_dup = [SR.var(str(v)+"_dup")for v in variables]
+        duplicate_variables = [SR.var(str(v)+"_dup")for v in variables]
     if include_non_combinatorial_variables:
         modulus_variables = list(SR.var("x", len(variables))) + list(SR.var("y", len(variables)))
 
     # create the expanded polynomial ring
     expanded_ring = PolynomialRing(
-        QQ, list(variables) + variables_dup + modulus_variables + list(direction_variable_values) + auxiliary_variables
+        QQ, list(variables) + duplicate_variables + modulus_variables + list(direction_variable_values) + auxiliary_variables
     )
     variables = [expanded_ring(v) for v in variables]
     duplicate_variables = [expanded_ring(v) for v in duplicate_variables]

@@ -156,5 +156,27 @@ def _filter_contributing_points_by_height(points, H, vs, r):
 
     return minimal_contributing_points, next_contributing_points
 
-def _filter_non_combinatorial_kronecker_roots_by_conjugate_pairs(roots, Pd, Qsa, Qsb, Qsx, Qsy):
-    pass
+def _filter_non_combinatorial_kronecker_roots_by_conjugate_pairs(roots, Pd, Qas, Qbs, Qxs, Qys):
+    return [
+        u for u in roots
+        if all(
+            (Q1/Pd).subs(u).real() == (Q2/Pd).subs(u).real() and
+            (Q1/Pd).subs(u).imag() == -(Q2/Pd).subs(u).imag()
+            for Q1, Q2 in zip(Qas + Qxs, Qbs + Qys)
+        )
+    ]
+            
+def _filter_unique_by_index(points, start_index, end_index):
+    saved_points = []
+    for pt in points:
+        if any(
+            all(
+                [v == w for v, w in zip(pt[start_index: end_index], spt[start_index: end_index])]
+            )
+            for spt in saved_points
+        ):
+            continue
+
+        saved_points.append(pt)
+
+    return saved_points

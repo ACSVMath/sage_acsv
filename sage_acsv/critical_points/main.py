@@ -736,7 +736,7 @@ def _find_contributing_points_general(
         r_variable_values,
     ) = _prepare_expanded_polynomial_ring(variables, direction=r, include_non_combinatorial_variables=True)
     H = expanded_R(H)
-    vsT = vsa + vsb + xys + list(r_variable_values.keys()) + [lambda_, t, nu_]
+    vsT = vsa + vsb + xys + list(r_variable_values.keys()) + [lambda_, nu_, t]
 
     # Add in min polys for the direction variables
     r_polys = [
@@ -745,6 +745,7 @@ def _find_contributing_points_general(
     ]
 
     problem = CriticalPointProblem(
+        is_combinatorial=False,
         require_contributing=True,
         require_minimal=True,
         H_polynomial=H,
@@ -762,38 +763,27 @@ def _find_contributing_points_general(
     critical_point_systems = build_stratified_critical_point_systems(
         problem, whitney_strat
     )
-    print(critical_point_systems)
 
     # Final minimal critical points with positive coordinates on each stratum
-    critical_points_by_stratum = {}
-    pos_minimals_by_stratum = {}
+    minimal_points_by_stratum = {}
     for d, systems in reversed(critical_point_systems.items()):
-        critical_points_by_stratum[d] = []
-        pos_minimals_by_stratum[d] = []
-
+        minimal_points_by_stratum[d] = []
         for system in systems:
             P, Qs = _kronecker_representation(system.generators, u_, vsT, linear_form)
             Qt = Qs[-1]
             Qs = Qs[:-1]
 
-            P, Qs, minimal_points = solve_and_filter_minimal_solutions_general(
-                vsa, r_variable_values, (P, Qs), Qt
-            )
-
-            pos_minimals_by_stratum[d].extend(
-                minimal_points
-            )
-
-            critical_points_by_stratum[d].extend(
-                solve_kronecker_system(
-                    vsa, r_variable_values, (P, Qs)
+            minimal_points_by_stratum[d].extend(
+                solve_and_filter_minimal_solutions_general(
+                    vsa, r_variable_values, (P, Qs), Qt
                 )
             )
 
     timer.checkpoint("Critical Points")
 
+    r = [QQbar(r_variable_values.get(ri, ri)) for ri in r]
     minimal_contributing_points = _filter_contributing_points(
-        minimal_points, H, vsa, r
+        minimal_points_by_stratum, H, vsa, r
     )
 
     timer.checkpoint("Contributing Points")

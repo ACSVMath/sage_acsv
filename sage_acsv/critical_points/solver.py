@@ -1,7 +1,7 @@
 from sage.arith.misc import gcd, xgcd
 from sage.rings.qqbar import AA, QQbar
 
-from sage_acsv.critical_points.filter import _filter_direction_solutions, _filter_non_combinatorial_kronecker_roots_by_conjugate_pairs
+from sage_acsv.critical_points.filter import _filter_direction_solutions, _filter_non_combinatorial_kronecker_roots_by_conjugate_pairs, _filter_unique_by_index
 from sage_acsv.helpers.utils import (
     _subs,
     _collapse_zero_part,
@@ -140,10 +140,10 @@ def solve_and_filter_minimal_solutions_general(
 
     d = len(vs)
 
-    Qas = Qs[:d]
-    Qbs = Qs[d:2*d]
-    Qxs = Qs[2*d:3*d]
-    Qys = Qs[3*d:4*d]
+    Qas = Qs[: d]
+    Qbs = Qs[d: 2*d]
+    Qxs = Qs[2*d: 3*d]
+    Qys = Qs[3*d: 4*d]
 
     # Solutions to Pt are solutions to the system where t is not 1
     one_minus_t = gcd(Pd - Qt, P)
@@ -162,17 +162,12 @@ def solve_and_filter_minimal_solutions_general(
     )
     non_min = [[(q / Pd).subs(u_=u) for q in Qas] for u in rts_t_zo]
 
-    # TODO: Reduce kronecker representation to original non-auxiliary system
-    P_reduced = gcd(one_minus_t, )
-    Qsa_reduced = []
-    Qsb_reduced = []
-
     one_minus_t_roots = _filter_non_combinatorial_kronecker_roots_by_conjugate_pairs(
         one_minus_t.roots(QQbar, multiplicities=False),
         Pd, Qas, Qbs, Qxs, Qys
     )
     minimal_candidates = list(
-        [(q / Pd).subs(u_=u) for q in Qas]
+        [(q / Pd).subs(u_=u) for q in Qs]
         for u in one_minus_t_roots
     )
     minimal_candidates = _filter_direction_solutions(
@@ -190,14 +185,14 @@ def solve_and_filter_minimal_solutions_general(
         )
     ]
 
-    return (
-        one_minus_t,
-        [q * one_minus_t.derivative() * xgcd(Pd, one_minus_t)[1] for q in Qs],
-        [
-            [
-                _collapse_zero_part(v)
-                for v in pt[:len(vs)]
-            ]
-            for pt in minimals
-        ]
+    minimals = _filter_unique_by_index(
+        minimals, 0, d
     )
+
+    return [
+        [
+            _collapse_zero_part(v)
+            for v in pt[:len(vs)]
+        ]
+        for pt in minimals
+    ]
