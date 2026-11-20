@@ -72,21 +72,20 @@ def build_stratified_critical_point_systems(
                     cpid, whitney_strat[d - 1].change_ring(R)
                 )
 
-            if problem.require_minimal:
-                if problem.is_combinatorial:
-                    cpid += Ideal([H.subs({v: v * problem.t_variable for v in vs})])
-                else:
-                    cpid = _extend_auxiliary_equations_for_non_combintorial_system(
-                        H,
-                        vs,
-                        problem.duplicate_variables,
-                        problem.auxiliary_modulus_variables,
-                        problem.t_variable,
-                        problem.nu_variable,
-                        cpid
-                    )
+            if not problem.is_combinatorial and problem.require_minimal:
                 cpid += Ideal([prod(vs) * prod(problem.duplicate_variables) * lambda_ * problem.t_variable - 1])
+                cpid = _extend_auxiliary_equations_for_non_combintorial_system(
+                    H,
+                    vs,
+                    problem.duplicate_variables,
+                    problem.auxiliary_modulus_variables,
+                    problem.t_variable,
+                    problem.nu_variable,
+                    cpid
+                )
             else:
+                if problem.require_minimal:
+                    cpid += Ideal([H.subs({v: v * problem.t_variable for v in vs})])
                 cpid += Ideal([prod(vs) * lambda_ - 1])
 
             critical_point_ideals[d].append(
@@ -140,7 +139,7 @@ def _extend_auxiliary_equations_for_non_combintorial_system(
     cpid2 = cpid + Ideal(
        y*H.subs(y_subs).derivative(y) for y in ys
     )
-    return cpid1.intersection(cpid2)
+    return cpid1#.intersection(cpid2)
 
 def build_smooth_critical_point_system(
         problem: CriticalPointProblem

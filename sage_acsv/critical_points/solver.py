@@ -3,6 +3,8 @@ from sage.rings.qqbar import AA, QQbar
 
 from sage_acsv.critical_points.filter import _filter_direction_solutions, _filter_non_combinatorial_kronecker_roots_by_conjugate_pairs, _filter_unique_by_index
 from sage_acsv.helpers.utils import (
+    _eq,
+    _gt,
     _subs,
     _collapse_zero_part,
 )
@@ -26,6 +28,7 @@ def solve_kronecker_system(
     A list of solutions to the system.
     """
     P, Qs = kronecker_representation
+    u_ = P.parent().gen()
     Pd = P.derivative()
 
     # Keep auxiliary direction coordinates until filtering, then return only
@@ -34,7 +37,7 @@ def solve_kronecker_system(
     for u in P.roots(QQbar, multiplicities=False):
         solutions.append(
             [
-                _collapse_zero_part(QQbar((q / Pd).subs(u_=u)))
+                _collapse_zero_part(QQbar(_subs((q / Pd), u_, u)))
                 for q in Qs
             ]
         )
@@ -75,15 +78,15 @@ def solve_and_filter_positive_minimal_solutions_combinatorial(
     Pt, _ = P.quo_rem(one_minus_t)
     rts_t_zo = list(
         filter(
-            lambda k: _subs(Qt, u_, k) / _subs(Pd, u_, k) > 0 and _subs(Qt, u_, k) / _subs(Pd, u_, k) < 1,
+            lambda k: _gt(_subs(Qt, u_, k) / _subs(Pd, u_, k), 0) and _gt(1, _subs(Qt, u_, k) / _subs(Pd, u_, k)),
             Pt.roots(AA, multiplicities=False),
         )
     )
-    non_min = [[(q / Pd).subs(u_=u) for q in Qs] for u in rts_t_zo]
+    non_min = [[_subs(q, u_, u) / _subs(Pd, u_, u) for q in Qs] for u in rts_t_zo]
 
     # Filter the real roots for minimal points with positive coords
     pos_minimals = list(
-        [(q / Pd).subs(u_=u) for q in Qs]
+        [_subs(q, u_, u) / _subs(Pd, u_, u) for q in Qs]
         for u in one_minus_t.roots(AA, multiplicities=False)
     )
     pos_minimals = _filter_direction_solutions(
@@ -94,9 +97,9 @@ def solve_and_filter_positive_minimal_solutions_combinatorial(
     lambda_index = len(vs) + len(r_variable_values)
     pos_minimals = [
         v for v in pos_minimals if all(
-            w > 0 for w in v[: len(vs)]
+            _gt(w, 0) for w in v[: len(vs)]
         ) and v[lambda_index] != 0 and not any(
-            all(a == b for a, b in list(zip(v, pt))[:len(vs)])
+            all(_eq(a, b) for a, b in list(zip(v, pt))[:len(vs)])
             for pt in non_min
         )
     ]
@@ -154,20 +157,20 @@ def solve_and_filter_minimal_solutions_general(
     )
     rts_t_zo = list(
         filter(
-            lambda k: (_subs(Qt, u_, k) / _subs(Pd, u_, k)) in AA and 
-                      (_subs(Qt, u_, k) / _subs(Pd, u_, k)) > 0 and 
-                      (_subs(Qt, u_, k) / _subs(Pd, u_, k)) < 1,
+            lambda k: _eq((_subs(Qt, u_, k) / _subs(Pd, u_, k)).imag(), 0) and 
+                      _gt(_subs(Qt, u_, k) / _subs(Pd, u_, k), 0) and 
+                     _gt(1, _subs(Qt, u_, k) / _subs(Pd, u_, k)),
             Pt_roots,
         )
     )
-    non_min = [[(q / Pd).subs(u_=u) for q in Qas] for u in rts_t_zo]
+    non_min = [[_subs(q, u_, u) / _subs(Pd, u_, u) for q in Qas] for u in rts_t_zo]
 
     one_minus_t_roots = _filter_non_combinatorial_kronecker_roots_by_conjugate_pairs(
         one_minus_t.roots(QQbar, multiplicities=False),
         Pd, Qas, Qbs, Qxs, Qys
     )
     minimal_candidates = list(
-        [(q / Pd).subs(u_=u) for q in Qs]
+        [_subs(q, u_, u) / _subs(Pd, u_, u) for q in Qs]
         for u in one_minus_t_roots
     )
     minimal_candidates = _filter_direction_solutions(
@@ -179,8 +182,8 @@ def solve_and_filter_minimal_solutions_general(
     lambda_index = 4 * d + len(r_variable_values)
     minimals = [
         v for v in minimal_candidates if 
-        v[lambda_index] != 0 and not any(
-            all(a == b for a, b in list(zip(v, pt))[:len(vs)])
+        not _eq(v[lambda_index], 0) and not any(
+            all(_eq(a, b) for a, b in list(zip(v, pt))[:len(vs)])
             for pt in non_min
         )
     ]

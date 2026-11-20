@@ -107,6 +107,7 @@ class ACSVSettings:
     _default_groebner_backend = DEFAULT_GROEBNER_BACKEND
     _m2 = Macaulay2()
     _julia_path = None
+    _numerical_bit_precision = None
 
     MAX_MIN_CRIT_RETRIES = 5  # Maximum number of retries for critical point detection
 
@@ -278,3 +279,19 @@ class ACSVSettings:
         from sage_acsv.backends.julia import get_julia
 
         return get_julia()
+
+    @classmethod 
+    def set_numerical_precision(cls, val: int) -> None:
+        """Sets the numerical bit precision for which inequality checking will be performed.
+        Default is None, requiring exact equality over the algebraic numbers.
+        """
+        if val < 1:
+            acsv_logger.warning("Precision must be a positive integer or None.")
+            return
+        cls._numerical_bit_precision = val
+
+    @classmethod 
+    def get_numerical_precision(cls) -> int | None:
+        """Gets the numerical bit precision for which inequality checking will be performed.
+        """
+        return cls._numerical_bit_precision

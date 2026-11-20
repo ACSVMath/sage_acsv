@@ -10,6 +10,7 @@ from sage.rings.rational_field import QQ
 from sage.symbolic.ring import SR
 
 from sage_acsv.debug import acsv_logger
+from sage_acsv.settings import ACSVSettings
 
 
 def _subs(F, u, k):
@@ -17,6 +18,7 @@ def _subs(F, u, k):
     Monkey patch for Sage's algebraic numbers implementation being slow.
     """
     CIF = ComplexIntervalField()
+    CIF(k)
     a = F.subs({u:k}); CIF(a)
     return a
 
@@ -250,3 +252,35 @@ def _process_linear_form_input(linear_form, variable_map):
         linear_form = SR(linear_form).subs(variable_map)
 
     return linear_form
+
+def _gt(x, y):
+    r"""Determines whether ``x`` is greater than ``y`` up to the precision defined in settings.
+    """
+    if ACSVSettings.get_numerical_precision() is None:
+        return x > y
+
+    prec = 16
+    CC = ComplexIntervalField(ACSVSettings.get_numerical_precision())
+    while prec < ACSVSettings.get_numerical_precision():
+        prec = min(prec*2, ACSVSettings.get_numerical_precision())
+        if CC(x) > CC(y):
+            return True
+
+    return False
+
+def _eq(x, y):
+    r"""Determines equality between values ``x`` and ``y`` up to the precision defined in settings.
+    """
+    if ACSVSettings.get_numerical_precision() is None:
+        return x == y
+
+    prec = 16
+    CC = ComplexIntervalField(prec)
+    while prec < ACSVSettings.get_numerical_precision():
+        prec = min(prec*2, ACSVSettings.get_numerical_precision())
+        if not (CC(x) - CC(y)).contains_zero():
+            return False
+
+    return True
+
+    

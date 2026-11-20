@@ -150,6 +150,7 @@ def _find_contributing_points_combinatorial(
     ]
 
     problem = CriticalPointProblem(
+        is_combinatorial=True,
         require_contributing=True,
         require_minimal=True,
         H_polynomial=H,
@@ -356,6 +357,7 @@ def contributing_points_combinatorial_smooth(G, H, variables, r=None, linear_for
     # Create the critical point equations system
     system = build_smooth_critical_point_system(
         CriticalPointProblem(
+            is_combinatorial=True,
             require_minimal=True,
             require_contributing=True,
             H_polynomial=H,
@@ -478,6 +480,7 @@ def minimal_critical_points_combinatorial(
     ]
 
     problem = CriticalPointProblem(
+        is_combinatorial=True,
         require_contributing=False,
         require_minimal=True,
         H_polynomial=H,
@@ -592,6 +595,7 @@ def critical_points(F, r=None, linear_form=None, whitney_strat=None):
     ]
 
     problem = CriticalPointProblem(
+        is_combinatorial=False,
         require_contributing=False,
         require_minimal=False,
         H_polynomial=H,

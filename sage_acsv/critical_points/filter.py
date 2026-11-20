@@ -6,6 +6,7 @@ from sage_acsv.helpers import (
     ACSVException,
     is_contributing,
 )
+from sage_acsv.helpers.utils import _eq, _gt, _subs
 
 def _filter_direction_solutions(solutions, r_variable_values, start_index):
     r"""Filters critical point solutions for ones whose `r` values match the original
@@ -27,7 +28,7 @@ def _filter_direction_solutions(solutions, r_variable_values, start_index):
     return [
         sol for sol in solutions if
         all(
-            rsol == r for rsol, r in zip(sol[start_index: ], list(r_variable_values.values()))
+            _eq(rsol, r) for rsol, r in zip(sol[start_index: ], list(r_variable_values.values()))
         )
     ]
 
@@ -103,7 +104,7 @@ def _filter_minimal_points(solutions, minimal_points):
     return [
         w for w in solutions if any(
             all(
-                abs(w_i) == abs(min_i) for w_i, min_i in zip(w, pt)
+                _eq(abs(w_i), abs(min_i)) for w_i, min_i in zip(w, pt)
             ) for pt in minimal_points
         )
     ]
@@ -147,8 +148,8 @@ def _filter_contributing_points_by_height(points, H, vs, r):
 
         # If contributing_height != None, then a contributing point has been found. Any other contributing points
         # of larger height are just for the error bound, so they don't need to be generic.
-        if is_contributing(vs, cp, r, factors, s, contributing_height is not None and h > contributing_height):
-            if contributing_height is None or h == contributing_height:
+        if is_contributing(vs, cp, r, factors, s, contributing_height is not None and _gt(h, contributing_height)):
+            if contributing_height is None or _eq(h, contributing_height):
                 contributing_height = h
                 minimal_contributing_points.append(cp)
             else:
@@ -157,11 +158,17 @@ def _filter_contributing_points_by_height(points, H, vs, r):
     return minimal_contributing_points, next_contributing_points
 
 def _filter_non_combinatorial_kronecker_roots_by_conjugate_pairs(roots, Pd, Qas, Qbs, Qxs, Qys):
+    u_ = Pd.parent().gen()
     return [
         u for u in roots
         if all(
-            (Q1/Pd).subs(u).real() == (Q2/Pd).subs(u).real() and
-            (Q1/Pd).subs(u).imag() == -(Q2/Pd).subs(u).imag()
+            _eq(
+                _subs(Q1, u_, u).real()*_subs(Pd, u_, u).real() + _subs(Q1, u_, u).imag()*_subs(Pd, u_, u).imag(),
+                _subs(Q2, u_, u).real()*_subs(Pd, u_, u).real() + _subs(Q2, u_, u).imag()*_subs(Pd, u_, u).imag(),
+            ) and _eq(
+                _subs(Q1, u_, u).imag()*_subs(Pd, u_, u).real() -  _subs(Q1, u_, u).real()*_subs(Pd, u_, u).imag(),
+                -_subs(Q2, u_, u).imag()*_subs(Pd, u_, u).real() +  _subs(Q2, u_, u).real()*_subs(Pd, u_, u).imag(),
+            )
             for Q1, Q2 in zip(Qas + Qxs, Qbs + Qys)
         )
     ]
@@ -171,7 +178,7 @@ def _filter_unique_by_index(points, start_index, end_index):
     for pt in points:
         if any(
             all(
-                [v == w for v, w in zip(pt[start_index: end_index], spt[start_index: end_index])]
+                [_eq(v, w) for v, w in zip(pt[start_index: end_index], spt[start_index: end_index])]
             )
             for spt in saved_points
         ):
