@@ -38,7 +38,7 @@ def build_stratified_critical_point_systems(
         raise ACSVException("Auxiliary t variable must be provided for minimality checking.")
 
     H = problem.H_polynomial
-    vs, r, t, lambda_ = problem.variables, problem.direction, problem.t_variable, problem.lambda_variable
+    vs, r, lambda_ = problem.variables, problem.direction, problem.lambda_variable
     r_polys = problem.r_polynomials
     R = vs[0].parent()
 
@@ -63,18 +63,30 @@ def build_stratified_critical_point_systems(
             M = matrix([[v * f.derivative(v) for v in vs] for f in id.gens()] + [r])
             # Create ideal of R containing extended critical point equations
             cpid = id + Ideal(
-                M.minors(c + 1)
-                + r_polys +  [prod(vs) * lambda_ - 1]
+                R, r_polys + M.minors(c + 1)
             )
-
-            if problem.require_minimal:
-                cpid += Ideal([H.subs({v: v * t for v in vs})])
 
             # Saturate cpid by lower dimension stratum, if d > 0
             if d > 0:
                 cpid = compute_saturation(
                     cpid, whitney_strat[d - 1].change_ring(R)
                 )
+
+            if not problem.is_combinatorial and problem.require_minimal:
+                cpid += Ideal([prod(vs) * prod(problem.duplicate_variables) * lambda_ * problem.t_variable - 1])
+                cpid = _extend_auxiliary_equations_for_non_combintorial_system(
+                    H,
+                    vs,
+                    problem.duplicate_variables,
+                    problem.auxiliary_modulus_variables,
+                    problem.t_variable,
+                    problem.nu_variable,
+                    cpid
+                )
+            else:
+                if problem.require_minimal:
+                    cpid += Ideal([H.subs({v: v * problem.t_variable for v in vs})])
+                cpid += Ideal([prod(vs) * lambda_ - 1])
 
             critical_point_ideals[d].append(
                 CriticalPointSystem(
@@ -90,6 +102,44 @@ def build_stratified_critical_point_systems(
     timer.checkpoint("Critical Point Ideals")
 
     return critical_point_ideals
+
+def _extend_auxiliary_equations_for_non_combintorial_system(
+    H,
+    variables,
+    duplicate_variables,
+    auxiliary_modulus_variables,
+    t_,
+    nu_,
+    cpid
+):
+    d = len(variables)
+    xs = auxiliary_modulus_variables[:d]
+    ys = auxiliary_modulus_variables[d:]
+    x_subs = {v:x for v, x in zip(variables, xs)}
+    y_subs = {v:y for v, y in zip(variables, ys)}
+    d = len(variables)
+    cpid += cpid.subs(
+        {v: v_dup for v, v_dup in zip(variables, duplicate_variables)}
+    )
+    cpid += Ideal(
+        [H.subs(x_subs), H.subs(y_subs)]
+    )
+    cpid += Ideal(
+        x*y - t_*a*b for x, y, a, b in zip(
+            xs, 
+            ys,
+            variables,
+            duplicate_variables
+        )
+    )
+
+    cpid1 = cpid + Ideal(
+        x*H.subs(x_subs).derivative(x)-nu_*y*H.subs(y_subs).derivative(y) for x, y in zip(xs, ys)
+    )
+    cpid2 = cpid + Ideal(
+       y*H.subs(y_subs).derivative(y) for y in ys
+    )
+    return cpid1#.intersection(cpid2)
 
 def build_smooth_critical_point_system(
         problem: CriticalPointProblem
